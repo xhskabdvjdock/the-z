@@ -1,8 +1,8 @@
 FROM node:20-alpine AS shared-builder
 
 WORKDIR /app/shared
-COPY shared/package.json shared/tsconfig.json ./shared/
-COPY shared/src ./shared/src
+COPY shared/package.json shared/tsconfig.json ./
+COPY shared/src ./src
 RUN npm install && npm run build
 
 FROM node:20-alpine AS bot-builder
