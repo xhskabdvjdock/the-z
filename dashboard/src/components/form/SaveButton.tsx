@@ -23,10 +23,10 @@ export default function SaveButton({ onSave }: { onSave: () => Promise<void> | v
   return (
     <div className="flex items-center gap-3">
       <button onClick={handleClick} disabled={isPending} className="btn-primary">
-        {isPending ? "جاري الحفظ..." : "💾 حفظ التغييرات"}
+        {isPending ? "جاري الحفظ..." : "حفظ التغييرات"}
       </button>
-      {status === "success" && <span className="text-sm text-green-600 dark:text-green-400">✅ تم الحفظ بنجاح</span>}
-      {status === "error" && <span className="text-sm text-red-600 dark:text-red-400">❌ حدث خطأ أثناء الحفظ</span>}
+      {status === "success" && <span className="text-sm text-green-600 dark:text-green-400">تم الحفظ بنجاح</span>}
+      {status === "error" && <span className="text-sm text-red-600 dark:text-red-400">حدث خطأ أثناء الحفظ</span>}
     </div>
   );
 }
