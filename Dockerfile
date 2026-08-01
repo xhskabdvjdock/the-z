@@ -20,7 +20,7 @@ FROM node:20-alpine AS dashboard-builder
 
 WORKDIR /app
 COPY package.json ./
-COPY dashboard/package.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
+COPY dashboard/package.json dashboard/tsconfig.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
 COPY dashboard/src ./dashboard/src
 COPY --from=shared-builder /app/shared/package.json ./shared/package.json
 COPY --from=shared-builder /app/shared/dist ./shared/dist
