@@ -474,11 +474,11 @@ export async function closeTicket(
 /** يبني ويرسل لوحة فتح التذاكر (أزرار أو قائمة سحب حسب إعدادات السيرفر) في روم معيّن */
 export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfig): Promise<void> {
   const categories = gConfig.tickets.categories ?? [];
-  const config = gConfig.tickets;
+  const ticketsConfig = gConfig.tickets;
 
   let messagePayload: MessageCreateOptions;
 
-  if (config.panelEmbed?.enabled) {
+  if (ticketsConfig.panelEmbed?.enabled) {
     const varsCtx: VariableContext = {
       user: { id: "", username: "", tag: "", mention: "", avatarURL: "" },
       server: {
@@ -488,7 +488,7 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
         iconURL: channel.guild.iconURL() ?? undefined
       }
     };
-    messagePayload = buildMessageFromCustom(config.panelEmbed, varsCtx);
+    messagePayload = buildMessageFromCustom(ticketsConfig.panelEmbed, varsCtx);
   } else {
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
@@ -503,7 +503,7 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
   }
 
   if (categories.length) {
-    if (config.panelStyle === "select") {
+    if (ticketsConfig.panelStyle === "select") {
       const select = new StringSelectMenuBuilder()
         .setCustomId("ticket_open_select")
         .setPlaceholder("اختر نوع التذكرة")
@@ -529,7 +529,7 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
           const button = new ButtonBuilder()
             .setCustomId(`ticket_open_${c.key}`)
             .setLabel(c.name.slice(0, 80))
-            .setStyle(buttonStyleMap[config.panelButtonStyle || "Primary"] || ButtonStyle.Primary);
+            .setStyle(buttonStyleMap[ticketsConfig.panelButtonStyle || "Primary"] || ButtonStyle.Primary);
           if (c.emoji) button.setEmoji(c.emoji);
           row.addComponents(button);
         }
