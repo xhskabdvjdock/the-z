@@ -17,6 +17,8 @@ export default async function TicketsPage({ params }: { params: { guildId: strin
     panelChannelId: config?.tickets?.panelChannelId ?? "",
     panelMessageId: config?.tickets?.panelMessageId ?? "",
     panelStyle: config?.tickets?.panelStyle ?? "buttons",
+    panelButtonStyle: config?.tickets?.panelButtonStyle ?? "Primary",
+    panelEmbed: config?.tickets?.panelEmbed ?? { enabled: true, content: "", embed: { enabled: true, title: "نظام التذاكر", description: "اختر التصنيف المناسب لفتح تذكرة" } },
     transcriptChannelId: config?.tickets?.transcriptChannelId ?? "",
     saveTranscriptAsHtml: config?.tickets?.saveTranscriptAsHtml ?? true,
     maxOpenPerUser: config?.tickets?.maxOpenPerUser ?? 1,
