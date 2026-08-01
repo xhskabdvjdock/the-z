@@ -9,10 +9,12 @@ export default function SaveButton({ onSave }: { onSave: () => Promise<void> | v
   const handleClick = async () => {
     setIsPending(true);
     try {
+      console.log("SaveButton: Calling onSave function");
       await onSave();
+      console.log("SaveButton: onSave completed successfully");
       setStatus("success");
     } catch (err) {
-      console.error(err);
+      console.error("SaveButton: Error during save:", err);
       setStatus("error");
     } finally {
       setIsPending(false);
