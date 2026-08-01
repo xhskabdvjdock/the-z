@@ -156,6 +156,8 @@ export default function TicketsForm({
             onChange={(msg) => setState({ ...state, panelEmbed: msg })}
           />
         </div>
+
+        <SaveButton onSave={() => saveTicketsConfig(guildId, state)} />
       </section>
 
       <section className="flex flex-col gap-4">
