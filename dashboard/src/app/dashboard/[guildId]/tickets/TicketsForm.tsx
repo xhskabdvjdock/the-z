@@ -217,8 +217,14 @@ export default function TicketsForm({
                     welcomeMessage: { 
                       ...cat.welcomeMessage, 
                       embed: { 
-                        ...cat.welcomeMessage?.embed, 
-                        color: e.target.value 
+                        enabled: cat.welcomeMessage?.embed?.enabled ?? false,
+                        title: cat.welcomeMessage?.embed?.title,
+                        description: cat.welcomeMessage?.embed?.description,
+                        thumbnail: cat.welcomeMessage?.embed?.thumbnail,
+                        footer: cat.welcomeMessage?.embed?.footer,
+                        author: cat.welcomeMessage?.embed?.author,
+                        color: e.target.value,
+                        image: cat.welcomeMessage?.embed?.image
                       } 
                     } 
                   })}
@@ -235,8 +241,14 @@ export default function TicketsForm({
                     welcomeMessage: { 
                       ...cat.welcomeMessage, 
                       embed: { 
-                        ...cat.welcomeMessage?.embed, 
-                        image: e.target.value 
+                        enabled: cat.welcomeMessage?.embed?.enabled ?? false,
+                        title: cat.welcomeMessage?.embed?.title,
+                        description: cat.welcomeMessage?.embed?.description,
+                        thumbnail: cat.welcomeMessage?.embed?.thumbnail,
+                        footer: cat.welcomeMessage?.embed?.footer,
+                        author: cat.welcomeMessage?.embed?.author,
+                        color: cat.welcomeMessage?.embed?.color,
+                        image: e.target.value
                       } 
                     } 
                   })}
