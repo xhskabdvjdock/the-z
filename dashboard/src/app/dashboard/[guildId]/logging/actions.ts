@@ -6,10 +6,20 @@ import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 
 export async function saveLoggingConfig(guildId: string, data: IGuildConfig["logging"]) {
-  await requireGuildAdmin(guildId);
-  await ensureDb();
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
 
-  await GuildConfig.findOneAndUpdate({ guildId }, { $set: { logging: data } }, { upsert: true });
+    console.log("Saving logging config for guild:", guildId);
+    console.log("Data:", JSON.stringify(data, null, 2));
 
-  revalidatePath(`/dashboard/${guildId}/logging`);
+    await GuildConfig.findOneAndUpdate({ guildId }, { $set: { logging: data } }, { upsert: true });
+
+    console.log("Logging config saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/logging`);
+  } catch (error) {
+    console.error("Error saving logging config:", error);
+    throw error;
+  }
 }

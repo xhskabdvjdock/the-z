@@ -6,10 +6,20 @@ import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 
 export async function saveAntiNukeConfig(guildId: string, data: IGuildConfig["antiNuke"]) {
-  await requireGuildAdmin(guildId);
-  await ensureDb();
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
 
-  await GuildConfig.findOneAndUpdate({ guildId }, { $set: { antiNuke: data } }, { upsert: true });
+    console.log("Saving antinuke config for guild:", guildId);
+    console.log("Data:", JSON.stringify(data, null, 2));
 
-  revalidatePath(`/dashboard/${guildId}/antinuke`);
+    await GuildConfig.findOneAndUpdate({ guildId }, { $set: { antiNuke: data } }, { upsert: true });
+
+    console.log("Antinuke config saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/antinuke`);
+  } catch (error) {
+    console.error("Error saving antinuke config:", error);
+    throw error;
+  }
 }

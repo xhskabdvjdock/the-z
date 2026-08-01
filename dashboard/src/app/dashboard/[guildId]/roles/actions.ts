@@ -12,14 +12,24 @@ export interface RolesConfigInput {
 }
 
 export async function saveRolesConfig(guildId: string, data: RolesConfigInput) {
-  await requireGuildAdmin(guildId);
-  await ensureDb();
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
 
-  await GuildConfig.findOneAndUpdate(
-    { guildId },
-    { $set: { autoRole: data.autoRole, colors: data.colors, selfRoles: data.selfRoles } },
-    { upsert: true }
-  );
+    console.log("Saving roles config for guild:", guildId);
+    console.log("Data:", JSON.stringify(data, null, 2));
 
-  revalidatePath(`/dashboard/${guildId}/roles`);
+    await GuildConfig.findOneAndUpdate(
+      { guildId },
+      { $set: { autoRole: data.autoRole, colors: data.colors, selfRoles: data.selfRoles } },
+      { upsert: true }
+    );
+
+    console.log("Roles config saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/roles`);
+  } catch (error) {
+    console.error("Error saving roles config:", error);
+    throw error;
+  }
 }

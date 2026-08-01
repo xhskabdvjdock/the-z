@@ -24,14 +24,24 @@ export interface WelcomeLeaveInput {
 }
 
 export async function saveWelcomeConfig(guildId: string, data: WelcomeLeaveInput) {
-  await requireGuildAdmin(guildId);
-  await ensureDb();
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
 
-  await GuildConfig.findOneAndUpdate(
-    { guildId },
-    { $set: { welcome: data.welcome, leave: data.leave } },
-    { upsert: true }
-  );
+    console.log("Saving welcome config for guild:", guildId);
+    console.log("Data:", JSON.stringify(data, null, 2));
 
-  revalidatePath(`/dashboard/${guildId}/welcome`);
+    await GuildConfig.findOneAndUpdate(
+      { guildId },
+      { $set: { welcome: data.welcome, leave: data.leave } },
+      { upsert: true }
+    );
+
+    console.log("Welcome config saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/welcome`);
+  } catch (error) {
+    console.error("Error saving welcome config:", error);
+    throw error;
+  }
 }

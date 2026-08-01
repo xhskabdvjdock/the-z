@@ -31,10 +31,10 @@ export default function Sidebar({ guildId }: { guildId: string }) {
           <Link
             key={item.href}
             href={href}
-            className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 ${
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ${
               active
-                ? "bg-gray-800 text-white border border-gray-700"
-                : "text-gray-400 hover:bg-gray-800 hover:text-white"
+                ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30"
+                : "text-slate-400 hover:bg-slate-800/50 hover:text-slate-200"
             }`}
           >
             <span className="whitespace-nowrap">{item.label}</span>

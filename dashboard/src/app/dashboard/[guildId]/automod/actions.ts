@@ -8,14 +8,24 @@ import { requireGuildAdmin } from "@/lib/guildAccess";
 export type AutomodInput = IGuildConfig["automod"];
 
 export async function saveAutomodConfig(guildId: string, data: AutomodInput) {
-  await requireGuildAdmin(guildId);
-  await ensureDb();
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
 
-  await GuildConfig.findOneAndUpdate(
-    { guildId },
-    { $set: { automod: data } },
-    { upsert: true }
-  );
+    console.log("Saving automod config for guild:", guildId);
+    console.log("Data:", JSON.stringify(data, null, 2));
 
-  revalidatePath(`/dashboard/${guildId}/automod`);
+    await GuildConfig.findOneAndUpdate(
+      { guildId },
+      { $set: { automod: data } },
+      { upsert: true }
+    );
+
+    console.log("Automod config saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/automod`);
+  } catch (error) {
+    console.error("Error saving automod config:", error);
+    throw error;
+  }
 }

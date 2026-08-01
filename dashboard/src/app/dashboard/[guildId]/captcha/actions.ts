@@ -6,10 +6,20 @@ import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 
 export async function saveCaptchaConfig(guildId: string, data: IGuildConfig["captcha"]) {
-  await requireGuildAdmin(guildId);
-  await ensureDb();
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
 
-  await GuildConfig.findOneAndUpdate({ guildId }, { $set: { captcha: data } }, { upsert: true });
+    console.log("Saving captcha config for guild:", guildId);
+    console.log("Data:", JSON.stringify(data, null, 2));
 
-  revalidatePath(`/dashboard/${guildId}/captcha`);
+    await GuildConfig.findOneAndUpdate({ guildId }, { $set: { captcha: data } }, { upsert: true });
+
+    console.log("Captcha config saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/captcha`);
+  } catch (error) {
+    console.error("Error saving captcha config:", error);
+    throw error;
+  }
 }

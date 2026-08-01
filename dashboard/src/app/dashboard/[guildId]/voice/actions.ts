@@ -6,14 +6,24 @@ import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 
 export async function saveVoiceConfig(guildId: string, data: IGuildConfig["tempVoice"]) {
-  await requireGuildAdmin(guildId);
-  await ensureDb();
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
 
-  await GuildConfig.findOneAndUpdate(
-    { guildId },
-    { $set: { tempVoice: data } },
-    { upsert: true }
-  );
+    console.log("Saving voice config for guild:", guildId);
+    console.log("Data:", JSON.stringify(data, null, 2));
 
-  revalidatePath(`/dashboard/${guildId}/voice`);
+    await GuildConfig.findOneAndUpdate(
+      { guildId },
+      { $set: { tempVoice: data } },
+      { upsert: true }
+    );
+
+    console.log("Voice config saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/voice`);
+  } catch (error) {
+    console.error("Error saving voice config:", error);
+    throw error;
+  }
 }

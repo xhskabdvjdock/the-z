@@ -8,14 +8,24 @@ import { requireGuildAdmin } from "@/lib/guildAccess";
 export type LevelingInput = IGuildConfig["leveling"];
 
 export async function saveLevelingConfig(guildId: string, data: LevelingInput) {
-  await requireGuildAdmin(guildId);
-  await ensureDb();
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
 
-  await GuildConfig.findOneAndUpdate(
-    { guildId },
-    { $set: { leveling: data } },
-    { upsert: true }
-  );
+    console.log("Saving leveling config for guild:", guildId);
+    console.log("Data:", JSON.stringify(data, null, 2));
 
-  revalidatePath(`/dashboard/${guildId}/leveling`);
+    await GuildConfig.findOneAndUpdate(
+      { guildId },
+      { $set: { leveling: data } },
+      { upsert: true }
+    );
+
+    console.log("Leveling config saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/leveling`);
+  } catch (error) {
+    console.error("Error saving leveling config:", error);
+    throw error;
+  }
 }
