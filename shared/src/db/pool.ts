@@ -26,11 +26,25 @@ export async function connectDatabase(
     const url = new URL(connectionString);
     const sslMode = url.searchParams.get("sslmode");
 
+    // For Render and environments with self-signed certs, always allow SSL
     if (sslMode && sslMode !== "disable") {
       const certPath = options.sslRootCertPath ?? process.env.DB_SSL_CA_PATH;
+      let ca: string | undefined;
+      if (certPath) {
+        try {
+          ca = fs.readFileSync(path.resolve(certPath)).toString();
+        } catch {
+          // Certificate file not found, continue without it
+        }
+      }
       ssl = {
         rejectUnauthorized: false,
-        ca: certPath ? fs.readFileSync(path.resolve(certPath)).toString() : undefined
+        ca
+      };
+    } else if (!sslMode) {
+      // If no SSL mode specified, use SSL with rejectUnauthorized: false for Render
+      ssl = {
+        rejectUnauthorized: false
       };
     }
 
@@ -38,7 +52,11 @@ export async function connectDatabase(
     url.searchParams.delete("sslrootcert");
     cleanedConnectionString = url.toString();
   } catch {
-    // إن تعذّر تحليل السلسلة كرابط URL، استخدمها كما هي بدون أي إعداد SSL إضافي
+    // إن تعذّل تحليل السلسلة كرابط URL، استخدمها كما هي بدون أي إعداد SSL إضافي
+    // Still set SSL with rejectUnauthorized: false for safety
+    ssl = {
+      rejectUnauthorized: false
+    };
   }
 
   pool = new Pool({ connectionString: cleanedConnectionString, ssl });
