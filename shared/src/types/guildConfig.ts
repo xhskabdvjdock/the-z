@@ -37,6 +37,13 @@ export interface ITicketCategory {
   welcomeMessage?: ICustomMessage;
   questions: string[];
   ticketNameFormat?: string;
+  panelTitle?: string;
+  panelDescription?: string;
+  closeButtonLabel?: string;
+  claimButtonLabel?: string;
+  openMessage?: ICustomMessage;
+  closeMessage?: ICustomMessage;
+  claimMessage?: ICustomMessage;
 }
 
 export interface ICommandOverride {

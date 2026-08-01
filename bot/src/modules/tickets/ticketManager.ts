@@ -103,11 +103,13 @@ async function sendTicketWelcome(
   }
 
   const controlRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId("ticket_close").setLabel("إغلاق").setEmoji("🔒").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("ticket_close")
+      .setLabel(category.closeButtonLabel || "إغلاق")
+      .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId("ticket_claim")
-      .setLabel("استلام")
-      .setEmoji("🙋")
+      .setLabel(category.claimButtonLabel || "استلام")
       .setStyle(ButtonStyle.Secondary)
   );
 
@@ -236,7 +238,29 @@ async function handleTicketOpenRequest(
   await interaction.deferReply({ ephemeral: true });
   const member = interaction.member as GuildMember;
   const channel = await createTicketChannel(guild, member, category, []);
-  await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${channel.id}>` });
+  
+  const openMsg = category.openMessage;
+  if (openMsg?.enabled) {
+    const varsCtx: VariableContext = {
+      user: {
+        id: member.id,
+        username: member.user.username,
+        tag: member.user.tag,
+        mention: `<@${member.id}>`,
+        avatarURL: member.user.displayAvatarURL()
+      },
+      server: {
+        name: guild.name,
+        id: guild.id,
+        memberCount: guild.memberCount,
+        iconURL: guild.iconURL() ?? undefined
+      }
+    };
+    const openPayload = buildMessageFromCustom(openMsg, varsCtx);
+    await interaction.editReply({ ...openPayload, content: openPayload.content || `تم إنشاء تذكرتك بنجاح: <#${channel.id}>` });
+  } else {
+    await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${channel.id}>` });
+  }
 }
 
 /** يعالج إرسال نموذج الأسئلة الخاص بتصنيف معيّن، وينشئ التذكرة بعده */
@@ -262,7 +286,29 @@ async function handleTicketModalSubmit(interaction: ModalSubmitInteraction, clie
 
   const member = interaction.member as GuildMember;
   const channel = await createTicketChannel(guild, member, category, answers);
-  await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${channel.id}>` });
+  
+  const openMsg = category.openMessage;
+  if (openMsg?.enabled) {
+    const varsCtx: VariableContext = {
+      user: {
+        id: member.id,
+        username: member.user.username,
+        tag: member.user.tag,
+        mention: `<@${member.id}>`,
+        avatarURL: member.user.displayAvatarURL()
+      },
+      server: {
+        name: guild.name,
+        id: guild.id,
+        memberCount: guild.memberCount,
+        iconURL: guild.iconURL() ?? undefined
+      }
+    };
+    const openPayload = buildMessageFromCustom(openMsg, varsCtx);
+    await interaction.editReply({ ...openPayload, content: openPayload.content || `تم إنشاء تذكرتك بنجاح: <#${channel.id}>` });
+  } else {
+    await interaction.editReply({ content: `✅ تم إنشاء تذكرتك بنجاح: <#${channel.id}>` });
+  }
 }
 
 /** يعالج زر "استلام" التذكرة: يتحقق من صلاحية العضو ويحدّث المسؤول عن التذكرة */
@@ -291,7 +337,28 @@ async function handleTicketClaim(interaction: ButtonInteraction, client: Extende
   ticket.claimedBy = member.id;
   await ticket.save();
 
-  await interaction.reply({ content: `🙋 تم استلام هذه التذكرة بواسطة <@${member.id}>.` });
+  const claimMsg = category?.claimMessage;
+  if (claimMsg?.enabled) {
+    const varsCtx: VariableContext = {
+      user: {
+        id: member.id,
+        username: member.user.username,
+        tag: member.user.tag,
+        mention: `<@${member.id}>`,
+        avatarURL: member.user.displayAvatarURL()
+      },
+      server: {
+        name: guild.name,
+        id: guild.id,
+        memberCount: guild.memberCount,
+        iconURL: guild.iconURL() ?? undefined
+      }
+    };
+    const claimPayload = buildMessageFromCustom(claimMsg, varsCtx);
+    await interaction.reply({ ...claimPayload, content: claimPayload.content || `تم استلام هذه التذكرة بواسطة <@${member.id}>.` });
+  } else {
+    await interaction.reply({ content: `تم استلام هذه التذكرة بواسطة <@${member.id}>.` });
+  }
 }
 
 /** يعالج زر "إغلاق" التذكرة بعد التحقق من صلاحية الناقر (فريق الدعم أو صاحب التذكرة) */
@@ -319,7 +386,29 @@ async function handleTicketCloseButton(interaction: ButtonInteraction, client: E
     return;
   }
 
-  await interaction.reply({ content: "🔒 جارٍ إغلاق التذكرة وإنشاء سجل المحادثة..." });
+  const closeMsg = category?.closeMessage;
+  
+  if (closeMsg?.enabled) {
+    const varsCtx: VariableContext = {
+      user: {
+        id: member.id,
+        username: member.user.username,
+        tag: member.user.tag,
+        mention: `<@${member.id}>`,
+        avatarURL: member.user.displayAvatarURL()
+      },
+      server: {
+        name: guild.name,
+        id: guild.id,
+        memberCount: guild.memberCount,
+        iconURL: guild.iconURL() ?? undefined
+      }
+    };
+    const closePayload = buildMessageFromCustom(closeMsg, varsCtx);
+    await interaction.reply({ ...closePayload, content: closePayload.content || "جارٍ إغلاق التذكرة وإنشاء سجل المحادثة..." });
+  } else {
+    await interaction.reply({ content: "جارٍ إغلاق التذكرة وإنشاء سجل المحادثة..." });
+  }
   await closeTicket(channel as TextChannel, member.id, client);
 }
 
@@ -385,14 +474,15 @@ export async function closeTicket(
 /** يبني ويرسل لوحة فتح التذاكر (أزرار أو قائمة سحب حسب إعدادات السيرفر) في روم معيّن */
 export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfig): Promise<void> {
   const categories = gConfig.tickets.categories ?? [];
+  const firstCategory = categories[0];
 
   const embed = new EmbedBuilder()
     .setColor(config.defaultColor)
-    .setTitle("🎫 نظام التذاكر")
+    .setTitle(firstCategory?.panelTitle || "نظام التذاكر")
     .setDescription(
       categories.length
-        ? "اختر التصنيف المناسب من الأسفل لفتح تذكرة دعم، وسيقوم فريقنا بمساعدتك في أقرب وقت ممكن.\n\n" +
-            categories.map((c) => `${c.emoji ?? "🎫"} **${c.name}**`).join("\n")
+        ? (firstCategory?.panelDescription || "اختر التصنيف المناسب من الأسفل لفتح تذكرة دعم، وسيقوم فريقنا بمساعدتك في أقرب وقت ممكن.\n\n") +
+            categories.map((c) => `${c.emoji ?? ""} **${c.name}**`).join("\n")
         : "لا توجد تصنيفات تذاكر متاحة حالياً."
     );
 

@@ -21,7 +21,14 @@ function createCategory(): ITicketCategory {
     logChannelId: "",
     welcomeMessage: { enabled: true, content: "" },
     questions: [],
-    ticketNameFormat: "ticket-{count}"
+    ticketNameFormat: "ticket-{count}",
+    panelTitle: "نظام التذاكر",
+    panelDescription: "اختر التصنيف المناسب لفتح تذكرة",
+    closeButtonLabel: "إغلاق",
+    claimButtonLabel: "استلام",
+    openMessage: { enabled: true, content: "تم إنشاء تذكرتك بنجاح" },
+    closeMessage: { enabled: true, content: "تم إغلاق التذكرة" },
+    claimMessage: { enabled: true, content: "تم استلام التذكرة" }
   };
 }
 
@@ -206,6 +213,46 @@ export default function TicketsForm({
                   onChange={(e) => updateCategory(index, { ticketNameFormat: e.target.value })}
                 />
               </div>
+
+              <div>
+                <label className="label">عنوان لوحة التذاكر</label>
+                <input
+                  className="input"
+                  placeholder="نظام التذاكر"
+                  value={cat.panelTitle ?? ""}
+                  onChange={(e) => updateCategory(index, { panelTitle: e.target.value })}
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="label">وصف لوحة التذاكر</label>
+                <input
+                  className="input"
+                  placeholder="اختر التصنيف المناسب لفتح تذكرة"
+                  value={cat.panelDescription ?? ""}
+                  onChange={(e) => updateCategory(index, { panelDescription: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="label">نص زر الإغلاق</label>
+                <input
+                  className="input"
+                  placeholder="إغلاق"
+                  value={cat.closeButtonLabel ?? ""}
+                  onChange={(e) => updateCategory(index, { closeButtonLabel: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="label">نص زر الاستلام</label>
+                <input
+                  className="input"
+                  placeholder="استلام"
+                  value={cat.claimButtonLabel ?? ""}
+                  onChange={(e) => updateCategory(index, { claimButtonLabel: e.target.value })}
+                />
+              </div>
             </div>
 
             <div>
@@ -248,6 +295,30 @@ export default function TicketsForm({
               <CustomMessageEditor
                 value={cat.welcomeMessage ?? { enabled: true, content: "" }}
                 onChange={(msg) => updateCategory(index, { welcomeMessage: msg })}
+              />
+            </div>
+
+            <div>
+              <label className="label">رسالة فتح التذكرة</label>
+              <CustomMessageEditor
+                value={cat.openMessage ?? { enabled: true, content: "تم إنشاء تذكرتك بنجاح" }}
+                onChange={(msg) => updateCategory(index, { openMessage: msg })}
+              />
+            </div>
+
+            <div>
+              <label className="label">رسالة إغلاق التذكرة</label>
+              <CustomMessageEditor
+                value={cat.closeMessage ?? { enabled: true, content: "تم إغلاق التذكرة" }}
+                onChange={(msg) => updateCategory(index, { closeMessage: msg })}
+              />
+            </div>
+
+            <div>
+              <label className="label">رسالة استلام التذكرة</label>
+              <CustomMessageEditor
+                value={cat.claimMessage ?? { enabled: true, content: "تم استلام التذكرة" }}
+                onChange={(msg) => updateCategory(index, { claimMessage: msg })}
               />
             </div>
           </div>
