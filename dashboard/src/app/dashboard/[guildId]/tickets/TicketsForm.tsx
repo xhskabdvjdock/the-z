@@ -22,10 +22,6 @@ function createCategory(): ITicketCategory {
     welcomeMessage: { enabled: true, content: "" },
     questions: [],
     ticketNameFormat: "ticket-{count}",
-    panelTitle: "نظام التذاكر",
-    panelDescription: "اختر التصنيف المناسب لفتح تذكرة",
-    panelEmbed: { enabled: true, content: "", embed: { enabled: true, title: "نظام التذاكر", description: "اختر التصنيف المناسب لفتح تذكرة" } },
-    buttonStyle: "Primary",
     closeButtonLabel: "إغلاق",
     claimButtonLabel: "استلام",
     openMessage: { enabled: true, content: "تم إنشاء تذكرتك بنجاح" },
@@ -109,6 +105,22 @@ export default function TicketsForm({
             </select>
           </div>
 
+          <div>
+            <label className="label">نمط أزرار اللوحة</label>
+            <select
+              className="input"
+              value={state.panelButtonStyle ?? "Primary"}
+              onChange={(e) =>
+                setState({ ...state, panelButtonStyle: e.target.value as "Primary" | "Secondary" | "Success" | "Danger" })
+              }
+            >
+              <option value="Primary">أزرق (Primary)</option>
+              <option value="Secondary">رمادي (Secondary)</option>
+              <option value="Success">أخضر (Success)</option>
+              <option value="Danger">أحمر (Danger)</option>
+            </select>
+          </div>
+
           <ChannelSelect
             label="روم حفظ نسخة المحادثة (Transcript)"
             channels={channels}
@@ -135,6 +147,14 @@ export default function TicketsForm({
               onChange={(e) => setState({ ...state, maxOpenPerUser: Number(e.target.value) })}
             />
           </div>
+        </div>
+
+        <div>
+          <label className="label">رسالة لوحة التذاكر</label>
+          <CustomMessageEditor
+            value={state.panelEmbed ?? { enabled: true, content: "", embed: { enabled: true, title: "نظام التذاكر", description: "اختر التصنيف المناسب لفتح تذكرة" } }}
+            onChange={(msg) => setState({ ...state, panelEmbed: msg })}
+          />
         </div>
       </section>
 
@@ -217,26 +237,6 @@ export default function TicketsForm({
               </div>
 
               <div>
-                <label className="label">عنوان لوحة التذاكر</label>
-                <input
-                  className="input"
-                  placeholder="نظام التذاكر"
-                  value={cat.panelTitle ?? ""}
-                  onChange={(e) => updateCategory(index, { panelTitle: e.target.value })}
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="label">وصف لوحة التذاكر</label>
-                <input
-                  className="input"
-                  placeholder="اختر التصنيف المناسب لفتح تذكرة"
-                  value={cat.panelDescription ?? ""}
-                  onChange={(e) => updateCategory(index, { panelDescription: e.target.value })}
-                />
-              </div>
-
-              <div>
                 <label className="label">نص زر الإغلاق</label>
                 <input
                   className="input"
@@ -255,28 +255,6 @@ export default function TicketsForm({
                   onChange={(e) => updateCategory(index, { claimButtonLabel: e.target.value })}
                 />
               </div>
-
-              <div>
-                <label className="label">نمط زر التصنيف</label>
-                <select
-                  className="input"
-                  value={cat.buttonStyle ?? "Primary"}
-                  onChange={(e) => updateCategory(index, { buttonStyle: e.target.value as "Primary" | "Secondary" | "Success" | "Danger" })}
-                >
-                  <option value="Primary">أزرق (Primary)</option>
-                  <option value="Secondary">رمادي (Secondary)</option>
-                  <option value="Success">أخضر (Success)</option>
-                  <option value="Danger">أحمر (Danger)</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="label">رسالة لوحة التذاكر</label>
-              <CustomMessageEditor
-                value={cat.panelEmbed ?? { enabled: true, content: "", embed: { enabled: true, title: "نظام التذاكر", description: "اختر التصنيف المناسب لفتح تذكرة" } }}
-                onChange={(msg) => updateCategory(index, { panelEmbed: msg })}
-              />
             </div>
 
             <div>

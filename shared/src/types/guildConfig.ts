@@ -37,10 +37,6 @@ export interface ITicketCategory {
   welcomeMessage?: ICustomMessage;
   questions: string[];
   ticketNameFormat?: string;
-  panelTitle?: string;
-  panelDescription?: string;
-  panelEmbed?: ICustomMessage;
-  buttonStyle?: "Primary" | "Secondary" | "Success" | "Danger";
   closeButtonLabel?: string;
   claimButtonLabel?: string;
   openMessage?: ICustomMessage;
@@ -117,6 +113,8 @@ export interface IGuildConfig {
     panelChannelId?: string;
     panelMessageId?: string;
     panelStyle: "buttons" | "select";
+    panelEmbed?: ICustomMessage;
+    panelButtonStyle?: "Primary" | "Secondary" | "Success" | "Danger";
     transcriptChannelId?: string;
     saveTranscriptAsHtml: boolean;
     maxOpenPerUser: number;

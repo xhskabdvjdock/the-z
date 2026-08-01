@@ -474,11 +474,11 @@ export async function closeTicket(
 /** يبني ويرسل لوحة فتح التذاكر (أزرار أو قائمة سحب حسب إعدادات السيرفر) في روم معيّن */
 export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfig): Promise<void> {
   const categories = gConfig.tickets.categories ?? [];
-  const firstCategory = categories[0];
+  const config = gConfig.tickets;
 
   let messagePayload: MessageCreateOptions;
 
-  if (firstCategory?.panelEmbed?.enabled) {
+  if (config.panelEmbed?.enabled) {
     const varsCtx: VariableContext = {
       user: { id: "", username: "", tag: "", mention: "", avatarURL: "" },
       server: {
@@ -488,14 +488,14 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
         iconURL: channel.guild.iconURL() ?? undefined
       }
     };
-    messagePayload = buildMessageFromCustom(firstCategory.panelEmbed, varsCtx);
+    messagePayload = buildMessageFromCustom(config.panelEmbed, varsCtx);
   } else {
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setTitle(firstCategory?.panelTitle || "نظام التذاكر")
+      .setTitle("نظام التذاكر")
       .setDescription(
         categories.length
-          ? (firstCategory?.panelDescription || "اختر التصنيف المناسب من الأسفل لفتح تذكرة دعم، وسيقوم فريقنا بمساعدتك في أقرب وقت ممكن.\n\n") +
+          ? "اختر التصنيف المناسب من الأسفل لفتح تذكرة دعم، وسيقوم فريقنا بمساعدتك في أقرب وقت ممكن.\n\n" +
               categories.map((c) => `${c.emoji ?? ""} **${c.name}**`).join("\n")
           : "لا توجد تصنيفات تذاكر متاحة حالياً."
       );
@@ -503,7 +503,7 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
   }
 
   if (categories.length) {
-    if (gConfig.tickets.panelStyle === "select") {
+    if (config.panelStyle === "select") {
       const select = new StringSelectMenuBuilder()
         .setCustomId("ticket_open_select")
         .setPlaceholder("اختر نوع التذكرة")
@@ -529,7 +529,7 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
           const button = new ButtonBuilder()
             .setCustomId(`ticket_open_${c.key}`)
             .setLabel(c.name.slice(0, 80))
-            .setStyle(buttonStyleMap[c.buttonStyle || "Primary"] || ButtonStyle.Primary);
+            .setStyle(buttonStyleMap[config.panelButtonStyle || "Primary"] || ButtonStyle.Primary);
           if (c.emoji) button.setEmoji(c.emoji);
           row.addComponents(button);
         }
