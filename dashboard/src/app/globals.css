@@ -8,45 +8,209 @@ html {
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100;
-  font-feature-settings: "rlig" 1, "calt" 1;
+  background-color: rgb(248 250 252);
+  color: rgb(15 23 42);
+}
+
+.dark body {
+  background-color: rgb(2 6 23);
+  color: rgb(248 250 252);
 }
 
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-thumb {
-  @apply rounded-full bg-slate-300 dark:bg-slate-600;
+  border-radius: 9999px;
+  background-color: rgb(203 213 225);
 }
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgb(71 85 105);
+}
+
 ::-webkit-scrollbar-track {
-  @apply bg-transparent;
+  background-color: transparent;
 }
 
 .card {
-  @apply rounded-2xl border border-slate-200/60 bg-white/80 backdrop-blur-sm p-6 shadow-lg shadow-slate-200/50 dark:border-slate-800/60 dark:bg-slate-900/80 dark:shadow-slate-900/50;
+  border-radius: 1rem;
+  border: 1px solid rgba(226 232 240 0.6);
+  background-color: rgba(255 255 255 0.8);
+  backdrop-filter: blur(4px);
+  padding: 1.5rem;
+  box-shadow: 0 10px 15px -3px rgba(148 163 184 0.5);
+}
+
+.dark .card {
+  border-color: rgba(51 65 85 0.6);
+  background-color: rgba(15 23 42 0.8);
+  box-shadow: 0 10px 15px -3px rgba(15 23 42 0.5);
 }
 
 .input {
-  @apply w-full rounded-xl border border-slate-200/60 bg-white/80 px-4 py-3 text-sm outline-none transition-all duration-300 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700/60 dark:bg-slate-800/80 dark:placeholder:text-slate-500 dark:focus:border-blue-400 dark:focus:ring-blue-400/20;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(226 232 240 0.6);
+  background-color: rgba(255 255 255 0.8);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  outline: none;
+  transition: all 0.3s;
+  color: rgb(15 23 42);
+}
+
+.dark .input {
+  border-color: rgba(51 65 85 0.6);
+  background-color: rgba(30 41 59 0.8);
+  color: rgb(248 250 252);
+}
+
+.input::placeholder {
+  color: rgb(148 163 184);
+}
+
+.dark .input::placeholder {
+  color: rgb(100 116 139);
+}
+
+.input:focus {
+  border-color: rgb(59 130 246);
+  box-shadow: 0 0 0 2px rgba(59 130 246 0.2);
+}
+
+.dark .input:focus {
+  border-color: rgb(96 165 250);
+  box-shadow: 0 0 0 2px rgba(96 165 250 0.2);
 }
 
 .label {
-  @apply mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-300;
+  margin-bottom: 0.5rem;
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(55 65 81);
+}
+
+.dark .label {
+  color: rgb(203 213 225);
 }
 
 .btn-primary {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition-all duration-300 hover:from-blue-700 hover:to-blue-800 hover:shadow-blue-500/40 active:scale-95 disabled:opacity-50 disabled:shadow-none dark:from-blue-500 dark:to-blue-600 dark:hover:from-blue-600 dark:hover:to-blue-700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(to right, rgb(37 99 235), rgb(29 78 216));
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(59 130 246 0.25);
+  transition: all 0.3s;
+}
+
+.btn-primary:hover {
+  background: linear-gradient(to right, rgb(29 78 216), rgb(30 64 175));
+  box-shadow: 0 10px 15px -3px rgba(59 130 246 0.4);
+}
+
+.btn-primary:active {
+  transform: scale(0.95);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.dark .btn-primary {
+  background: linear-gradient(to right, rgb(59 130 246), rgb(37 99 235));
+}
+
+.dark .btn-primary:hover {
+  background: linear-gradient(to right, rgb(37 99 235), rgb(29 78 216));
 }
 
 .btn-secondary {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200/60 bg-white/80 px-6 py-3 text-sm font-semibold text-slate-700 shadow-md shadow-slate-200/30 transition-all duration-300 hover:bg-slate-50 hover:shadow-slate-200/50 active:scale-95 dark:border-slate-700/60 dark:bg-slate-800/80 dark:text-slate-200 dark:hover:bg-slate-700/80 dark:hover:shadow-slate-900/30;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(226 232 240 0.6);
+  background-color: rgba(255 255 255 0.8);
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(55 65 81);
+  box-shadow: 0 4px 6px -1px rgba(148 163 184 0.3);
+  transition: all 0.3s;
+}
+
+.dark .btn-secondary {
+  border-color: rgba(51 65 85 0.6);
+  background-color: rgba(30 41 59 0.8);
+  color: rgb(226 232 240);
+}
+
+.btn-secondary:hover {
+  background-color: rgb(248 250 252);
+  box-shadow: 0 4px 6px -1px rgba(148 163 184 0.5);
+}
+
+.dark .btn-secondary:hover {
+  background-color: rgba(51 65 85 0.8);
+  box-shadow: 0 4px 6px -1px rgba(15 23 42 0.3);
+}
+
+.btn-secondary:active {
+  transform: scale(0.95);
 }
 
 .btn-danger {
-  @apply inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-red-700 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-500/25 transition-all duration-300 hover:from-red-700 hover:to-red-800 hover:shadow-red-500/40 active:scale-95 dark:from-red-500 dark:to-red-600 dark:hover:from-red-600 dark:hover:to-red-700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(to right, rgb(220 38 38), rgb(185 28 28));
+  padding: 0.75rem 1.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(239 68 68 0.25);
+  transition: all 0.3s;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(to right, rgb(185 28 28), rgb(153 27 27));
+  box-shadow: 0 10px 15px -3px rgba(239 68 68 0.4);
+}
+
+.btn-danger:active {
+  transform: scale(0.95);
+}
+
+.dark .btn-danger {
+  background: linear-gradient(to right, rgb(239 68 68), rgb(220 38 38));
+}
+
+.dark .btn-danger:hover {
+  background: linear-gradient(to right, rgb(220 38 38), rgb(185 28 28));
 }
 
 .switch {
-  @apply relative inline-flex h-7 w-13 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-300;
+  position: relative;
+  display: inline-flex;
+  height: 1.75rem;
+  width: 3.25rem;
+  flex-shrink: 0;
+  cursor: pointer;
+  align-items: center;
+  border-radius: 9999px;
+  transition: color 0.3s;
 }
