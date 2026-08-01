@@ -15,7 +15,7 @@ function createCategory(): ITicketCategory {
   return {
     key: `cat_${Date.now()}`,
     name: "تصنيف جديد",
-    emoji: "🎫",
+    emoji: "",
     categoryId: "",
     staffRoleIds: [],
     logChannelId: "",

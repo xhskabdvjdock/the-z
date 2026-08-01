@@ -20,11 +20,11 @@ export default async function GuildLayout({
           ← السيرفرات
         </Link>
         {guild && (
-          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-sm">
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-sm font-bold text-white shadow-md">
+          <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-gray-900 border border-gray-800">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gray-800 text-sm font-bold text-white border border-gray-700">
               {guild.name.charAt(0)}
             </div>
-            <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100">{guild.name}</h1>
+            <h1 className="text-lg font-bold text-white">{guild.name}</h1>
           </div>
         )}
       </div>
