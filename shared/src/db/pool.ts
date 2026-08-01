@@ -29,7 +29,7 @@ export async function connectDatabase(
     if (sslMode && sslMode !== "disable") {
       const certPath = options.sslRootCertPath ?? process.env.DB_SSL_CA_PATH;
       ssl = {
-        rejectUnauthorized: sslMode === "verify-full" || sslMode === "verify-ca",
+        rejectUnauthorized: sslMode === "verify-full" || sslMode === "verify-ca" ? true : false,
         ca: certPath ? fs.readFileSync(path.resolve(certPath)).toString() : undefined
       };
     }
