@@ -39,6 +39,8 @@ export interface ITicketCategory {
   ticketNameFormat?: string;
   panelTitle?: string;
   panelDescription?: string;
+  panelEmbed?: ICustomMessage;
+  panelButtonStyle?: "Primary" | "Secondary" | "Success" | "Danger";
   closeButtonLabel?: string;
   claimButtonLabel?: string;
   openMessage?: ICustomMessage;

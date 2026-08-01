@@ -476,17 +476,31 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
   const categories = gConfig.tickets.categories ?? [];
   const firstCategory = categories[0];
 
-  const embed = new EmbedBuilder()
-    .setColor(config.defaultColor)
-    .setTitle(firstCategory?.panelTitle || "نظام التذاكر")
-    .setDescription(
-      categories.length
-        ? (firstCategory?.panelDescription || "اختر التصنيف المناسب من الأسفل لفتح تذكرة دعم، وسيقوم فريقنا بمساعدتك في أقرب وقت ممكن.\n\n") +
-            categories.map((c) => `${c.emoji ?? ""} **${c.name}**`).join("\n")
-        : "لا توجد تصنيفات تذاكر متاحة حالياً."
-    );
+  let messagePayload: MessageCreateOptions;
 
-  const messagePayload: MessageCreateOptions = { embeds: [embed] };
+  if (firstCategory?.panelEmbed?.enabled) {
+    const varsCtx: VariableContext = {
+      user: { id: "", username: "", tag: "", mention: "", avatarURL: "" },
+      server: {
+        name: channel.guild.name,
+        id: channel.guild.id,
+        memberCount: channel.guild.memberCount,
+        iconURL: channel.guild.iconURL() ?? undefined
+      }
+    };
+    messagePayload = buildMessageFromCustom(firstCategory.panelEmbed, varsCtx);
+  } else {
+    const embed = new EmbedBuilder()
+      .setColor(config.defaultColor)
+      .setTitle(firstCategory?.panelTitle || "نظام التذاكر")
+      .setDescription(
+        categories.length
+          ? (firstCategory?.panelDescription || "اختر التصنيف المناسب من الأسفل لفتح تذكرة دعم، وسيقوم فريقنا بمساعدتك في أقرب وقت ممكن.\n\n") +
+              categories.map((c) => `${c.emoji ?? ""} **${c.name}**`).join("\n")
+          : "لا توجد تصنيفات تذاكر متاحة حالياً."
+      );
+    messagePayload = { embeds: [embed] };
+  }
 
   if (categories.length) {
     if (gConfig.tickets.panelStyle === "select") {
@@ -502,13 +516,20 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
         );
       messagePayload.components = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)];
     } else {
+      const buttonStyleMap: Record<string, ButtonStyle> = {
+        Primary: ButtonStyle.Primary,
+        Secondary: ButtonStyle.Secondary,
+        Success: ButtonStyle.Success,
+        Danger: ButtonStyle.Danger
+      };
+      
       const rows = chunkArray(categories.slice(0, 25), 5).map((chunk) => {
         const row = new ActionRowBuilder<ButtonBuilder>();
         for (const c of chunk) {
           const button = new ButtonBuilder()
             .setCustomId(`ticket_open_${c.key}`)
             .setLabel(c.name.slice(0, 80))
-            .setStyle(ButtonStyle.Primary);
+            .setStyle(buttonStyleMap[c.panelButtonStyle || "Primary"] || ButtonStyle.Primary);
           if (c.emoji) button.setEmoji(c.emoji);
           row.addComponents(button);
         }
