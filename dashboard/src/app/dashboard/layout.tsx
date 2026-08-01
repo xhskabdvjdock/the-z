@@ -7,18 +7,18 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-700/50 bg-slate-900/80 px-4 py-4 backdrop-blur-xl sm:px-8">
-        <a href="/dashboard" className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 text-xl font-bold text-white shadow-lg shadow-indigo-500/30">
+      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-[#2A2D37] bg-[#090A0F] px-4 py-3 sm:px-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#5865F2] text-sm font-bold text-white">
             Z
           </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">لوحة التحكم</span>
-        </a>
+          <span className="text-base font-semibold text-[#F0F0F0]">لوحة التحكم</span>
+        </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <ThemeToggle />
-          <div className="hidden sm:flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50">
-            <span className="text-sm font-medium text-slate-300">{session.user?.name}</span>
+          <div className="hidden sm:flex items-center gap-3 px-4 py-2 rounded-lg bg-[#1A1C23] border border-[#2A2D37]">
+            <span className="text-sm font-medium text-[#F0F0F0]">{session.user?.name}</span>
           </div>
           <LogoutButton />
         </div>

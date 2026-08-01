@@ -2,6 +2,12 @@ import { ensureDb } from "@/lib/db";
 import { GuildConfig } from "@thez/shared";
 import { getGuildInfo } from "@/lib/discord";
 import Link from "next/link";
+import { 
+  Users, 
+  Hash, 
+  CheckCircle, 
+  Terminal 
+} from "lucide-react";
 
 export default async function GuildOverviewPage({ params }: { params: { guildId: string } }) {
   await ensureDb();
@@ -26,24 +32,40 @@ export default async function GuildOverviewPage({ params }: { params: { guildId:
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <StatCard label="عدد الأعضاء" value={guild?.approximate_member_count ?? "—"} />
-        <StatCard label="عدد الرومات" value={guild?.channels?.length ?? "—"} />
-        <StatCard label="الميزات المفعّلة" value={`${enabledCount} / ${features.length}`} />
-        <StatCard label="البادئة الحالية" value={config?.prefix ?? "!"} />
+        <StatCard 
+          label="عدد الأعضاء" 
+          value={guild?.approximate_member_count ?? "—"} 
+          icon={Users}
+        />
+        <StatCard 
+          label="عدد الرومات" 
+          value={guild?.channels?.length ?? "—"} 
+          icon={Hash}
+        />
+        <StatCard 
+          label="الميزات المفعّلة" 
+          value={`${enabledCount} / ${features.length}`} 
+          icon={CheckCircle}
+        />
+        <StatCard 
+          label="البادئة الحالية" 
+          value={config?.prefix ?? "!"} 
+          icon={Terminal}
+        />
       </div>
 
       <div>
-        <h2 className="mb-3 text-lg font-bold">الميزات</h2>
+        <h2 className="mb-4 text-lg font-semibold text-[#F0F0F0]">الميزات</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
             <Link
               key={f.href}
               href={`/dashboard/${params.guildId}/${f.href}`}
-              className="card flex items-center justify-between transition hover:border-brand"
+              className="card flex items-center justify-between transition hover:border-[#5865F2]"
             >
-              <span className="font-medium">{f.label}</span>
+              <span className="font-medium text-[#F0F0F0]">{f.label}</span>
               <span
-                className={`h-2.5 w-2.5 rounded-full ${f.enabled ? "bg-green-500" : "bg-slate-400"}`}
+                className={`h-2.5 w-2.5 rounded-full ${f.enabled ? "bg-[#10B981]" : "bg-[#6B7280]"}`}
                 title={f.enabled ? "مفعّل" : "معطّل"}
               />
             </Link>
@@ -54,11 +76,14 @@ export default async function GuildOverviewPage({ params }: { params: { guildId:
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function StatCard({ label, value, icon: Icon }: { label: string; value: string | number; icon: any }) {
   return (
     <div className="card">
-      <p className="text-xl font-bold">{value}</p>
-      <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
+      <div className="flex items-center justify-between mb-2">
+        <Icon className="h-4 w-4 text-[#9CA3AF]" />
+        <span className="text-xl font-bold text-[#F0F0F0]">{value}</span>
+      </div>
+      <p className="text-xs text-[#9CA3AF]">{label}</p>
     </div>
   );
 }

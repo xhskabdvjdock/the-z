@@ -14,22 +14,22 @@ export default async function GuildLayout({
   const guild = await getGuildInfo(params.guildId);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mb-8 flex items-center gap-4">
-        <Link href="/dashboard" className="btn-secondary !px-4 !py-2 text-sm">
+    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mb-6 flex items-center gap-4">
+        <Link href="/dashboard" className="btn-secondary !px-3 !py-1.5 text-sm">
           ← السيرفرات
         </Link>
         {guild && (
-          <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-slate-900/80 border border-slate-700/50 backdrop-blur-xl">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-sm font-bold text-white shadow-lg shadow-indigo-500/30">
+          <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-[#121318] border border-[#2A2D37]">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#5865F2] text-xs font-bold text-white">
               {guild.name.charAt(0)}
             </div>
-            <h1 className="text-lg font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">{guild.name}</h1>
+            <h1 className="text-base font-semibold text-[#F0F0F0]">{guild.name}</h1>
           </div>
         )}
       </div>
 
-      <div className="flex flex-col gap-8 lg:flex-row">
+      <div className="flex flex-col gap-6 lg:flex-row">
         <div className="lg:w-64 flex-shrink-0">
           <Sidebar guildId={params.guildId} />
         </div>

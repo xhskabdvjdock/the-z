@@ -17,10 +17,10 @@ export default function Toggle({
         onChange={(e) => onChange(e.target.checked)}
         className="peer sr-only"
       />
-      <div className="relative h-6 w-11 shrink-0 cursor-pointer rounded-full bg-slate-700 transition-all duration-300 peer-checked:bg-gradient-to-r peer-checked:from-indigo-500 peer-checked:to-purple-600">
-        <div className="absolute top-1 h-4 w-4 rounded-full bg-white transition-all duration-300 peer-checked:translate-x-5 peer-checked:shadow-lg peer-checked:shadow-indigo-500/30" />
+      <div className="relative h-5 w-9 shrink-0 cursor-pointer rounded-full bg-[#2A2D37] transition-all duration-150 peer-checked:bg-[#5865F2]">
+        <div className="absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all duration-150 peer-checked:translate-x-4" />
       </div>
-      {label && <span className="text-sm font-medium text-slate-300">{label}</span>}
+      {label && <span className="text-sm font-medium text-[#9CA3AF]">{label}</span>}
     </label>
   );
 }
