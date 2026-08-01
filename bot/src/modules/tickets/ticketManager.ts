@@ -66,7 +66,7 @@ async function sendTicketWelcome(
     }
   };
 
-  let welcomePayload = buildMessageFromCustom(category.welcomeMessage, varsCtx);
+  let welcomePayload = buildMessageFromCustom(category.welcomeMessage, varsCtx, { embedColor: category.welcomeMessage?.embed?.color });
   if (!welcomePayload.content && !(welcomePayload.embeds && welcomePayload.embeds.length)) {
     welcomePayload = {
       embeds: [

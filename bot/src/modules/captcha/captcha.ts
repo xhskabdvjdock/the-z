@@ -32,7 +32,7 @@ export async function handleMemberJoinCaptcha(
   }
 
   const embed = new EmbedBuilder()
-    .setColor(0x5865f2)
+    .setColor(gConfig.embedColor ? parseInt(gConfig.embedColor.replace('#', ''), 16) : 0x5865f2)
     .setTitle("🔒 التحقق من الهوية")
     .setDescription(
       `مرحباً ${member} 👋\n` +
@@ -48,16 +48,24 @@ export async function handleMemberJoinCaptcha(
   );
 
   let sent = false;
+  let captchaMessageId: string | undefined;
   if (gConfig.captcha.channelId) {
     const channel = await client.channels.fetch(gConfig.captcha.channelId).catch(() => null);
     if (channel && channel.isTextBased()) {
       const message = await (channel as any).send({ embeds: [embed], components: [row] }).catch(() => null);
-      if (message) sent = true;
+      if (message) {
+        sent = true;
+        captchaMessageId = message.id;
+      }
     }
   }
 
   if (!sent) {
-    await member.send({ embeds: [embed], components: [row] }).catch(() => null);
+    const dmMessage = await member.send({ embeds: [embed], components: [row] }).catch(() => null);
+    if (dmMessage) {
+      sent = true;
+      captchaMessageId = dmMessage.id;
+    }
   }
 
   const kickAfterMs = (gConfig.captcha.kickAfterMinutes || 10) * 60 * 1000;
@@ -73,6 +81,13 @@ export async function handleMemberJoinCaptcha(
       const unverifiedRoleId = freshConfig.captcha?.unverifiedRoleId;
 
       if (unverifiedRoleId && freshMember.roles.cache.has(unverifiedRoleId)) {
+        // Delete captcha message before kicking
+        if (freshConfig.captcha.channelId && freshConfig.captcha.messageId) {
+          const channel = await client.channels.fetch(freshConfig.captcha.channelId).catch(() => null);
+          if (channel && channel.isTextBased()) {
+            await (channel as any).messages.delete(freshConfig.captcha.messageId).catch(() => null);
+          }
+        }
         await freshMember.kick("لم يتم التحقق من الكابتشا في الوقت المحدد").catch(() => null);
       }
     } catch (err) {
@@ -110,6 +125,9 @@ export function registerCaptchaComponents(router: ComponentRouter): void {
 
     await handleAutoRole(client, member);
     await sendWelcomeMessage(client, member, gConfig);
+
+    // Delete the captcha message
+    await interaction.message.delete().catch(() => null);
 
     await interaction.reply({ content: "✅ تم التحقق بنجاح! مرحباً بك في السيرفر.", ephemeral: true });
   });

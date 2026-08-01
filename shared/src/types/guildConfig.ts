@@ -101,6 +101,7 @@ export interface IGuildConfig {
   guildId: string;
   prefix: string;
   language: "ar" | "en";
+  embedColor?: string;
 
   tickets: {
     enabled: boolean;
@@ -222,6 +223,7 @@ export interface IGuildConfig {
     unverifiedRoleId?: string;
     channelId?: string;
     kickAfterMinutes: number;
+    messageId?: string;
   };
 
   commandOverrides: ICommandOverride[];

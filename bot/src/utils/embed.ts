@@ -18,7 +18,8 @@ const STYLE_MAP: Record<string, ButtonStyle> = {
 /** يحوّل رسالة مخصصة (ICustomMessage) مخزّنة في قاعدة البيانات إلى خيارات رسالة ديسكورد جاهزة */
 export function buildMessageFromCustom(
   custom: ICustomMessage | undefined,
-  ctx: VariableContext
+  ctx: VariableContext,
+  guildConfig?: { embedColor?: string }
 ): BaseMessageOptions {
   const options: BaseMessageOptions = {};
 
@@ -31,7 +32,11 @@ export function buildMessageFromCustom(
     if (custom.embed.title) embed.setTitle(applyVariables(custom.embed.title, ctx).slice(0, 256));
     if (custom.embed.description)
       embed.setDescription(applyVariables(custom.embed.description, ctx).slice(0, 4096));
-    if (custom.embed.color) embed.setColor(custom.embed.color as `#${string}`);
+    if (custom.embed.color) {
+      embed.setColor(custom.embed.color as `#${string}`);
+    } else if (guildConfig?.embedColor) {
+      embed.setColor(parseInt(guildConfig.embedColor.replace('#', ''), 16));
+    }
     if (custom.embed.image) embed.setImage(applyVariables(custom.embed.image, ctx));
     if (custom.embed.thumbnail && ctx.user?.avatarURL) embed.setThumbnail(ctx.user.avatarURL);
     if (custom.embed.footer) embed.setFooter({ text: applyVariables(custom.embed.footer, ctx) });

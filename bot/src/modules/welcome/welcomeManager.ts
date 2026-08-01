@@ -146,7 +146,7 @@ export async function sendWelcomeMessage(
   if (!gConfig.welcome?.enabled) return;
 
   const varsCtx = buildContext(member);
-  const payload = buildMessageFromCustom(gConfig.welcome.message, varsCtx);
+  const payload = buildMessageFromCustom(gConfig.welcome.message, varsCtx, gConfig);
 
   if (gConfig.welcome.imageEnabled) {
     try {
@@ -168,7 +168,7 @@ export async function sendLeaveMessage(
   if (!gConfig.leave?.enabled) return;
 
   const varsCtx = buildContext(member);
-  const payload = buildMessageFromCustom(gConfig.leave.message, varsCtx);
+  const payload = buildMessageFromCustom(gConfig.leave.message, varsCtx, gConfig);
 
   if (gConfig.leave.imageEnabled) {
     try {

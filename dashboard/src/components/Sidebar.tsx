@@ -4,18 +4,18 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "", label: "نظرة عامة", icon: "🏠" },
-  { href: "/tickets", label: "نظام التذاكر", icon: "🎫" },
-  { href: "/voice", label: "الرومات الصوتية", icon: "🎙️" },
-  { href: "/welcome", label: "الترحيب والمغادرة", icon: "👋" },
-  { href: "/autoresponse", label: "الردود التلقائية", icon: "🤖" },
-  { href: "/roles", label: "الرولات والألوان", icon: "🎖️" },
-  { href: "/leveling", label: "المستويات والخبرة", icon: "🆙" },
-  { href: "/automod", label: "الرقابة التلقائية", icon: "🛡️" },
-  { href: "/antinuke", label: "مكافحة الغزو", icon: "🚨" },
-  { href: "/captcha", label: "نظام التحقق", icon: "🔐" },
-  { href: "/logging", label: "السجلات", icon: "📋" },
-  { href: "/commands", label: "إدارة الأوامر", icon: "⚙️" }
+  { href: "", label: "نظرة عامة" },
+  { href: "/tickets", label: "نظام التذاكر" },
+  { href: "/voice", label: "الرومات الصوتية" },
+  { href: "/welcome", label: "الترحيب والمغادرة" },
+  { href: "/autoresponse", label: "الردود التلقائية" },
+  { href: "/roles", label: "الرولات والألوان" },
+  { href: "/leveling", label: "المستويات والخبرة" },
+  { href: "/automod", label: "الرقابة التلقائية" },
+  { href: "/antinuke", label: "مكافحة الغزو" },
+  { href: "/captcha", label: "نظام التحقق" },
+  { href: "/logging", label: "السجلات" },
+  { href: "/commands", label: "إدارة الأوامر" }
 ];
 
 export default function Sidebar({ guildId }: { guildId: string }) {
@@ -37,7 +37,6 @@ export default function Sidebar({ guildId }: { guildId: string }) {
                 : "text-slate-600 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800"
             }`}
           >
-            <span>{item.icon}</span>
             <span className="whitespace-nowrap">{item.label}</span>
           </Link>
         );
