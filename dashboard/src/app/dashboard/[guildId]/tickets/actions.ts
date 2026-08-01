@@ -13,13 +13,13 @@ export async function saveTicketsConfig(guildId: string, data: IGuildConfig["tic
     console.log("Saving tickets config for guild:", guildId);
     console.log("Data:", JSON.stringify(data, null, 2));
 
-    const result = await GuildConfig.findOneAndUpdate(
+    await GuildConfig.findOneAndUpdate(
       { guildId },
       { $set: { tickets: data } },
-      { upsert: true, new: true }
+      { upsert: true }
     );
 
-    console.log("Save result:", result);
+    console.log("Save completed successfully");
 
     revalidatePath(`/dashboard/${guildId}/tickets`);
   } catch (error) {
