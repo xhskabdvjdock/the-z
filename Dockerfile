@@ -17,7 +17,6 @@ RUN npm install && npm run build
 # Copy dashboard package.json and install dependencies
 COPY dashboard/package.json dashboard/tsconfig.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
 COPY dashboard/src ./dashboard/src
-COPY dashboard/public ./dashboard/public
 WORKDIR /app/dashboard
 RUN npm install && npm run build
 
@@ -35,7 +34,6 @@ COPY --from=builder /app/dashboard/.next ./dashboard/.next
 COPY --from=builder /app/dashboard/node_modules ./dashboard/node_modules
 COPY --from=builder /app/dashboard/package.json ./dashboard/package.json
 COPY --from=builder /app/dashboard/next.config.js ./dashboard/next.config.js
-COPY --from=builder /app/dashboard/public ./dashboard/public
 
 # Create certs directory
 RUN mkdir -p /app/certs
