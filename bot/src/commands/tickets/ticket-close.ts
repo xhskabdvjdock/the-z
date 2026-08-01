@@ -1,0 +1,37 @@
+import { PermissionFlagsBits, TextChannel } from "discord.js";
+import { Ticket } from "@thez/shared";
+import { BotCommand } from "../../types/command";
+import { getGuildConfig } from "../../utils/guildConfig";
+import { closeTicket } from "../../modules/tickets/ticketManager";
+
+const command: BotCommand = {
+  name: "ticket-close",
+  description: "إغلاق التذكرة الحالية",
+  category: "تذاكر",
+  async run(ctx) {
+    const channel = ctx.channel as TextChannel;
+    const ticket = await Ticket.findOne({ channelId: channel.id, status: "open" });
+
+    if (!ticket) {
+      await ctx.reply("❌ هذا الأمر يعمل فقط داخل روم تذكرة مفتوحة.");
+      return;
+    }
+
+    const gConfig = await getGuildConfig(ctx.client, ctx.guild.id);
+    const category = gConfig.tickets.categories.find((c) => c.key === ticket.categoryKey);
+    const isStaff =
+      category?.staffRoleIds.some((roleId) => ctx.member.roles.cache.has(roleId)) ||
+      ctx.member.permissions.has(PermissionFlagsBits.Administrator);
+    const isOwner = ticket.ownerId === ctx.user.id;
+
+    if (!isStaff && !isOwner) {
+      await ctx.reply("❌ لا تملك صلاحية إغلاق هذه التذكرة.");
+      return;
+    }
+
+    await ctx.reply("🔒 جارٍ إغلاق التذكرة وإنشاء سجل المحادثة...");
+    await closeTicket(channel, ctx.user.id, ctx.client);
+  }
+};
+
+export default command;

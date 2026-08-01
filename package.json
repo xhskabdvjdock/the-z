@@ -1,0 +1,21 @@
+{
+  "name": "the-z-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "بوت ديسكورد إداري متكامل مع لوحة تحكم ويب",
+  "workspaces": [
+    "shared",
+    "bot",
+    "dashboard"
+  ],
+  "scripts": {
+    "build:shared": "npm run build -w shared",
+    "dev:bot": "npm run dev -w bot",
+    "build:bot": "npm run build -w bot",
+    "deploy:commands": "npm run deploy -w bot",
+    "clear:commands": "npm run clear -w bot",
+    "dev:dashboard": "npm run dev -w dashboard",
+    "build:dashboard": "npm run build -w dashboard"
+  },
+  "license": "MIT"
+}

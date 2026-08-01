@@ -1,0 +1,59 @@
+import { PermissionFlagsBits, TextChannel } from "discord.js";
+import { Ticket } from "@thez/shared";
+import { BotCommand } from "../../types/command";
+import { getGuildConfig } from "../../utils/guildConfig";
+
+const command: BotCommand = {
+  name: "ticket-add",
+  description: "إضافة عضو إلى التذكرة الحالية",
+  category: "تذاكر",
+  options: [
+    {
+      name: "user",
+      description: "العضو المراد إضافته إلى التذكرة",
+      type: "user",
+      required: true
+    }
+  ],
+  async run(ctx) {
+    const channel = ctx.channel as TextChannel;
+    const ticket = await Ticket.findOne({ channelId: channel.id });
+
+    if (!ticket) {
+      await ctx.reply("❌ هذا الأمر يعمل فقط داخل روم تذكرة.");
+      return;
+    }
+
+    const gConfig = await getGuildConfig(ctx.client, ctx.guild.id);
+    const category = gConfig.tickets.categories.find((c) => c.key === ticket.categoryKey);
+    const isStaff =
+      category?.staffRoleIds.some((roleId) => ctx.member.roles.cache.has(roleId)) ||
+      ctx.member.permissions.has(PermissionFlagsBits.Administrator);
+
+    if (!isStaff) {
+      await ctx.reply("❌ لا تملك صلاحية استخدام هذا الأمر.");
+      return;
+    }
+
+    const user = await ctx.getUser("user");
+    if (!user) {
+      await ctx.reply("❌ يجب تحديد عضو صحيح.");
+      return;
+    }
+
+    await channel.permissionOverwrites.edit(user.id, {
+      ViewChannel: true,
+      SendMessages: true,
+      ReadMessageHistory: true
+    });
+
+    if (!ticket.addedUserIds.includes(user.id)) {
+      ticket.addedUserIds.push(user.id);
+      await ticket.save();
+    }
+
+    await ctx.reply(`✅ تم إضافة <@${user.id}> إلى هذه التذكرة.`);
+  }
+};
+
+export default command;

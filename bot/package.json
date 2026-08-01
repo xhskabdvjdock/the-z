@@ -1,0 +1,25 @@
+{
+  "name": "bot",
+  "version": "1.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "deploy": "ts-node-dev --transpile-only src/deploy-commands.ts",
+    "clear": "ts-node-dev --transpile-only src/clear-commands.ts"
+  },
+  "dependencies": {
+    "@napi-rs/canvas": "^0.1.53",
+    "@thez/shared": "^1.0.0",
+    "discord-html-transcripts": "^3.2.0",
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.4"
+  }
+}

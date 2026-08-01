@@ -1,0 +1,26 @@
+import { Collection } from "../db/collection";
+
+export interface ITicket {
+  _id?: string;
+  guildId: string;
+  channelId: string;
+  categoryKey: string;
+  ownerId: string;
+  number: number;
+  status: "open" | "closed";
+  claimedBy?: string;
+  addedUserIds: string[];
+  answers: { question: string; answer: string }[];
+  transcriptUrl?: string;
+  closedBy?: string;
+  closedReason?: string;
+  createdAt: Date;
+  closedAt?: Date;
+}
+
+export const Ticket = new Collection<ITicket>("tickets", "guildId", () => ({
+  status: "open",
+  addedUserIds: [],
+  answers: [],
+  createdAt: new Date()
+}));
