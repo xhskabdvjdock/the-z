@@ -17,7 +17,7 @@ services:
       - key: NEXTAUTH_SECRET
         generateValue: true
       - key: NEXTAUTH_URL
-        value: https://the-z.onrender.com
+        value: https://the-z-whib.onrender.com
       - key: DATABASE_URL
         sync: false
       - key: DB_SSL_CA_PATH
