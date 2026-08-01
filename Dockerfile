@@ -18,6 +18,10 @@ RUN npm install && npm run build
 COPY dashboard/package.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
 COPY dashboard/src ./dashboard/src
 WORKDIR /app/dashboard
+# Create shared package in node_modules
+RUN mkdir -p node_modules/@thez/shared
+COPY --from=builder /app/shared/package.json ./node_modules/@thez/shared/
+COPY --from=builder /app/shared/dist ./node_modules/@thez/shared/dist
 RUN npm install && npm run build
 
 # Production stage
