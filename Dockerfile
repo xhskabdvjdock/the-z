@@ -15,7 +15,7 @@ WORKDIR /app/bot
 RUN npm install && npm run build
 
 # Copy dashboard package.json and install dependencies
-COPY dashboard/package.json dashboard/tsconfig.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
+COPY dashboard/package.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
 COPY dashboard/src ./dashboard/src
 WORKDIR /app/dashboard
 RUN npm install && npm run build
