@@ -21,6 +21,11 @@ export default function CustomMessageEditor({
   const embed = value.embed ?? { enabled: false };
   const buttons = value.buttons ?? [];
 
+  const handleChange = (newValue: ICustomMessage) => {
+    console.log("CustomMessageEditor: onChange called with:", newValue);
+    onChange(newValue);
+  };
+
   return (
     <div className="flex flex-col gap-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
       <div>
@@ -28,14 +33,14 @@ export default function CustomMessageEditor({
         <textarea
           className="input min-h-[70px]"
           value={value.content ?? ""}
-          onChange={(e) => onChange({ ...value, content: e.target.value })}
+          onChange={(e) => handleChange({ ...value, content: e.target.value })}
           placeholder="مرحباً {user} 👋"
         />
       </div>
 
       <Toggle
         checked={!!embed.enabled}
-        onChange={(v) => onChange({ ...value, embed: { ...embed, enabled: v } })}
+        onChange={(v) => handleChange({ ...value, embed: { ...embed, enabled: v } })}
         label="تفعيل Embed"
       />
 
@@ -46,7 +51,7 @@ export default function CustomMessageEditor({
             <input
               className="input"
               value={embed.title ?? ""}
-              onChange={(e) => onChange({ ...value, embed: { ...embed, title: e.target.value } })}
+              onChange={(e) => handleChange({ ...value, embed: { ...embed, title: e.target.value } })}
             />
           </div>
           <div className="sm:col-span-2">
@@ -55,7 +60,7 @@ export default function CustomMessageEditor({
               className="input min-h-[80px]"
               value={embed.description ?? ""}
               onChange={(e) =>
-                onChange({ ...value, embed: { ...embed, description: e.target.value } })
+                handleChange({ ...value, embed: { ...embed, description: e.target.value } })
               }
             />
           </div>
@@ -65,7 +70,7 @@ export default function CustomMessageEditor({
               type="color"
               className="h-10 w-full rounded-lg border border-slate-300 dark:border-slate-700"
               value={embed.color ?? "#5865F2"}
-              onChange={(e) => onChange({ ...value, embed: { ...embed, color: e.target.value } })}
+              onChange={(e) => handleChange({ ...value, embed: { ...embed, color: e.target.value } })}
             />
           </div>
           <div>
@@ -73,7 +78,7 @@ export default function CustomMessageEditor({
             <input
               className="input"
               value={embed.image ?? ""}
-              onChange={(e) => onChange({ ...value, embed: { ...embed, image: e.target.value } })}
+              onChange={(e) => handleChange({ ...value, embed: { ...embed, image: e.target.value } })}
             />
           </div>
           <div>
@@ -81,7 +86,7 @@ export default function CustomMessageEditor({
             <input
               className="input"
               value={embed.footer ?? ""}
-              onChange={(e) => onChange({ ...value, embed: { ...embed, footer: e.target.value } })}
+              onChange={(e) => handleChange({ ...value, embed: { ...embed, footer: e.target.value } })}
             />
           </div>
           <div>
@@ -89,13 +94,13 @@ export default function CustomMessageEditor({
             <input
               className="input"
               value={embed.author ?? ""}
-              onChange={(e) => onChange({ ...value, embed: { ...embed, author: e.target.value } })}
+              onChange={(e) => handleChange({ ...value, embed: { ...embed, author: e.target.value } })}
             />
           </div>
           <div className="sm:col-span-2">
             <Toggle
               checked={!!embed.thumbnail}
-              onChange={(v) => onChange({ ...value, embed: { ...embed, thumbnail: v } })}
+              onChange={(v) => handleChange({ ...value, embed: { ...embed, thumbnail: v } })}
               label="عرض صورة العضو كصورة مصغّرة"
             />
           </div>
@@ -110,7 +115,7 @@ export default function CustomMessageEditor({
               type="button"
               className="btn-secondary !px-2.5 !py-1 text-xs"
               onClick={() =>
-                onChange({
+                handleChange({
                   ...value,
                   buttons: [...buttons, { label: "زر جديد", style: "PRIMARY" }]
                 })
@@ -130,7 +135,7 @@ export default function CustomMessageEditor({
                 onChange={(e) => {
                   const next = [...buttons];
                   next[i] = { ...btn, label: e.target.value };
-                  onChange({ ...value, buttons: next });
+                  handleChange({ ...value, buttons: next });
                 }}
               />
               <select
@@ -139,7 +144,7 @@ export default function CustomMessageEditor({
                 onChange={(e) => {
                   const next = [...buttons];
                   next[i] = { ...btn, style: e.target.value as any };
-                  onChange({ ...value, buttons: next });
+                  handleChange({ ...value, buttons: next });
                 }}
               >
                 {BUTTON_STYLES.map((s) => (
@@ -155,7 +160,7 @@ export default function CustomMessageEditor({
                 onChange={(e) => {
                   const next = [...buttons];
                   next[i] = { ...btn, emoji: e.target.value };
-                  onChange({ ...value, buttons: next });
+                  handleChange({ ...value, buttons: next });
                 }}
               />
               {btn.style === "LINK" ? (
@@ -166,7 +171,7 @@ export default function CustomMessageEditor({
                   onChange={(e) => {
                     const next = [...buttons];
                     next[i] = { ...btn, url: e.target.value };
-                    onChange({ ...value, buttons: next });
+                    handleChange({ ...value, buttons: next });
                   }}
                 />
               ) : (
@@ -177,14 +182,14 @@ export default function CustomMessageEditor({
                   onChange={(e) => {
                     const next = [...buttons];
                     next[i] = { ...btn, customId: e.target.value };
-                    onChange({ ...value, buttons: next });
+                    handleChange({ ...value, buttons: next });
                   }}
                 />
               )}
               <button
                 type="button"
                 className="btn-danger !px-2 !py-1 text-xs"
-                onClick={() => onChange({ ...value, buttons: buttons.filter((_, j) => j !== i) })}
+                onClick={() => handleChange({ ...value, buttons: buttons.filter((_, j) => j !== i) })}
               >
                 حذف
               </button>
