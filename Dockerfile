@@ -35,6 +35,7 @@ WORKDIR /app
 # Copy built files
 COPY --from=shared-builder /app/shared/package.json ./shared/package.json
 COPY --from=shared-builder /app/shared/dist ./shared/dist
+COPY --from=shared-builder /app/shared/node_modules ./shared/node_modules
 COPY --from=bot-builder /app/bot/dist ./bot/dist
 COPY --from=bot-builder /app/bot/node_modules ./bot/node_modules
 COPY --from=bot-builder /app/bot/package.json ./bot/package.json
@@ -46,8 +47,10 @@ COPY --from=dashboard-builder /app/dashboard/next.config.js ./dashboard/next.con
 # Setup shared package in node_modules for both bot and dashboard
 RUN mkdir -p /app/bot/node_modules/@thez && \
     cp -r /app/shared /app/bot/node_modules/@thez/shared && \
+    cp -r /app/shared/node_modules /app/bot/node_modules/@thez/shared/ && \
     mkdir -p /app/dashboard/node_modules/@thez && \
-    cp -r /app/shared /app/dashboard/node_modules/@thez/shared
+    cp -r /app/shared /app/dashboard/node_modules/@thez/shared && \
+    cp -r /app/shared/node_modules /app/dashboard/node_modules/@thez/shared/
 
 # Create certs directory
 RUN mkdir -p /app/certs
