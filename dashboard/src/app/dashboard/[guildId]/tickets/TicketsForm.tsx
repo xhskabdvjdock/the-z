@@ -215,7 +215,9 @@ export default function TicketsForm({
                   value={cat.welcomeMessage?.embed?.color ?? "#5865F2"}
                   onChange={(e) => updateCategory(index, { 
                     welcomeMessage: { 
-                      ...cat.welcomeMessage, 
+                      enabled: cat.welcomeMessage?.enabled ?? true,
+                      content: cat.welcomeMessage?.content ?? "",
+                      buttons: cat.welcomeMessage?.buttons ?? [],
                       embed: { 
                         enabled: cat.welcomeMessage?.embed?.enabled ?? false,
                         title: cat.welcomeMessage?.embed?.title,
@@ -239,7 +241,9 @@ export default function TicketsForm({
                   value={cat.welcomeMessage?.embed?.image ?? ""}
                   onChange={(e) => updateCategory(index, { 
                     welcomeMessage: { 
-                      ...cat.welcomeMessage, 
+                      enabled: cat.welcomeMessage?.enabled ?? true,
+                      content: cat.welcomeMessage?.content ?? "",
+                      buttons: cat.welcomeMessage?.buttons ?? [],
                       embed: { 
                         enabled: cat.welcomeMessage?.embed?.enabled ?? false,
                         title: cat.welcomeMessage?.embed?.title,
