@@ -1,33 +1,13 @@
 services:
-  # Discord Bot Service
-  - type: worker
-    name: thez-bot
+  # Combined Bot + Dashboard Service
+  - type: web
+    name: the-z
     env: docker
-    dockerfilePath: ./bot/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     envVars:
       - key: DISCORD_TOKEN
         sync: false
-      - key: DISCORD_CLIENT_ID
-        sync: false
-      - key: DISCORD_CLIENT_SECRET
-        sync: false
-      - key: DATABASE_URL
-        sync: false
-      - key: DASHBOARD_URL
-        value: https://your-dashboard-url.onrender.com
-    disk:
-      name: certs
-      mountPath: /app/certs
-      sizeGB: 1
-
-  # Dashboard Web Service
-  - type: web
-    name: thez-dashboard
-    env: docker
-    dockerfilePath: ./dashboard/Dockerfile
-    dockerContext: .
-    envVars:
       - key: DISCORD_CLIENT_ID
         sync: false
       - key: DISCORD_CLIENT_SECRET
@@ -37,8 +17,12 @@ services:
       - key: NEXTAUTH_SECRET
         generateValue: true
       - key: NEXTAUTH_URL
-        value: https://thez-dashboard.onrender.com
+        value: https://the-z.onrender.com
       - key: DATABASE_URL
         sync: false
       - key: DB_SSL_CA_PATH
         value: /app/certs/root.crt
+    disk:
+      name: certs
+      mountPath: /app/certs
+      sizeGB: 1
