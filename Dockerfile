@@ -46,11 +46,12 @@ COPY --from=dashboard-builder /app/dashboard/next.config.js ./dashboard/next.con
 RUN mkdir -p /app/certs
 
 # Create startup script
-RUN echo '#!/bin/sh\n\
-cd /app/bot && node dist/index.js &\n\
-cd /app/dashboard && npm run start\n' > /app/start.sh && chmod +x /app/start.sh
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'cd /app/bot && node dist/index.js &' >> /app/start.sh && \
+    echo 'cd /app/dashboard && npm run start' >> /app/start.sh && \
+    chmod +x /app/start.sh
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
-CMD ["/app/start.sh"]
+CMD ["/bin/sh", "/app/start.sh"]
