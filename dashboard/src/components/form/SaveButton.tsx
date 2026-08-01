@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
 export default function SaveButton({ onSave }: { onSave: () => Promise<void> | void }) {
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [status, setStatus] = useState<"idle" | "success" | "error">("idle");
 
-  const handleClick = () => {
-    startTransition(async () => {
-      try {
-        await onSave();
-        setStatus("success");
-      } catch (err) {
-        console.error(err);
-        setStatus("error");
-      } finally {
-        setTimeout(() => setStatus("idle"), 2500);
-      }
-    });
+  const handleClick = async () => {
+    setIsPending(true);
+    try {
+      await onSave();
+      setStatus("success");
+    } catch (err) {
+      console.error(err);
+      setStatus("error");
+    } finally {
+      setIsPending(false);
+      setTimeout(() => setStatus("idle"), 2500);
+    }
   };
 
   return (
@@ -26,10 +26,10 @@ export default function SaveButton({ onSave }: { onSave: () => Promise<void> | v
         {isPending ? "جاري الحفظ..." : "حفظ التغييرات"}
       </button>
       {status === "success" && (
-        <span className="text-sm font-medium text-green-600 dark:text-green-400">تم الحفظ بنجاح</span>
+        <span className="text-sm font-medium text-[#10B981]">تم الحفظ بنجاح</span>
       )}
       {status === "error" && (
-        <span className="text-sm font-medium text-red-600 dark:text-red-400">حدث خطأ أثناء الحفظ</span>
+        <span className="text-sm font-medium text-[#EF4444]">حدث خطأ أثناء الحفظ</span>
       )}
     </div>
   );
