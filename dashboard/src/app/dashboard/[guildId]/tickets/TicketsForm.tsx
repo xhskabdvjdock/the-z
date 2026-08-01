@@ -206,6 +206,42 @@ export default function TicketsForm({
                   onChange={(e) => updateCategory(index, { ticketNameFormat: e.target.value })}
                 />
               </div>
+
+              <div>
+                <label className="label">لون الإيمبد</label>
+                <input
+                  type="color"
+                  className="h-10 w-full rounded-lg border border-slate-300 dark:border-slate-700"
+                  value={cat.welcomeMessage?.embed?.color ?? "#5865F2"}
+                  onChange={(e) => updateCategory(index, { 
+                    welcomeMessage: { 
+                      ...cat.welcomeMessage, 
+                      embed: { 
+                        ...cat.welcomeMessage?.embed, 
+                        color: e.target.value 
+                      } 
+                    } 
+                  })}
+                />
+              </div>
+
+              <div>
+                <label className="label">رابط صورة الإيمبد</label>
+                <input
+                  className="input"
+                  placeholder="https://example.com/image.png"
+                  value={cat.welcomeMessage?.embed?.image ?? ""}
+                  onChange={(e) => updateCategory(index, { 
+                    welcomeMessage: { 
+                      ...cat.welcomeMessage, 
+                      embed: { 
+                        ...cat.welcomeMessage?.embed, 
+                        image: e.target.value 
+                      } 
+                    } 
+                  })}
+                />
+              </div>
             </div>
 
             <div>
