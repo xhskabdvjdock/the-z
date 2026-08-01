@@ -33,6 +33,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy built files
+COPY --from=shared-builder /app/shared/package.json ./shared/package.json
 COPY --from=shared-builder /app/shared/dist ./shared/dist
 COPY --from=bot-builder /app/bot/dist ./bot/dist
 COPY --from=bot-builder /app/bot/node_modules ./bot/node_modules
@@ -41,6 +42,12 @@ COPY --from=dashboard-builder /app/dashboard/.next ./dashboard/.next
 COPY --from=dashboard-builder /app/dashboard/node_modules ./dashboard/node_modules
 COPY --from=dashboard-builder /app/dashboard/package.json ./dashboard/package.json
 COPY --from=dashboard-builder /app/dashboard/next.config.js ./dashboard/next.config.js
+
+# Setup shared package in node_modules for both bot and dashboard
+RUN mkdir -p /app/bot/node_modules/@thez && \
+    cp -r /app/shared /app/bot/node_modules/@thez/shared && \
+    mkdir -p /app/dashboard/node_modules/@thez && \
+    cp -r /app/shared /app/dashboard/node_modules/@thez/shared
 
 # Create certs directory
 RUN mkdir -p /app/certs
