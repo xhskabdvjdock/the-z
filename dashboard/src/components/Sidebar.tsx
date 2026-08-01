@@ -23,7 +23,7 @@ export default function Sidebar({ guildId }: { guildId: string }) {
   const base = `/dashboard/${guildId}`;
 
   return (
-    <nav className="flex w-full flex-col gap-1 overflow-x-auto sm:w-64 sm:shrink-0 sm:overflow-visible">
+    <nav className="card flex flex-col gap-2">
       {NAV_ITEMS.map((item) => {
         const href = `${base}${item.href}`;
         const active = pathname === href;
@@ -31,10 +31,10 @@ export default function Sidebar({ guildId }: { guildId: string }) {
           <Link
             key={item.href}
             href={href}
-            className={`flex shrink-0 items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition ${
+            className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-300 ${
               active
-                ? "bg-brand text-white shadow-sm"
-                : "text-slate-600 hover:bg-slate-200/60 dark:text-slate-300 dark:hover:bg-slate-800"
+                ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/25"
+                : "text-slate-600 hover:bg-slate-100/50 dark:text-slate-300 dark:hover:bg-slate-800/50"
             }`}
           >
             <span className="whitespace-nowrap">{item.label}</span>
