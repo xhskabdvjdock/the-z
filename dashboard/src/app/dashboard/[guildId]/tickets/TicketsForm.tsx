@@ -25,7 +25,7 @@ function createCategory(): ITicketCategory {
     panelTitle: "نظام التذاكر",
     panelDescription: "اختر التصنيف المناسب لفتح تذكرة",
     panelEmbed: { enabled: true, content: "", embed: { enabled: true, title: "نظام التذاكر", description: "اختر التصنيف المناسب لفتح تذكرة" } },
-    panelButtonStyle: "Primary",
+    buttonStyle: "Primary",
     closeButtonLabel: "إغلاق",
     claimButtonLabel: "استلام",
     openMessage: { enabled: true, content: "تم إنشاء تذكرتك بنجاح" },
@@ -257,11 +257,11 @@ export default function TicketsForm({
               </div>
 
               <div>
-                <label className="label">نمط أزرار اللوحة</label>
+                <label className="label">نمط زر التصنيف</label>
                 <select
                   className="input"
-                  value={cat.panelButtonStyle ?? "Primary"}
-                  onChange={(e) => updateCategory(index, { panelButtonStyle: e.target.value as "Primary" | "Secondary" | "Success" | "Danger" })}
+                  value={cat.buttonStyle ?? "Primary"}
+                  onChange={(e) => updateCategory(index, { buttonStyle: e.target.value as "Primary" | "Secondary" | "Success" | "Danger" })}
                 >
                   <option value="Primary">أزرق (Primary)</option>
                   <option value="Secondary">رمادي (Secondary)</option>

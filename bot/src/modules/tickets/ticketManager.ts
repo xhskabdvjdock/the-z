@@ -529,7 +529,7 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
           const button = new ButtonBuilder()
             .setCustomId(`ticket_open_${c.key}`)
             .setLabel(c.name.slice(0, 80))
-            .setStyle(buttonStyleMap[c.panelButtonStyle || "Primary"] || ButtonStyle.Primary);
+            .setStyle(buttonStyleMap[c.buttonStyle || "Primary"] || ButtonStyle.Primary);
           if (c.emoji) button.setEmoji(c.emoji);
           row.addComponents(button);
         }

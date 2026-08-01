@@ -40,7 +40,7 @@ export interface ITicketCategory {
   panelTitle?: string;
   panelDescription?: string;
   panelEmbed?: ICustomMessage;
-  panelButtonStyle?: "Primary" | "Secondary" | "Success" | "Danger";
+  buttonStyle?: "Primary" | "Secondary" | "Success" | "Danger";
   closeButtonLabel?: string;
   claimButtonLabel?: string;
   openMessage?: ICustomMessage;
