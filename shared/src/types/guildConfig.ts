@@ -210,6 +210,10 @@ export interface IGuildConfig {
     muteRoleId?: string;
   };
 
+  moderation: {
+    autoDeleteConfirmation: number; // بالثواني، 0 يعني لا تحذف
+  };
+
   antiNuke: {
     enabled: boolean;
     maxBans: number;
@@ -337,6 +341,10 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       whitelistRoleIds: [],
       whitelistChannelIds: [],
       punishment: "delete"
+    },
+
+    moderation: {
+      autoDeleteConfirmation: 0
     },
 
     antiNuke: {

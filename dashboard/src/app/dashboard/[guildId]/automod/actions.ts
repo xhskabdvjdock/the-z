@@ -5,7 +5,7 @@ import { GuildConfig, IGuildConfig } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 
-export type AutomodInput = IGuildConfig["automod"];
+export type AutomodInput = IGuildConfig["automod"] & { autoDeleteConfirmation?: number };
 
 export async function saveAutomodConfig(guildId: string, data: AutomodInput) {
   try {
@@ -15,9 +15,16 @@ export async function saveAutomodConfig(guildId: string, data: AutomodInput) {
     console.log("Saving automod config for guild:", guildId);
     console.log("Data:", JSON.stringify(data, null, 2));
 
+    const { autoDeleteConfirmation, ...automodData } = data;
+
     await GuildConfig.findOneAndUpdate(
       { guildId },
-      { $set: { automod: data } },
+      { 
+        $set: { 
+          automod: automodData,
+          "moderation.autoDeleteConfirmation": autoDeleteConfirmation ?? 0
+        } 
+      },
       { upsert: true }
     );
 

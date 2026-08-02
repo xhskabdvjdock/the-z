@@ -1,6 +1,7 @@
 import { EmbedBuilder, PermissionFlagsBits, TextChannel } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
+import { GuildConfig } from "@thez/shared";
 
 const command: BotCommand = {
   name: "clear",
@@ -48,8 +49,22 @@ const command: BotCommand = {
       )
       .setTimestamp();
 
-    await ctx.reply({ embeds: [embed] });
+    const reply = await ctx.reply({ embeds: [embed] });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
+
+    // حذف رسالة التأكيد تلقائياً إذا كان الإعداد مفعل
+    const config = await GuildConfig.findOne({ guildId: ctx.guild.id });
+    const autoDeleteSeconds = config?.moderation?.autoDeleteConfirmation ?? 0;
+    
+    if (autoDeleteSeconds > 0 && reply) {
+      setTimeout(async () => {
+        try {
+          await reply.delete();
+        } catch {
+          // تجاهل إذا تم حذف الرسالة بالفعل
+        }
+      }, autoDeleteSeconds * 1000);
+    }
   }
 };
 

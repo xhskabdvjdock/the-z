@@ -244,6 +244,22 @@ export default function AutomodForm({
         </div>
       </section>
 
+      <section className="card flex flex-col gap-4">
+        <h2 className="text-lg font-bold">🗑️ حذف تلقائي للرسائل</h2>
+        <div>
+          <label className="label">حذف رسالة تأكيد clear chat بعد (ثواني)</label>
+          <input
+            type="number"
+            className="input"
+            value={state.autoDeleteConfirmation ?? 0}
+            onChange={(e) => setState({ ...state, autoDeleteConfirmation: Number(e.target.value) })}
+            min="0"
+            placeholder="0 = لا تحذف"
+          />
+          <p className="text-sm text-gray-500 mt-1">0 يعني عدم الحذف التلقائي</p>
+        </div>
+      </section>
+
       <SaveButton onSave={handleSave} />
     </div>
   );

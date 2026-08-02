@@ -39,7 +39,8 @@ export default async function AutomodPage({ params }: { params: { guildId: strin
     whitelistRoleIds: config?.automod?.whitelistRoleIds ?? [],
     whitelistChannelIds: config?.automod?.whitelistChannelIds ?? [],
     punishment: config?.automod?.punishment ?? "delete",
-    muteRoleId: config?.automod?.muteRoleId ?? ""
+    muteRoleId: config?.automod?.muteRoleId ?? "",
+    autoDeleteConfirmation: config?.moderation?.autoDeleteConfirmation ?? 0
   };
 
   return (
