@@ -31,30 +31,23 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
 
-  // الخلفية: تدرج داكن أنيق
+  // الخلفية: Dark Slate Theme
   const bgGradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-  bgGradient.addColorStop(0, "#1e1b3a");
-  bgGradient.addColorStop(1, "#0d0b1f");
+  bgGradient.addColorStop(0, "#1A1C23");
+  bgGradient.addColorStop(1, "#090A0F");
   ctx.fillStyle = bgGradient;
-  drawRoundedRect(ctx, 0, 0, WIDTH, HEIGHT, 24);
+  drawRoundedRect(ctx, 0, 0, WIDTH, HEIGHT, 16);
   ctx.fill();
 
-  // شريط زخرفي جانبي
-  const sideGradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
-  sideGradient.addColorStop(0, "#7c3aed");
-  sideGradient.addColorStop(1, "#312e81");
-  ctx.fillStyle = sideGradient;
-  ctx.fillRect(0, 0, 10, HEIGHT);
-
   // إطار خفيف حول البطاقة
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+  ctx.strokeStyle = "rgba(88, 101, 242, 0.3)";
   ctx.lineWidth = 2;
-  drawRoundedRect(ctx, 1, 1, WIDTH - 2, HEIGHT - 2, 24);
+  drawRoundedRect(ctx, 1, 1, WIDTH - 2, HEIGHT - 2, 16);
   ctx.stroke();
 
-  // صورة العضو (دائرية)
-  const avatarSize = 180;
-  const avatarX = 56;
+  // صورة العضو (دائرية) مع إطار Discord
+  const avatarSize = 160;
+  const avatarX = 50;
   const avatarY = (HEIGHT - avatarSize) / 2;
 
   try {
@@ -71,65 +64,86 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
     // تجاهل فشل تحميل الصورة، تُترك البطاقة بدون صورة
   }
 
-  // إطار حول الصورة
+  // إطار Discord حول الصورة
   ctx.beginPath();
   ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 4, 0, Math.PI * 2);
-  ctx.strokeStyle = "#a78bfa";
-  ctx.lineWidth = 6;
+  ctx.strokeStyle = "#5865F2";
+  ctx.lineWidth = 4;
   ctx.stroke();
 
-  const textX = avatarX + avatarSize + 40;
+  const textX = avatarX + avatarSize + 35;
 
   // اسم العضو
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 42px sans-serif";
+  ctx.fillStyle = "#F0F0F0";
+  ctx.font = "bold 40px sans-serif";
   ctx.textAlign = "left";
-  ctx.fillText(truncate(ctx, member.displayName, 340), textX, 95);
+  ctx.fillText(truncate(ctx, member.displayName, 320), textX, 85);
 
-  // الترتيب
-  ctx.textAlign = "right";
-  ctx.font = "bold 32px sans-serif";
-  ctx.fillStyle = "#a78bfa";
-  ctx.fillText(`#${data.rank}`, WIDTH - 60, 65);
+  // الترتيب - خلفية صغيرة
+  const rankText = `#${data.rank}`;
+  ctx.font = "bold 28px sans-serif";
+  const rankWidth = ctx.measureText(rankText).width;
+  const rankX = WIDTH - 50 - rankWidth;
+  
+  ctx.fillStyle = "rgba(88, 101, 242, 0.2)";
+  drawRoundedRect(ctx, rankX - 10, 45, rankWidth + 20, 38, 8);
+  ctx.fill();
+  
+  ctx.fillStyle = "#5865F2";
+  ctx.fillText(rankText, rankX, 72);
 
   // المستوى
-  ctx.font = "bold 26px sans-serif";
-  ctx.fillStyle = "#ffffff";
-  ctx.fillText(`المستوى ${data.level}`, WIDTH - 60, 105);
-  ctx.textAlign = "left";
+  ctx.font = "bold 24px sans-serif";
+  ctx.fillStyle = "#9CA3AF";
+  ctx.fillText(`المستوى ${data.level}`, textX, 125);
 
-  // شريط التقدم
+  // شريط التقدم المحسّن
   const barX = textX;
-  const barY = 165;
-  const barWidth = WIDTH - textX - 60;
-  const barHeight = 34;
+  const barY = 160;
+  const barWidth = WIDTH - textX - 50;
+  const barHeight = 24;
   const progress = data.neededXp > 0 ? Math.min(Math.max(data.currentXp / data.neededXp, 0), 1) : 0;
 
-  ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
-  drawRoundedRect(ctx, barX, barY, barWidth, barHeight, 17);
+  // خلفية الشريط
+  ctx.fillStyle = "rgba(42, 45, 55, 0.8)";
+  drawRoundedRect(ctx, barX, barY, barWidth, barHeight, 12);
   ctx.fill();
 
   if (progress > 0) {
     const fillWidth = Math.max(barWidth * progress, barHeight);
     const fillGradient = ctx.createLinearGradient(barX, 0, barX + fillWidth, 0);
-    fillGradient.addColorStop(0, "#7c3aed");
-    fillGradient.addColorStop(1, "#c084fc");
+    fillGradient.addColorStop(0, "#5865F2");
+    fillGradient.addColorStop(1, "#7C83A5");
     ctx.fillStyle = fillGradient;
-    drawRoundedRect(ctx, barX, barY, fillWidth, barHeight, 17);
+    drawRoundedRect(ctx, barX, barY, fillWidth, barHeight, 12);
     ctx.fill();
   }
 
-  // نص الخبرة أعلى الشريط
-  ctx.font = "20px sans-serif";
-  ctx.fillStyle = "#e5e7eb";
-  ctx.textAlign = "right";
-  ctx.fillText(`${data.currentXp} / ${data.neededXp} XP`, barX + barWidth, barY - 12);
-
-  // إجمالي الخبرة أسفل الشريط
+  // نص الخبرة
   ctx.font = "18px sans-serif";
-  ctx.fillStyle = "#9ca3af";
-  ctx.fillText(`إجمالي الخبرة: ${data.totalXp}`, barX + barWidth, barY + barHeight + 26);
+  ctx.fillStyle = "#9CA3AF";
+  ctx.textAlign = "right";
+  ctx.fillText(`${data.currentXp} / ${data.neededXp} XP`, barX + barWidth, barY - 10);
+
+  // إجمالي الخبرة
+  ctx.font = "16px sans-serif";
+  ctx.fillStyle = "#6B7280";
+  ctx.fillText(`إجمالي: ${data.totalXp} XP`, barX + barWidth, barY + barHeight + 22);
   ctx.textAlign = "left";
+
+  // شعار السيرفر (اختياري)
+  try {
+    const iconUrl = member.guild.iconURL({ extension: "png", size: 64 });
+    if (iconUrl) {
+      const icon = await loadImage(iconUrl);
+      ctx.save();
+      ctx.globalAlpha = 0.15;
+      ctx.drawImage(icon, WIDTH - 80, HEIGHT - 80, 64, 64);
+      ctx.restore();
+    }
+  } catch {
+    // تجاهل فشل تحميل الشعار
+  }
 
   return canvas.encode("png");
 }
