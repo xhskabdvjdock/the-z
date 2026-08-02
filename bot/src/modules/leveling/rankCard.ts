@@ -1,23 +1,25 @@
 import { createCanvas, loadImage, GlobalFonts, SKRSContext2D } from "@napi-rs/canvas";
 import { GuildMember } from "discord.js";
+import fs from "fs";
+import path from "path";
 
-// --- نظام تحميل حاقن الخطوط الفوري (Font Injector) ---
+// --- تسجيل الخط المرفوع في المستودع بمسار ديناميكي دقيق ---
 let isFontLoaded = false;
-
-async function ensureFontLoaded() {
-  if (isFontLoaded) return;
-  try {
-    // جلب خط Arial/Cairo جاهز من سيرفر سريع وحقنه كـ Buffer
-    const response = await fetch("https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/Cairo-Bold.ttf");
-    if (response.ok) {
-      const fontBuffer = Buffer.from(await response.arrayBuffer());
-      GlobalFonts.register(fontBuffer, "CustomFont");
-      isFontLoaded = true;
-    }
-  } catch (e) {
-    console.error("Failed to load custom font remotely:", e);
+try {
+  // البحث عن مسار الخط بناءً على المجلد الحالي أو الجذر
+  const fontPath = path.resolve(process.cwd(), "fonts", "Cairo-Bold.ttf");
+  if (fs.existsSync(fontPath)) {
+    GlobalFonts.registerFromPath(fontPath, "CustomCairo");
+    isFontLoaded = true;
+    console.log("تم تحميل خط Cairo بنجاح من المسار:", fontPath);
+  } else {
+    console.warn("ملف الخط غير موجود في المسار:", fontPath);
   }
+} catch (e) {
+  console.error("خطأ أثناء تسجيل الخط:", e);
 }
+
+const FONT = isFontLoaded ? "CustomCairo" : "sans-serif";
 
 interface RankCardData {
   level: number;
@@ -62,14 +64,8 @@ function truncate(ctx: SKRSContext2D, text: string, maxWidth: number): string {
 }
 
 export async function generateRankCard(member: GuildMember, data: RankCardData): Promise<Buffer> {
-  // التأكد من تحميل الخط في الذاكرة قبل البدء
-  await ensureFontLoaded();
-
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
-
-  // اسم الخط المسجل حديثاً
-  const fontName = isFontLoaded ? "CustomFont" : "sans-serif";
 
   // الخلفية الأساسية للبطاقة
   ctx.fillStyle = "#121318";
@@ -106,20 +102,21 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
 
   // 1. اسم المستخدم
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = `30px ${fontName}`;
+  ctx.font = `bold 30px ${FONT}`;
   ctx.textAlign = "left";
-  ctx.fillText(truncate(ctx, member.displayName || "User", 300), infoX, 60);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(truncate(ctx, member.displayName || "User", 300), infoX, 55);
 
   // 2. العناوين
-  ctx.font = `12px ${fontName}`;
+  ctx.font = `bold 12px ${FONT}`;
   ctx.fillStyle = "#8E9297";
-  const labelY = 95;
+  const labelY = 90;
   ctx.fillText("SERVER RANK", infoX, labelY);
   ctx.fillText("WEEKLY RANK", infoX + 140, labelY);
   ctx.fillText("WEEKLY EXP", infoX + 280, labelY);
 
   // 3. القيم
-  ctx.font = `18px ${fontName}`;
+  ctx.font = `bold 18px ${FONT}`;
   ctx.fillStyle = "#FFFFFF";
   const valueY = labelY + 25;
   ctx.fillText(`#${data.rank ?? 1}`, infoX, valueY);
@@ -152,20 +149,21 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   drawRoundedRect(ctx, rightPanelX + 20, levelBoxY, rightPanelWidth - 40, 75, 8);
   ctx.fill();
 
-  ctx.font = `11px ${fontName}`;
+  ctx.font = `bold 11px ${FONT}`;
   ctx.fillStyle = "#8E9297";
   ctx.textAlign = "left";
-  ctx.fillText("LEVEL", rightPanelX + 32, levelBoxY + 18);
+  ctx.fillText("LEVEL", rightPanelX + 32, levelBoxY + 20);
 
   const levelInnerBoxY = levelBoxY + 28;
   ctx.fillStyle = "#000000";
   drawRoundedRect(ctx, rightPanelX + 30, levelInnerBoxY, rightPanelWidth - 60, 35, 6);
   ctx.fill();
 
-  ctx.font = `20px ${fontName}`;
+  ctx.font = `bold 20px ${FONT}`;
   ctx.fillStyle = "#FFFFFF";
   ctx.textAlign = "center";
-  ctx.fillText(`${data.level ?? 0}`, rightPanelX + rightPanelWidth / 2, levelInnerBoxY + 24);
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${data.level ?? 0}`, rightPanelX + rightPanelWidth / 2, levelInnerBoxY + 18);
 
   // === صندوق EXP ===
   const expBoxY = levelBoxY + 90;
@@ -173,29 +171,29 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   drawRoundedRect(ctx, rightPanelX + 20, expBoxY, rightPanelWidth - 40, 75, 8);
   ctx.fill();
 
-  ctx.font = `11px ${fontName}`;
+  ctx.font = `bold 11px ${FONT}`;
   ctx.fillStyle = "#8E9297";
   ctx.textAlign = "left";
-  ctx.fillText("EXP", rightPanelX + 32, expBoxY + 18);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText("EXP", rightPanelX + 32, expBoxY + 20);
 
   const expInnerBoxY = expBoxY + 28;
   ctx.fillStyle = "#000000";
   drawRoundedRect(ctx, rightPanelX + 30, expInnerBoxY, rightPanelWidth - 60, 35, 6);
   ctx.fill();
 
-  ctx.font = `14px ${fontName}`;
+  ctx.font = `bold 14px ${FONT}`;
   ctx.fillStyle = "#FFFFFF";
   ctx.textAlign = "center";
-  ctx.fillText(`${data.currentXp ?? 0} / ${data.neededXp ?? 0}`, rightPanelX + rightPanelWidth / 2, expInnerBoxY + 23);
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${data.currentXp ?? 0} / ${data.neededXp ?? 0}`, rightPanelX + rightPanelWidth / 2, expInnerBoxY + 18);
 
   return canvas.toBuffer("image/png");
 }
 
 export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buffer> {
-  await ensureFontLoaded();
   const canvas = createCanvas(800, 200);
   const ctx = canvas.getContext("2d");
-  const fontName = isFontLoaded ? "CustomFont" : "sans-serif";
 
   ctx.fillStyle = "#121318";
   drawRoundedRect(ctx, 0, 0, 800, 200, 12);
@@ -220,17 +218,18 @@ export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buf
     ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
   } catch {
-    // ignore avatar fail
+    // ignore
   }
 
   const infoX = avatarX + avatarSize + 30;
 
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = `28px ${fontName}`;
+  ctx.font = `bold 28px ${FONT}`;
   ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
   ctx.fillText(truncate(ctx, data.username || "User", 300), infoX, 50);
 
-  ctx.font = `16px ${fontName}`;
+  ctx.font = `bold 16px ${FONT}`;
   ctx.fillStyle = "#8E9297";
   ctx.fillText(`المستوى: ${data.level ?? 0}`, infoX, 80);
   ctx.fillText(`الترتيب: #${data.serverRank ?? 1}`, infoX, 105);
@@ -252,9 +251,10 @@ export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buf
   }
 
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = `14px ${fontName}`;
+  ctx.font = `bold 14px ${FONT}`;
   ctx.textAlign = "center";
-  ctx.fillText(`${data.currentExp ?? 0} / ${data.maxExp ?? 0} XP`, infoX + progressBarWidth / 2, progressBarY + 14);
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${data.currentExp ?? 0} / ${data.maxExp ?? 0} XP`, infoX + progressBarWidth / 2, progressBarY + 10);
 
   return canvas.toBuffer("image/png");
 }
