@@ -1,9 +1,13 @@
 import { REST, Routes } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { exec } from "child_process";
+import { promisify } from "util";
 import { config } from "./config";
 import { BotCommand } from "./types/command";
 import { buildSlashCommandJSON } from "./utils/slashBuilder";
+
+const execAsync = promisify(exec);
 
 function walk(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -16,7 +20,22 @@ function walk(dir: string): string[] {
   return files;
 }
 
+async function buildShared() {
+  try {
+    console.log("🔨 Building @thez/shared package...");
+    const sharedPath = path.join(__dirname, "../../shared");
+    await execAsync("npm run build", { cwd: sharedPath });
+    console.log("✅ @thez/shared built successfully");
+  } catch (error) {
+    console.error("❌ Failed to build @thez/shared:", error);
+    throw error;
+  }
+}
+
 async function main() {
+  // Build shared package first
+  await buildShared();
+
   const commandsDir = path.join(__dirname, "commands");
   const files = walk(commandsDir);
   const payload: unknown[] = [];
