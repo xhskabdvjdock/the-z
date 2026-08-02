@@ -71,6 +71,24 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.lineWidth = 4;
   ctx.stroke();
 
+  // إضافة اسم المستخدم و XP على صورة الأفاتار (بعد رسم الأفاتار والإطار)
+  // خلفية سوداء شفافة أسفل الأفاتار للنص
+  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+  ctx.beginPath();
+  ctx.roundRect(avatarX, avatarY + avatarSize - 50, avatarSize, 50, [0, 0, 0, 0]);
+  ctx.fill();
+  
+  // اسم المستخدم على الأفاتار
+  ctx.font = "bold 18px sans-serif";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textAlign = "center";
+  ctx.fillText(truncate(ctx, member.displayName, avatarSize - 20), avatarX + avatarSize / 2, avatarY + avatarSize - 25);
+  
+  // XP على الأفاتار
+  ctx.font = "16px sans-serif";
+  ctx.fillStyle = "#5865F2";
+  ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, avatarY + avatarSize - 5);
+
   const textX = avatarX + avatarSize + 35;
 
   // اسم العضو - حجم أصغر
@@ -130,30 +148,6 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fillStyle = "#6B7280";
   ctx.fillText(`إجمالي: ${data.totalXp} XP`, barX + barWidth, barY + barHeight + 20);
   ctx.textAlign = "left";
-
-  // إضافة اسم المستخدم و XP على صورة الأفاتار
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-  ctx.closePath();
-  ctx.clip();
-  
-  // خلفية سوداء شفافة أسفل الأفاتار للنص
-  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-  ctx.fillRect(avatarX, avatarY + avatarSize - 50, avatarSize, 50);
-  
-  // اسم المستخدم على الأفاتار
-  ctx.font = "bold 18px sans-serif";
-  ctx.fillStyle = "#FFFFFF";
-  ctx.textAlign = "center";
-  ctx.fillText(truncate(ctx, member.displayName, avatarSize - 20), avatarX + avatarSize / 2, avatarY + avatarSize - 25);
-  
-  // XP على الأفاتار
-  ctx.font = "16px sans-serif";
-  ctx.fillStyle = "#5865F2";
-  ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, avatarY + avatarSize - 5);
-  
-  ctx.restore();
 
   // شعار السيرفر (اختياري)
   try {
