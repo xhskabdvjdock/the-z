@@ -37,16 +37,20 @@ async function main() {
   await buildShared();
 
   const commandsDir = path.join(__dirname, "commands");
+  console.log("📁 Looking for commands in:", commandsDir);
   const files = walk(commandsDir);
+  console.log("📄 Found files:", files);
   const payload: unknown[] = [];
 
   for (const file of files) {
     const imported = require(file);
     const command: BotCommand = imported.default ?? imported;
     if (!command?.name) continue;
+    console.log(`➕ Adding command: ${command.name}`);
     payload.push(buildSlashCommandJSON(command));
   }
 
+  console.log(`📤 Deploying ${payload.length} commands...`);
   const rest = new REST().setToken(config.token);
 
   if (config.devGuildId) {
