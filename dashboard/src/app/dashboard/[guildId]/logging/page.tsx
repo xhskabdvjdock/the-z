@@ -13,6 +13,7 @@ export default async function LoggingPage({ params }: { params: { guildId: strin
 
   const initial: IGuildConfig["logging"] = {
     enabled: config?.logging?.enabled ?? false,
+    categoryId: config?.logging?.categoryId ?? "",
     channels: {
       messageDelete: config?.logging?.channels?.messageDelete ?? "",
       messageEdit: config?.logging?.channels?.messageEdit ?? "",

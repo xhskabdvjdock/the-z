@@ -62,6 +62,18 @@ export default function LoggingForm({
           />
         </div>
 
+        <div>
+          <label className="label">📁 تصنيف السجلات (لأمر setup-logs)</label>
+          <ChannelSelect
+            label="اختر التصنيف"
+            channels={channels}
+            types={[4]}
+            value={state.categoryId ?? ""}
+            onChange={(v) => setState({ ...state, categoryId: v })}
+          />
+          <p className="text-sm text-gray-500 mt-1">سيتم إنشاء رومات اللوق في هذا التصنيف عند استخدام أمر /setup-logs</p>
+        </div>
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {CHANNEL_FIELDS.map((field) => (
             <ChannelSelect

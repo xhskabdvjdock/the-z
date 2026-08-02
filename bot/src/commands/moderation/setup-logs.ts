@@ -32,8 +32,22 @@ const command: BotCommand = {
       return;
     }
 
-    // إنشاء التصنيف إذا لم يُحدد
+    // التحقق من التصنيف المحفوظ في الإعدادات أولاً
+    const config = await GuildConfig.findOne({ guildId: ctx.guild.id });
     let logCategory = category;
+
+    if (!logCategory && config?.logging?.categoryId) {
+      try {
+        const fetchedChannel = await ctx.guild.channels.fetch(config.logging.categoryId);
+        if (fetchedChannel?.type === ChannelType.GuildCategory) {
+          logCategory = fetchedChannel;
+        }
+      } catch {
+        // التصنيف المحفوظ غير موجود، نتجاهله
+      }
+    }
+
+    // إنشاء التصنيف إذا لم يُحدد ولم يكن محفوظاً
     if (!logCategory) {
       try {
         logCategory = await ctx.guild.channels.create({
