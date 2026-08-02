@@ -15,16 +15,16 @@ export default async function LoggingPage({ params }: { params: { guildId: strin
     enabled: config?.logging?.enabled ?? false,
     categoryId: config?.logging?.categoryId ?? "",
     channels: {
-      messageDelete: config?.logging?.channels?.messageDelete ?? "",
-      messageEdit: config?.logging?.channels?.messageEdit ?? "",
-      memberJoin: config?.logging?.channels?.memberJoin ?? "",
-      memberLeave: config?.logging?.channels?.memberLeave ?? "",
-      memberUpdate: config?.logging?.channels?.memberUpdate ?? "",
-      voiceUpdate: config?.logging?.channels?.voiceUpdate ?? "",
-      channelUpdate: config?.logging?.channels?.channelUpdate ?? "",
-      roleUpdate: config?.logging?.channels?.roleUpdate ?? "",
       moderation: config?.logging?.channels?.moderation ?? "",
-      server: config?.logging?.channels?.server ?? ""
+      members: config?.logging?.channels?.members ?? "",
+      messages: config?.logging?.channels?.messages ?? "",
+      voice: config?.logging?.channels?.voice ?? "",
+      actions: config?.logging?.channels?.actions ?? "",
+      files: config?.logging?.channels?.files ?? "",
+      server: config?.logging?.channels?.server ?? "",
+      roles: config?.logging?.channels?.roles ?? "",
+      channels: config?.logging?.channels?.channels ?? "",
+      other: config?.logging?.channels?.other ?? ""
     }
   };
 

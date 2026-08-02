@@ -4,31 +4,16 @@ import { getGuildConfig } from "../../utils/guildConfig";
 import { config as botConfig } from "../../config";
 
 export type LogChannelKey =
-  | "messageDelete"
-  | "messageEdit"
-  | "memberJoin"
-  | "memberLeave"
-  | "memberUpdate"
-  | "voiceUpdate"
-  | "channelUpdate"
-  | "roleUpdate"
   | "moderation"
+  | "members"
+  | "messages"
+  | "voice"
+  | "actions"
+  | "files"
   | "server"
-  | "commandUsage"
-  | "ticketCreate"
-  | "ticketClose"
-  | "levelUp"
-  | "reactionAdd"
-  | "reactionRemove"
-  | "threadCreate"
-  | "threadDelete"
-  | "inviteCreate"
-  | "inviteDelete"
-  | "emojiCreate"
-  | "emojiDelete"
-  | "emojiUpdate"
-  | "stickerCreate"
-  | "stickerDelete";
+  | "roles"
+  | "channels"
+  | "other";
 
 /** يرسل تضمين (Embed) جاهز لروم اللوق المخصص لهذا النوع من الأحداث */
 export async function sendLog(

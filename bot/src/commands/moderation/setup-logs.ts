@@ -11,8 +11,8 @@ const command: BotCommand = {
   defaultMemberPermissions: PermissionFlagsBits.ManageGuild,
   options: [
     {
-      name: "category",
-      description: "التصنيف الذي تُنشأ تحته رومات اللوق (اختياري)",
+      name: "channel",
+      description: "الروم الذي تُنشأ تحته رومات اللوق (اختياري)",
       type: "channel",
       required: false
     }
@@ -23,18 +23,18 @@ const command: BotCommand = {
       return;
     }
 
-    const category = ctx.getChannel("category");
+    const channel = ctx.getChannel("channel");
 
-    if (category && category.type !== ChannelType.GuildCategory) {
+    if (channel && channel.type !== ChannelType.GuildCategory) {
       await ctx.reply({
-        content: "❌ التصنيف المُحدد غير صالح، يرجى اختيار تصنيف (Category) فعلي."
+        content: "❌ الروم المُحدد غير صالح، يرجى اختيار تصنيف (Category) فعلي."
       });
       return;
     }
 
     // التحقق من التصنيف المحفوظ في الإعدادات أولاً
     const guildConfig = await GuildConfig.findOne({ guildId: ctx.guild.id });
-    let logCategory = category;
+    let logCategory = channel;
 
     if (!logCategory && guildConfig?.logging?.categoryId) {
       try {
@@ -51,7 +51,7 @@ const command: BotCommand = {
     if (!logCategory) {
       try {
         logCategory = await ctx.guild.channels.create({
-          name: "📋 السجلات",
+          name: "log-mod",
           type: ChannelType.GuildCategory
         });
       } catch (error) {
@@ -60,33 +60,18 @@ const command: BotCommand = {
       }
     }
 
-    // أسماء الرومات مع الأيقونات
+    // أسماء الرومات الجديدة
     const logChannels = [
-      { key: "messageDelete", name: "🗑️ حذف-الرسائل" },
-      { key: "messageEdit", name: "✏️ تعديل-الرسائل" },
-      { key: "memberJoin", name: "📥 انضمام-الأعضاء" },
-      { key: "memberLeave", name: "📤 مغادرة-الأعضاء" },
-      { key: "memberUpdate", name: "🧑‍🤝‍🧑 تحديث-الأعضاء" },
-      { key: "voiceUpdate", name: "🎙️ الحركة-الصوتية" },
-      { key: "channelUpdate", name: "📁 تعديلات-الرومات" },
-      { key: "roleUpdate", name: "🎖️ تعديلات-الرتب" },
-      { key: "moderation", name: "🛡️ الإشراف" },
-      { key: "server", name: "📋 عام" },
-      { key: "commandUsage", name: "⚡ استخدام-الأوامر" },
-      { key: "ticketCreate", name: "🎫 إنشاء-التذاكر" },
-      { key: "ticketClose", name: "🔒 إغلاق-التذاكر" },
-      { key: "levelUp", name: "⬆️ صعود-المستويات" },
-      { key: "reactionAdd", name: "👍 إضافة-التفاعلات" },
-      { key: "reactionRemove", name: "👎 إزالة-التفاعلات" },
-      { key: "threadCreate", name: "🧵 إنشاء-المواضيع" },
-      { key: "threadDelete", name: "✂️ حذف-المواضيع" },
-      { key: "inviteCreate", name: "✉️ إنشاء-الدعوات" },
-      { key: "inviteDelete", name: "🗑️ حذف-الدعوات" },
-      { key: "emojiCreate", name: "😀 إنشاء-الإيموجي" },
-      { key: "emojiDelete", name: "😢 حذف-الإيموجي" },
-      { key: "emojiUpdate", name: "🔄 تعديل-الإيموجي" },
-      { key: "stickerCreate", name: "🏷️ إنشاء-الملصقات" },
-      { key: "stickerDelete", name: "🗑️ حذف-الملصقات" }
+      { key: "moderation", name: "〢log-mod" },
+      { key: "members", name: "〢log-members" },
+      { key: "messages", name: "〢log-messages" },
+      { key: "voice", name: "〢log-voice" },
+      { key: "actions", name: "〢log-actions" },
+      { key: "files", name: "〢log-files" },
+      { key: "server", name: "〢log-server" },
+      { key: "roles", name: "〢log-roles" },
+      { key: "channels", name: "〢log-channels" },
+      { key: "other", name: "〢other logs" }
     ];
 
     const createdChannels: { key: string; id: string; name: string }[] = [];

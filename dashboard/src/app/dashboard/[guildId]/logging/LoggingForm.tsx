@@ -12,31 +12,16 @@ type LoggingConfig = IGuildConfig["logging"];
 type LoggingChannelKey = keyof LoggingConfig["channels"];
 
 const CHANNEL_FIELDS: { key: LoggingChannelKey; label: string; icon: string }[] = [
-  { key: "messageDelete", label: "حذف الرسائل", icon: "🗑️" },
-  { key: "messageEdit", label: "تعديل الرسائل", icon: "✏️" },
-  { key: "memberJoin", label: "انضمام الأعضاء", icon: "📥" },
-  { key: "memberLeave", label: "مغادرة الأعضاء", icon: "📤" },
-  { key: "memberUpdate", label: "تحديث بيانات الأعضاء", icon: "🧑‍🤝‍🧑" },
-  { key: "voiceUpdate", label: "الحركة الصوتية", icon: "🎙️" },
-  { key: "channelUpdate", label: "تعديلات الرومات", icon: "📁" },
-  { key: "roleUpdate", label: "تعديلات الرتب", icon: "🎖️" },
-  { key: "moderation", label: "الإجراءات الإشرافية", icon: "🛡️" },
-  { key: "server", label: "عام / متفرقات", icon: "📋" },
-  { key: "commandUsage", label: "استخدام الأوامر", icon: "⚡" },
-  { key: "ticketCreate", label: "إنشاء التذاكر", icon: "🎫" },
-  { key: "ticketClose", label: "إغلاق التذاكر", icon: "🔒" },
-  { key: "levelUp", label: "صعود المستويات", icon: "⬆️" },
-  { key: "reactionAdd", label: "إضافة التفاعلات", icon: "👍" },
-  { key: "reactionRemove", label: "إزالة التفاعلات", icon: "👎" },
-  { key: "threadCreate", label: "إنشاء المواضيع", icon: "🧵" },
-  { key: "threadDelete", label: "حذف المواضيع", icon: "✂️" },
-  { key: "inviteCreate", label: "إنشاء الدعوات", icon: "✉️" },
-  { key: "inviteDelete", label: "حذف الدعوات", icon: "🗑️" },
-  { key: "emojiCreate", label: "إنشاء الإيموجي", icon: "😀" },
-  { key: "emojiDelete", label: "حذف الإيموجي", icon: "😢" },
-  { key: "emojiUpdate", label: "تعديل الإيموجي", icon: "🔄" },
-  { key: "stickerCreate", label: "إنشاء الملصقات", icon: "🏷️" },
-  { key: "stickerDelete", label: "حذف الملصقات", icon: "🗑️" }
+  { key: "moderation", label: "الإشراف", icon: "🛡️" },
+  { key: "members", label: "الأعضاء", icon: "�" },
+  { key: "messages", label: "الرسائل", icon: "�" },
+  { key: "voice", label: "الصوت", icon: "🎙️" },
+  { key: "actions", label: "الإجراءات", icon: "⚡" },
+  { key: "files", label: "الملفات", icon: "�" },
+  { key: "server", label: "السيرفر", icon: "🖥️" },
+  { key: "roles", label: "الرتب", icon: "🎖️" },
+  { key: "channels", label: "الرومات", icon: "📁" },
+  { key: "other", label: "أخرى", icon: "�" }
 ];
 
 export default function LoggingForm({
