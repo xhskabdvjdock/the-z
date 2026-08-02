@@ -10,18 +10,26 @@ import { saveLoggingConfig } from "./actions";
 
 type LoggingConfig = IGuildConfig["logging"];
 type LoggingChannelKey = keyof LoggingConfig["channels"];
+type CustomChannelKey = keyof LoggingConfig["customChannels"];
 
 const CHANNEL_FIELDS: { key: LoggingChannelKey; label: string; icon: string }[] = [
   { key: "moderation", label: "الإشراف", icon: "🛡️" },
-  { key: "members", label: "الأعضاء", icon: "�" },
-  { key: "messages", label: "الرسائل", icon: "�" },
+  { key: "members", label: "الأعضاء", icon: "👥" },
+  { key: "messages", label: "الرسائل", icon: "💬" },
   { key: "voice", label: "الصوت", icon: "🎙️" },
   { key: "actions", label: "الإجراءات", icon: "⚡" },
-  { key: "files", label: "الملفات", icon: "�" },
+  { key: "files", label: "الملفات", icon: "📎" },
   { key: "server", label: "السيرفر", icon: "🖥️" },
   { key: "roles", label: "الرتب", icon: "🎖️" },
   { key: "channels", label: "الرومات", icon: "📁" },
-  { key: "other", label: "أخرى", icon: "�" }
+  { key: "other", label: "أخرى", icon: "📋" }
+];
+
+const CUSTOM_CHANNEL_FIELDS: { key: CustomChannelKey; label: string; icon: string }[] = [
+  { key: "messages", label: "الرسائل", icon: "💬" },
+  { key: "commands", label: "الأوامر", icon: "⚡" },
+  { key: "media", label: "الصور والفيديوهات", icon: "🎬" },
+  { key: "stickers", label: "الملصقات", icon: "🏷️" }
 ];
 
 export default function LoggingForm({
@@ -69,6 +77,26 @@ export default function LoggingForm({
               value={state.channels[field.key] ?? ""}
               onChange={(v) =>
                 setState({ ...state, channels: { ...state.channels, [field.key]: v } })
+              }
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="card flex flex-col gap-4">
+        <h2 className="text-lg font-bold">🔧 القنوات المخصصة</h2>
+        <p className="text-sm text-gray-500">اختر قنوات مخصصة لأنواع محددة من المحتوى</p>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {CUSTOM_CHANNEL_FIELDS.map((field) => (
+            <ChannelSelect
+              key={field.key}
+              label={`${field.icon} ${field.label}`}
+              channels={channels}
+              types={[0, 5]}
+              value={state.customChannels?.[field.key] ?? ""}
+              onChange={(v) =>
+                setState({ ...state, customChannels: { ...state.customChannels, [field.key]: v } })
               }
             />
           ))}

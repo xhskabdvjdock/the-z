@@ -25,6 +25,12 @@ export default async function LoggingPage({ params }: { params: { guildId: strin
       roles: config?.logging?.channels?.roles ?? "",
       channels: config?.logging?.channels?.channels ?? "",
       other: config?.logging?.channels?.other ?? ""
+    },
+    customChannels: {
+      messages: config?.logging?.customChannels?.messages ?? "",
+      commands: config?.logging?.customChannels?.commands ?? "",
+      media: config?.logging?.customChannels?.media ?? "",
+      stickers: config?.logging?.customChannels?.stickers ?? ""
     }
   };
 

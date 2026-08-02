@@ -194,6 +194,12 @@ export interface IGuildConfig {
       channels?: string;
       other?: string;
     };
+    customChannels: {
+      messages?: string;
+      commands?: string;
+      media?: string;
+      stickers?: string;
+    };
   };
 
   automod: {
@@ -327,7 +333,8 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
 
     logging: {
       enabled: false,
-      channels: {}
+      channels: {},
+      customChannels: {}
     },
 
     automod: {
