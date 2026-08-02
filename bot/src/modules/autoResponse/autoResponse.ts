@@ -43,7 +43,7 @@ function buildContext(message: Message): VariableContext {
   };
 }
 
-/** يفحص الردود التلقائية المفعّلة، ويرسل أول رد مطابق. يعيد true إن تم الرد */
+/** يفحص الردود التلقائية المفعّلة، ويرسل رد عشوائي من الردود المتاحة. يعيد true إن تم الرد */
 export async function handleAutoResponse(
   client: ExtendedClient,
   message: Message,
@@ -61,9 +61,17 @@ export async function handleAutoResponse(
     }
 
     const ctx = buildContext(message);
-    const payload = buildMessageFromCustom(response.response, ctx);
-    if (message.inGuild()) {
-      await message.channel.send(payload).catch(() => null);
+    
+    // Handle both old response field and new responses array for backward compatibility
+    const responseMessages = response.responses || (response.response ? [response.response] : []);
+    
+    if (responseMessages.length > 0) {
+      // Pick a random response
+      const randomResponse = responseMessages[Math.floor(Math.random() * responseMessages.length)];
+      const payload = buildMessageFromCustom(randomResponse, ctx);
+      if (message.inGuild()) {
+        await message.channel.send(payload).catch(() => null);
+      }
     }
 
     return true;
