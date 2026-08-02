@@ -65,17 +65,11 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
     // تجاهل فشل تحميل الصورة
   }
 
-  // رسم النصوص على الأفاتار
-  // اسم المستخدم
+  // رسم النصوص في وسط البطاقة للاختبار
   ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 14px sans-serif";
+  ctx.font = "bold 20px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(truncate(ctx, member.displayName, avatarSize - 20), avatarX + avatarSize / 2, avatarY + 30);
-  
-  // XP
-  ctx.fillStyle = "#F1E0C5";
-  ctx.font = "bold 12px sans-serif";
-  ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, avatarY + avatarSize - 20);
+  ctx.fillText(member.displayName, WIDTH / 2, HEIGHT / 2);
 
   // معلومات العضو إلى يمين الأفاتار
   const infoX = avatarX + avatarSize + 30;
