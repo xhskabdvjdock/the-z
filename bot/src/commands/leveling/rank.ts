@@ -1,7 +1,7 @@
 import { AttachmentBuilder } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { LevelUser, levelFromTotalXp } from "@thez/shared";
-import { generateSimpleRankCard } from "../../modules/leveling/rankCard";
+import { generateRankCard } from "../../modules/leveling/rankCard";
 
 const command: BotCommand = {
   name: "rank",
@@ -29,13 +29,12 @@ const command: BotCommand = {
         totalXp: { $gt: totalXp }
       })) + 1;
 
-    const buffer = await generateSimpleRankCard({
-      avatarUrl: targetMember.displayAvatarURL({ extension: "png", size: 256 }),
-      username: targetMember.displayName,
+    const buffer = await generateRankCard(targetMember, {
       level: info.level,
-      currentExp: info.currentLevelXp,
-      maxExp: info.neededXp,
-      serverRank: rank
+      currentXp: info.currentLevelXp,
+      neededXp: info.neededXp,
+      rank,
+      totalXp
     });
 
     const attachment = new AttachmentBuilder(buffer, { name: "rank.png" });

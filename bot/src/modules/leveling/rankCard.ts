@@ -94,6 +94,8 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fillText("WEEKLY RANK", infoX + 140, labelY);
   ctx.fillText("WEEKLY EXP", infoX + 280, labelY);
   ctx.fillText("USERNAME", infoX + 420, labelY);
+  ctx.fillText("CURRENT XP", infoX, labelY + 35);
+  ctx.fillText("NEEDED XP", infoX + 140, labelY + 35);
 
   // قيم البيانات
   ctx.font = "bold 18px sans-serif";
@@ -105,6 +107,8 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fillText("Off", infoX + 140, valueY);
   ctx.fillText("0", infoX + 280, valueY);
   ctx.fillText(truncate(ctx, member.displayName, 100), infoX + 420, valueY);
+  ctx.fillText(`${data.currentXp}`, infoX, valueY + 35);
+  ctx.fillText(`${data.neededXp}`, infoX + 140, valueY + 35);
 
   // شريط التقدم في أسفل اللوحة اليسرى
   const progressBarY = HEIGHT - 8;
