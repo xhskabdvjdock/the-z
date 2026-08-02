@@ -73,10 +73,10 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
 
   // إضافة اسم المستخدم و XP على صورة الأفاتار (بعد رسم الأفاتار والإطار)
   // خلفية سوداء شفافة أسفل الأفاتار للنص
-  const overlayHeight = 55;
-  const overlayY = avatarY + avatarSize - overlayHeight;
+  const overlayHeight = 60;
+  const overlayY = avatarY + avatarSize - overlayHeight; // At the very bottom
   
-  ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
   ctx.beginPath();
   ctx.roundRect(avatarX, overlayY, avatarSize, overlayHeight, [0, 0, 0, 0]);
   ctx.fill();
@@ -85,12 +85,12 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.font = "bold 16px sans-serif";
   ctx.fillStyle = "#FFFFFF";
   ctx.textAlign = "center";
-  ctx.fillText(truncate(ctx, member.displayName, avatarSize - 20), avatarX + avatarSize / 2, overlayY + 22);
+  ctx.fillText(truncate(ctx, member.displayName, avatarSize - 20), avatarX + avatarSize / 2, overlayY + 25);
   
   // XP على الأفاتار
   ctx.font = "14px sans-serif";
   ctx.fillStyle = "#5865F2";
-  ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, overlayY + 42);
+  ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, overlayY + 48);
 
   const textX = avatarX + avatarSize + 35;
 
