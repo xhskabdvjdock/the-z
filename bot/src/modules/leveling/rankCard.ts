@@ -65,11 +65,11 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
     // تجاهل فشل تحميل الصورة
   }
 
-  // رسم نص بسيط للاختبار
+  // رسم نص بسيط للاختبار في الزاوية
   ctx.fillStyle = "#FF0000";
-  ctx.font = "bold 20px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText("TEST", avatarX + avatarSize / 2, avatarY + avatarSize / 2);
+  ctx.font = "bold 30px sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText("TEST", 10, 40);
 
   // معلومات العضو إلى يمين الأفاتار
   const infoX = avatarX + avatarSize + 30;
