@@ -34,6 +34,7 @@ RUN mkdir -p /app/certs
 
 # Create startup script
 RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'cd /app/bot && npm run deploy' >> /app/start.sh && \
     echo 'cd /app/bot && node dist/index.js &' >> /app/start.sh && \
     echo 'cd /app/dashboard && npm run start' >> /app/start.sh && \
     chmod +x /app/start.sh
