@@ -65,25 +65,11 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
     // تجاهل فشل تحميل الصورة
   }
 
-  // رسم النصوص بدون clipping
-  // اسم المستخدم في وسط الأفاتار
-  ctx.save();
-  
-  // خلفية سوداء داكنة في المنتصف
-  ctx.fillStyle = "rgba(0, 0, 0, 0.9)";
-  ctx.fillRect(avatarX + 10, avatarY + avatarSize / 2 - 20, avatarSize - 20, 40);
-  
-  ctx.font = "bold 16px sans-serif";
-  ctx.fillStyle = "#FFFFFF";
+  // رسم نص بسيط للاختبار
+  ctx.fillStyle = "#FF0000";
+  ctx.font = "bold 20px sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(truncate(ctx, member.displayName, avatarSize - 30), avatarX + avatarSize / 2, avatarY + avatarSize / 2 - 2);
-  
-  // XP أسفل الاسم
-  ctx.font = "bold 14px sans-serif";
-  ctx.fillStyle = "#F1E0C5";
-  ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, avatarY + avatarSize / 2 + 18);
-  
-  ctx.restore();
+  ctx.fillText("TEST", avatarX + avatarSize / 2, avatarY + avatarSize / 2);
 
   // معلومات العضو إلى يمين الأفاتار
   const infoX = avatarX + avatarSize + 30;
