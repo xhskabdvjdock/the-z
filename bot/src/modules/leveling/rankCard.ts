@@ -65,12 +65,6 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
     // تجاهل فشل تحميل الصورة
   }
 
-  // رسم النصوص في وسط البطاقة للاختبار
-  ctx.fillStyle = "#FFFFFF";
-  ctx.font = "bold 20px sans-serif";
-  ctx.textAlign = "center";
-  ctx.fillText(member.displayName, WIDTH / 2, HEIGHT / 2);
-
   // معلومات العضو إلى يمين الأفاتار
   const infoX = avatarX + avatarSize + 30;
 
@@ -153,6 +147,11 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fillStyle = "#F5F5F5";
   ctx.textAlign = "center";
   ctx.fillText(`${data.level}`, rightPanelX + rightPanelWidth / 2, levelInnerBoxY + 22);
+  
+  // اسم المستخدم أسفل المستوى
+  ctx.font = "bold 12px sans-serif";
+  ctx.fillStyle = "#6B7280";
+  ctx.fillText(truncate(ctx, member.displayName, rightPanelWidth - 60), rightPanelX + rightPanelWidth / 2, levelInnerBoxY + 38);
 
   // صندوق EXP
   const expBoxY = levelBoxY + levelBoxHeight + 20;
