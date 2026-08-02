@@ -195,8 +195,6 @@ export interface IGuildConfig {
       other?: string;
     };
     customChannels: {
-      messages?: string[];
-      commands?: string[];
       media?: string[];
       stickers?: string[];
     };

@@ -19,29 +19,7 @@ const event: BotEvent = {
     const customChannels = gConfig.logging?.customChannels;
     console.log("Custom channels config:", JSON.stringify(customChannels));
 
-    // التحقق من الرسائل النصية
-    if (customChannels?.messages && customChannels.messages.length > 0) {
-      const isTextMessage = !message.attachments.size && !message.stickers.size;
-      console.log("Text message check:", isTextMessage, "Channel:", message.channelId, "Allowed:", customChannels.messages);
-      if (isTextMessage && !customChannels.messages.includes(message.channelId)) {
-        console.log("Blocking text message in channel:", message.channelId);
-        await message.delete().catch(() => null);
-        return;
-      }
-    }
-
-    // التحقق من الأوامر
-    if (customChannels?.commands && customChannels.commands.length > 0) {
-      const isCommand = message.content.startsWith(gConfig.prefix);
-      console.log("Command check:", isCommand, "Channel:", message.channelId, "Allowed:", customChannels.commands);
-      if (isCommand && !customChannels.commands.includes(message.channelId)) {
-        console.log("Blocking command in channel:", message.channelId);
-        await message.delete().catch(() => null);
-        return;
-      }
-    }
-
-    // التحقق من الصور والفيديوهات
+    // التحقق من الصور والفيديوهات - حذف خارج القنوات المخصصة فقط
     if (customChannels?.media && customChannels.media.length > 0) {
       const hasMedia = message.attachments.some(a => a.contentType?.startsWith("image/") || a.contentType?.startsWith("video/"));
       console.log("Media check:", hasMedia, "Channel:", message.channelId, "Allowed:", customChannels.media);
@@ -52,7 +30,7 @@ const event: BotEvent = {
       }
     }
 
-    // التحقق من الملصقات
+    // التحقق من الملصقات - حذف خارج القنوات المخصصة فقط
     if (customChannels?.stickers && customChannels.stickers.length > 0) {
       const hasStickers = message.stickers.size > 0;
       console.log("Stickers check:", hasStickers, "Channel:", message.channelId, "Allowed:", customChannels.stickers);

@@ -17,8 +17,6 @@ export async function saveLoggingConfig(guildId: string, data: IGuildConfig["log
     const processedData = {
       ...data,
       customChannels: {
-        messages: Array.isArray(data.customChannels?.messages) ? data.customChannels.messages : [],
-        commands: Array.isArray(data.customChannels?.commands) ? data.customChannels.commands : (data.customChannels?.commands ? [data.customChannels.commands] : []),
         media: Array.isArray(data.customChannels?.media) ? data.customChannels.media : (data.customChannels?.media ? [data.customChannels.media] : []),
         stickers: Array.isArray(data.customChannels?.stickers) ? data.customChannels.stickers : (data.customChannels?.stickers ? [data.customChannels.stickers] : [])
       }
