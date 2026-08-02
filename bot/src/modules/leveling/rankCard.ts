@@ -1,5 +1,5 @@
-import { GuildMember } from "discord.js";
 import { createCanvas, loadImage, SKRSContext2D } from "@napi-rs/canvas";
+import { GuildMember } from "discord.js";
 
 interface RankCardData {
   level: number;
@@ -7,6 +7,15 @@ interface RankCardData {
   neededXp: number;
   rank: number;
   totalXp: number;
+}
+
+interface NewRankCardData {
+  avatarUrl: string;
+  username: string;
+  level: number;
+  currentExp: number;
+  maxExp: number;
+  serverRank: number;
 }
 
 const WIDTH = 1000;
@@ -189,4 +198,82 @@ function truncate(ctx: SKRSContext2D, text: string, maxWidth: number): string {
     truncated = truncated.slice(0, -1);
   }
   return `${truncated}…`;
+}
+
+/** دالة جديدة لتوليد بطاقة المستوى */
+export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buffer> {
+  const canvas = createCanvas(800, 200);
+  const ctx = canvas.getContext("2d");
+
+  // الخلفية الداكنة بحواف منحنية
+  ctx.fillStyle = "#121318";
+  drawRoundedRect(ctx, 0, 0, 800, 200, 12);
+  ctx.fill();
+
+  // إطار رقيق
+  ctx.strokeStyle = "#2A2D37";
+  ctx.lineWidth = 1;
+  drawRoundedRect(ctx, 0.5, 0.5, 799, 199, 12);
+  ctx.stroke();
+
+  // صورة الأفاتار دائرية على اليسار
+  const avatarSize = 120;
+  const avatarX = 40;
+  const avatarY = (200 - avatarSize) / 2;
+
+  try {
+    const avatar = await loadImage(data.avatarUrl);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+    ctx.restore();
+  } catch {
+    // تجاهل فشل تحميل الصورة
+  }
+
+  // معلومات المستخدم
+  const infoX = avatarX + avatarSize + 30;
+
+  // اسم المستخدم
+  ctx.fillStyle = "#F5F5F5";
+  ctx.font = "bold 28px sans-serif";
+  ctx.textAlign = "left";
+  ctx.fillText(truncate(ctx, data.username, 300), infoX, 50);
+
+  // المستوى
+  ctx.font = "bold 16px sans-serif";
+  ctx.fillStyle = "#6B7280";
+  ctx.fillText(`المستوى: ${data.level}`, infoX, 80);
+
+  // الترتيب
+  ctx.fillText(`الترتيب: #${data.serverRank}`, infoX, 105);
+
+  // شريط التقدم
+  const progressBarY = 140;
+  const progressBarWidth = 500;
+  const progressBarHeight = 20;
+  const progress = data.maxExp > 0 ? Math.min(Math.max(data.currentExp / data.maxExp, 0), 1) : 0;
+
+  // خلفية الشريط
+  ctx.fillStyle = "#1A1C23";
+  drawRoundedRect(ctx, infoX, progressBarY, progressBarWidth, progressBarHeight, 10);
+  ctx.fill();
+
+  // التقدم
+  if (progress > 0) {
+    ctx.fillStyle = "#F1E0C5";
+    drawRoundedRect(ctx, infoX, progressBarY, progressBarWidth * progress, progressBarHeight, 10);
+    ctx.fill();
+  }
+
+  // نص الخبرة
+  ctx.fillStyle = "#F5F5F5";
+  ctx.font = "bold 14px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`${data.currentExp} / ${data.maxExp} XP`, infoX + progressBarWidth / 2, progressBarY + 15);
+
+  return canvas.encode("png");
 }
