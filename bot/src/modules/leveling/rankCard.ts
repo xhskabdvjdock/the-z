@@ -73,40 +73,40 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
 
   const textX = avatarX + avatarSize + 35;
 
-  // اسم العضو
+  // اسم العضو - حجم أصغر
   ctx.fillStyle = "#F0F0F0";
-  ctx.font = "bold 40px sans-serif";
+  ctx.font = "bold 32px sans-serif";
   ctx.textAlign = "left";
   ctx.fillText(truncate(ctx, member.displayName, 320), textX, 85);
 
-  // الترتيب - خلفية صغيرة
+  // الترتيب - خلفية صغيرة - حجم أصغر
   const rankText = `#${data.rank}`;
-  ctx.font = "bold 28px sans-serif";
+  ctx.font = "bold 22px sans-serif";
   const rankWidth = ctx.measureText(rankText).width;
   const rankX = WIDTH - 50 - rankWidth;
   
   ctx.fillStyle = "rgba(88, 101, 242, 0.2)";
-  drawRoundedRect(ctx, rankX - 10, 45, rankWidth + 20, 38, 8);
+  drawRoundedRect(ctx, rankX - 10, 45, rankWidth + 20, 32, 8);
   ctx.fill();
   
   ctx.fillStyle = "#5865F2";
-  ctx.fillText(rankText, rankX, 72);
+  ctx.fillText(rankText, rankX, 68);
 
-  // المستوى
-  ctx.font = "bold 24px sans-serif";
+  // المستوى - حجم أصغر
+  ctx.font = "bold 20px sans-serif";
   ctx.fillStyle = "#9CA3AF";
-  ctx.fillText(`المستوى ${data.level}`, textX, 125);
+  ctx.fillText(`المستوى ${data.level}`, textX, 115);
 
   // شريط التقدم المحسّن
   const barX = textX;
-  const barY = 160;
+  const barY = 145;
   const barWidth = WIDTH - textX - 50;
-  const barHeight = 24;
+  const barHeight = 20;
   const progress = data.neededXp > 0 ? Math.min(Math.max(data.currentXp / data.neededXp, 0), 1) : 0;
 
   // خلفية الشريط
   ctx.fillStyle = "rgba(42, 45, 55, 0.8)";
-  drawRoundedRect(ctx, barX, barY, barWidth, barHeight, 12);
+  drawRoundedRect(ctx, barX, barY, barWidth, barHeight, 10);
   ctx.fill();
 
   if (progress > 0) {
@@ -115,21 +115,45 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
     fillGradient.addColorStop(0, "#5865F2");
     fillGradient.addColorStop(1, "#7C83A5");
     ctx.fillStyle = fillGradient;
-    drawRoundedRect(ctx, barX, barY, fillWidth, barHeight, 12);
+    drawRoundedRect(ctx, barX, barY, fillWidth, barHeight, 10);
     ctx.fill();
   }
 
-  // نص الخبرة
-  ctx.font = "18px sans-serif";
+  // نص الخبرة - حجم أصغر
+  ctx.font = "16px sans-serif";
   ctx.fillStyle = "#9CA3AF";
   ctx.textAlign = "right";
   ctx.fillText(`${data.currentXp} / ${data.neededXp} XP`, barX + barWidth, barY - 10);
 
-  // إجمالي الخبرة
-  ctx.font = "16px sans-serif";
+  // إجمالي الخبرة - حجم أصغر
+  ctx.font = "14px sans-serif";
   ctx.fillStyle = "#6B7280";
-  ctx.fillText(`إجمالي: ${data.totalXp} XP`, barX + barWidth, barY + barHeight + 22);
+  ctx.fillText(`إجمالي: ${data.totalXp} XP`, barX + barWidth, barY + barHeight + 20);
   ctx.textAlign = "left";
+
+  // إضافة اسم المستخدم و XP على صورة الأفاتار
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+  
+  // خلفية سوداء شفافة أسفل الأفاتار للنص
+  ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+  ctx.fillRect(avatarX, avatarY + avatarSize - 50, avatarSize, 50);
+  
+  // اسم المستخدم على الأفاتار
+  ctx.font = "bold 18px sans-serif";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textAlign = "center";
+  ctx.fillText(truncate(ctx, member.displayName, avatarSize - 20), avatarX + avatarSize / 2, avatarY + avatarSize - 25);
+  
+  // XP على الأفاتار
+  ctx.font = "16px sans-serif";
+  ctx.fillStyle = "#5865F2";
+  ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, avatarY + avatarSize - 5);
+  
+  ctx.restore();
 
   // شعار السيرفر (اختياري)
   try {
