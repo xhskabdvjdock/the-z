@@ -3,35 +3,31 @@ import { GuildMember } from "discord.js";
 import fs from "fs";
 import path from "path";
 
-let fontName = "sans-serif";
+let isFontLoaded = false;
 
 function loadCustomFont() {
-  const rootDir = process.cwd();
-
-  // المسارات التي تبحث عن مجلد fonts خارج مجلد bot وفي جذور المستودع
+  // فحص المسار المباشر من جذر مجلد bot والمسارات المترجمة في dist
   const possiblePaths = [
-    path.resolve(rootDir, "..", "fonts", "Cairo-Bold.ttf"),
-    path.resolve(rootDir, "fonts", "Cairo-Bold.ttf"),
-    path.resolve(__dirname, "..", "..", "..", "..", "fonts", "Cairo-Bold.ttf"),
+    path.resolve(process.cwd(), "fonts", "Cairo-Bold.ttf"),
     path.resolve(__dirname, "..", "..", "..", "fonts", "Cairo-Bold.ttf"),
+    path.resolve(__dirname, "..", "..", "fonts", "Cairo-Bold.ttf")
   ];
 
   for (const fontPath of possiblePaths) {
     if (fs.existsSync(fontPath)) {
       try {
         const fontBuffer = fs.readFileSync(fontPath);
-        const registered = GlobalFonts.register(fontBuffer, "CairoFont");
-        if (registered) {
-          fontName = "CairoFont";
-          console.log(`[RankCard] ✅ تم تحميل الخط بنجاح من: ${fontPath}`);
-          return;
-        }
+        GlobalFonts.register(fontBuffer, "CairoFont");
+        isFontLoaded = true;
+        console.log(`[RankCard] ✅ تم تحميل الخط بنجاح من: ${fontPath}`);
+        return;
       } catch (err) {
-        console.error(`[RankCard] ❌ فشل قراءة الخط من ${fontPath}:`, err);
+        console.error(`[RankCard] ❌ خطأ أثناء قراءة الخط:`, err);
       }
     }
   }
-  console.warn("[RankCard] ⚠️ تحذير: لم يتم العثور على Cairo-Bold.ttf في المسارات المحددة!");
+
+  console.warn("[RankCard] ⚠️ لم يتم العثور على Cairo-Bold.ttf داخل مجلد bot/fonts!");
 }
 
 loadCustomFont();
@@ -79,6 +75,7 @@ function truncate(ctx: SKRSContext2D, text: string, maxWidth: number): string {
 }
 
 export async function generateRankCard(member: GuildMember, data: RankCardData): Promise<Buffer> {
+  const fontName = isFontLoaded ? "CairoFont" : "sans-serif";
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
 
@@ -208,6 +205,7 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
 }
 
 export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buffer> {
+  const fontName = isFontLoaded ? "CairoFont" : "sans-serif";
   const canvas = createCanvas(800, 200);
   const ctx = canvas.getContext("2d");
 
