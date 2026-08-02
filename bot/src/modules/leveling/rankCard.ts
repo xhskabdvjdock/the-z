@@ -2,15 +2,15 @@ import { createCanvas, loadImage, GlobalFonts, SKRSContext2D } from "@napi-rs/ca
 import { GuildMember } from "discord.js";
 import path from "path";
 
-// ملاحظة: يُفضل تسجيل خط يدعم اللغة العربية والأرقام
-// مثل تنزيل ملف Cairo-Bold.ttf ووضعه في مجلد fonts بالمشروع
+// 1. محاولة تسجيل خط محلي إن وجد، وإلا سنستخدم الخطوط المضمنة
 try {
   GlobalFonts.registerFromPath(path.join(process.cwd(), "fonts", "Cairo-Bold.ttf"), "Cairo");
 } catch {
-  // إذا لم يتوفر الخط سيعتمد على خط النظام
+  // تجنب التوقف في حال عدم وجود الملف
 }
 
-const FONT_FAMILY = "Cairo, sans-serif";
+// 2. اسم الخط المعتمد (نضع أكثر من خيار لضمان العمل على أي نظام)
+const FONT = "Cairo, Arial, DejaVu Sans, sans-serif";
 
 interface RankCardData {
   level: number;
@@ -44,6 +44,16 @@ function drawRoundedRect(
   const r = Math.min(radius, height / 2, width / 2);
   ctx.beginPath();
   ctx.roundRect(x, y, width, height, r);
+}
+
+/** يقصّ النص إن تجاوز عرضاً معيّناً ويضيف "..." */
+function truncate(ctx: SKRSContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let truncated = text;
+  while (truncated.length > 1 && ctx.measureText(`${truncated}…`).width > maxWidth) {
+    truncated = truncated.slice(0, -1);
+  }
+  return `${truncated}…`;
 }
 
 /** يولّد صورة بطاقة الرتبة (PNG) لعضو معيّن باستخدام @napi-rs/canvas */
@@ -88,34 +98,33 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   const infoX = avatarX + avatarSize + 30;
 
   // اسم المستخدم
-  ctx.fillStyle = "#F5F5F5";
-  ctx.font = `bold 30px ${FONT_FAMILY}`;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `bold 30px ${FONT}`;
   ctx.textAlign = "left";
-  ctx.fillText(truncate(ctx, member.displayName, 300), infoX, 60);
+  ctx.textBaseline = "middle";
+  ctx.fillText(truncate(ctx, member.displayName || "User", 300), infoX, 50);
 
   // عناوين البيانات (Labels)
-  ctx.font = `bold 11px ${FONT_FAMILY}`;
-  ctx.fillStyle = "#6B7280";
+  ctx.font = `12px ${FONT}`;
+  ctx.fillStyle = "#8E9297";
   
-  const labelY = 95;
-  
+  const labelY = 90;
   ctx.fillText("SERVER RANK", infoX, labelY);
   ctx.fillText("WEEKLY RANK", infoX + 140, labelY);
   ctx.fillText("WEEKLY EXP", infoX + 280, labelY);
 
   // قيم البيانات
-  ctx.font = `bold 18px ${FONT_FAMILY}`;
-  ctx.fillStyle = "#F5F5F5";
+  ctx.font = `bold 18px ${FONT}`;
+  ctx.fillStyle = "#FFFFFF";
   
-  const valueY = labelY + 24;
-  
-  ctx.fillText(`#${data.rank}`, infoX, valueY);
+  const valueY = labelY + 25;
+  ctx.fillText(`#${data.rank ?? 1}`, infoX, valueY);
   ctx.fillText("Off", infoX + 140, valueY);
   ctx.fillText("0", infoX + 280, valueY);
 
   // شريط التقدم في أسفل اللوحة اليسرى
-  const progressBarY = HEIGHT - 12;
-  const progressBarHeight = 4;
+  const progressBarY = HEIGHT - 15;
+  const progressBarHeight = 6;
   const progress = data.neededXp > 0 ? Math.min(Math.max(data.currentXp / data.neededXp, 0), 1) : 0;
 
   // خلفية الشريط
@@ -137,7 +146,7 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fillStyle = "#2A2D37";
   ctx.fillRect(rightPanelX - gap, 20, gap, HEIGHT - 40);
 
-  // صندوق المستوى
+  // ---------- صندوق LEVEL ----------
   const levelBoxY = 25;
   const levelBoxHeight = 75;
 
@@ -146,10 +155,11 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fill();
 
   // عنوان LEVEL
-  ctx.font = `bold 10px ${FONT_FAMILY}`;
-  ctx.fillStyle = "#6B7280";
+  ctx.font = `11px ${FONT}`;
+  ctx.fillStyle = "#8E9297";
   ctx.textAlign = "left";
-  ctx.fillText("LEVEL", rightPanelX + 32, levelBoxY + 20);
+  ctx.textBaseline = "top";
+  ctx.fillText("LEVEL", rightPanelX + 32, levelBoxY + 8);
 
   // مستطيل داخلي أسود للمستوى
   const levelInnerBoxY = levelBoxY + 28;
@@ -160,12 +170,13 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fill();
 
   // رقم المستوى
-  ctx.font = `bold 22px ${FONT_FAMILY}`;
-  ctx.fillStyle = "#F5F5F5";
+  ctx.font = `bold 20px ${FONT}`;
+  ctx.fillStyle = "#FFFFFF";
   ctx.textAlign = "center";
-  ctx.fillText(`${data.level}`, rightPanelX + rightPanelWidth / 2, levelInnerBoxY + 25);
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${data.level ?? 0}`, rightPanelX + rightPanelWidth / 2, levelInnerBoxY + (levelInnerBoxHeight / 2));
 
-  // صندوق EXP
+  // ---------- صندوق EXP ----------
   const expBoxY = levelBoxY + levelBoxHeight + 15;
   const expBoxHeight = 75;
 
@@ -174,10 +185,11 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fill();
 
   // عنوان EXP
-  ctx.font = `bold 10px ${FONT_FAMILY}`;
-  ctx.fillStyle = "#6B7280";
+  ctx.font = `11px ${FONT}`;
+  ctx.fillStyle = "#8E9297";
   ctx.textAlign = "left";
-  ctx.fillText("EXP", rightPanelX + 32, expBoxY + 20);
+  ctx.textBaseline = "top";
+  ctx.fillText("EXP", rightPanelX + 32, expBoxY + 8);
 
   // مستطيل داخلي أسود للـ EXP
   const expInnerBoxY = expBoxY + 28;
@@ -188,26 +200,16 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fill();
 
   // نسبة EXP
-  ctx.font = `bold 15px ${FONT_FAMILY}`;
-  ctx.fillStyle = "#F5F5F5";
+  ctx.font = `bold 14px ${FONT}`;
+  ctx.fillStyle = "#FFFFFF";
   ctx.textAlign = "center";
-  ctx.fillText(`${data.currentXp} / ${data.neededXp}`, rightPanelX + rightPanelWidth / 2, expInnerBoxY + 24);
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${data.currentXp ?? 0} / ${data.neededXp ?? 0}`, rightPanelX + rightPanelWidth / 2, expInnerBoxY + (expInnerBoxHeight / 2));
 
-  // إرجاع البافر كـ Buffer بأسلوب encodeSync المباشر
   return canvas.toBuffer("image/png");
 }
 
-/** يقصّ النص إن تجاوز عرضاً معيّناً ويضيف "..." */
-function truncate(ctx: SKRSContext2D, text: string, maxWidth: number): string {
-  if (ctx.measureText(text).width <= maxWidth) return text;
-  let truncated = text;
-  while (truncated.length > 1 && ctx.measureText(`${truncated}…`).width > maxWidth) {
-    truncated = truncated.slice(0, -1);
-  }
-  return `${truncated}…`;
-}
-
-/** دالة جيل بطاقة المستوى البسيطة */
+/** دالة جلب بطاقة المستوى البسيطة */
 export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buffer> {
   const canvas = createCanvas(800, 200);
   const ctx = canvas.getContext("2d");
@@ -245,18 +247,19 @@ export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buf
   const infoX = avatarX + avatarSize + 30;
 
   // اسم المستخدم
-  ctx.fillStyle = "#F5F5F5";
-  ctx.font = `bold 28px ${FONT_FAMILY}`;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `bold 28px ${FONT}`;
   ctx.textAlign = "left";
-  ctx.fillText(truncate(ctx, data.username, 300), infoX, 50);
+  ctx.textBaseline = "alphabetic";
+  ctx.fillText(truncate(ctx, data.username || "User", 300), infoX, 50);
 
   // المستوى
-  ctx.font = `bold 16px ${FONT_FAMILY}`;
-  ctx.fillStyle = "#6B7280";
-  ctx.fillText(`المستوى: ${data.level}`, infoX, 80);
+  ctx.font = `16px ${FONT}`;
+  ctx.fillStyle = "#8E9297";
+  ctx.fillText(`المستوى: ${data.level ?? 0}`, infoX, 80);
 
   // الترتيب
-  ctx.fillText(`الترتيب: #${data.serverRank}`, infoX, 105);
+  ctx.fillText(`الترتيب: #${data.serverRank ?? 1}`, infoX, 105);
 
   // شريط التقدم
   const progressBarY = 140;
@@ -278,10 +281,11 @@ export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buf
   }
 
   // نص الخبرة
-  ctx.fillStyle = "#F5F5F5";
-  ctx.font = `bold 14px ${FONT_FAMILY}`;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.font = `bold 14px ${FONT}`;
   ctx.textAlign = "center";
-  ctx.fillText(`${data.currentExp} / ${data.maxExp} XP`, infoX + progressBarWidth / 2, progressBarY + 15);
+  ctx.textBaseline = "middle";
+  ctx.fillText(`${data.currentExp ?? 0} / ${data.maxExp ?? 0} XP`, infoX + progressBarWidth / 2, progressBarY + 10);
 
   return canvas.toBuffer("image/png");
 }
