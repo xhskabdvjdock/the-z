@@ -13,7 +13,22 @@ export type LogChannelKey =
   | "channelUpdate"
   | "roleUpdate"
   | "moderation"
-  | "server";
+  | "server"
+  | "commandUsage"
+  | "ticketCreate"
+  | "ticketClose"
+  | "levelUp"
+  | "reactionAdd"
+  | "reactionRemove"
+  | "threadCreate"
+  | "threadDelete"
+  | "inviteCreate"
+  | "inviteDelete"
+  | "emojiCreate"
+  | "emojiDelete"
+  | "emojiUpdate"
+  | "stickerCreate"
+  | "stickerDelete";
 
 /** يرسل تضمين (Embed) جاهز لروم اللوق المخصص لهذا النوع من الأحداث */
 export async function sendLog(

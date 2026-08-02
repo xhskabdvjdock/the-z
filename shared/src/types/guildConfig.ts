@@ -181,6 +181,7 @@ export interface IGuildConfig {
 
   logging: {
     enabled: boolean;
+    categoryId?: string;
     channels: {
       messageDelete?: string;
       messageEdit?: string;
@@ -192,6 +193,21 @@ export interface IGuildConfig {
       roleUpdate?: string;
       moderation?: string;
       server?: string;
+      commandUsage?: string;
+      ticketCreate?: string;
+      ticketClose?: string;
+      levelUp?: string;
+      reactionAdd?: string;
+      reactionRemove?: string;
+      threadCreate?: string;
+      threadDelete?: string;
+      inviteCreate?: string;
+      inviteDelete?: string;
+      emojiCreate?: string;
+      emojiDelete?: string;
+      emojiUpdate?: string;
+      stickerCreate?: string;
+      stickerDelete?: string;
     };
   };
 

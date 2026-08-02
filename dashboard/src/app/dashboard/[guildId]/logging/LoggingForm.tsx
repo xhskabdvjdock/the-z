@@ -21,7 +21,22 @@ const CHANNEL_FIELDS: { key: LoggingChannelKey; label: string; icon: string }[] 
   { key: "channelUpdate", label: "تعديلات الرومات", icon: "📁" },
   { key: "roleUpdate", label: "تعديلات الرتب", icon: "🎖️" },
   { key: "moderation", label: "الإجراءات الإشرافية", icon: "🛡️" },
-  { key: "server", label: "عام / متفرقات", icon: "📋" }
+  { key: "server", label: "عام / متفرقات", icon: "📋" },
+  { key: "commandUsage", label: "استخدام الأوامر", icon: "⚡" },
+  { key: "ticketCreate", label: "إنشاء التذاكر", icon: "🎫" },
+  { key: "ticketClose", label: "إغلاق التذاكر", icon: "🔒" },
+  { key: "levelUp", label: "صعود المستويات", icon: "⬆️" },
+  { key: "reactionAdd", label: "إضافة التفاعلات", icon: "👍" },
+  { key: "reactionRemove", label: "إزالة التفاعلات", icon: "👎" },
+  { key: "threadCreate", label: "إنشاء المواضيع", icon: "🧵" },
+  { key: "threadDelete", label: "حذف المواضيع", icon: "✂️" },
+  { key: "inviteCreate", label: "إنشاء الدعوات", icon: "✉️" },
+  { key: "inviteDelete", label: "حذف الدعوات", icon: "🗑️" },
+  { key: "emojiCreate", label: "إنشاء الإيموجي", icon: "😀" },
+  { key: "emojiDelete", label: "حذف الإيموجي", icon: "😢" },
+  { key: "emojiUpdate", label: "تعديل الإيموجي", icon: "🔄" },
+  { key: "stickerCreate", label: "إنشاء الملصقات", icon: "🏷️" },
+  { key: "stickerDelete", label: "حذف الملصقات", icon: "🗑️" }
 ];
 
 export default function LoggingForm({
