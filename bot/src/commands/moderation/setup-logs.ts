@@ -33,12 +33,12 @@ const command: BotCommand = {
     }
 
     // التحقق من التصنيف المحفوظ في الإعدادات أولاً
-    const config = await GuildConfig.findOne({ guildId: ctx.guild.id });
+    const guildConfig = await GuildConfig.findOne({ guildId: ctx.guild.id });
     let logCategory = category;
 
-    if (!logCategory && config?.logging?.categoryId) {
+    if (!logCategory && guildConfig?.logging?.categoryId) {
       try {
-        const fetchedChannel = await ctx.guild.channels.fetch(config.logging.categoryId);
+        const fetchedChannel = await ctx.guild.channels.fetch(guildConfig.logging.categoryId);
         if (fetchedChannel?.type === ChannelType.GuildCategory) {
           logCategory = fetchedChannel;
         }
