@@ -16,7 +16,7 @@ const event: BotEvent = {
     await sendLog(
       client,
       channel.guild.id,
-      "channelUpdate",
+      "channels",
       new EmbedBuilder()
         .setColor(0xed4245)
         .setTitle("➖ تم حذف روم")

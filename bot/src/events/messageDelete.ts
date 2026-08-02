@@ -10,7 +10,7 @@ const event: BotEvent = {
     await sendLog(
       client,
       message.guild.id,
-      "messageDelete",
+      "messages",
       new EmbedBuilder()
         .setColor(0xed4245)
         .setTitle("🗑️ تم حذف رسالة")

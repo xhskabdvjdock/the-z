@@ -15,7 +15,7 @@ const event: BotEvent = {
     await sendLog(
       client,
       newMessage.guild.id,
-      "messageEdit",
+      "messages",
       new EmbedBuilder()
         .setColor(0xfee75c)
         .setTitle("✏️ تم تعديل رسالة")

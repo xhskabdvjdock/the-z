@@ -20,7 +20,7 @@ const event: BotEvent = {
     await sendLog(
       client,
       guildMember.guild.id,
-      "memberLeave",
+      "members",
       new EmbedBuilder()
         .setColor(0xed4245)
         .setTitle("📤 عضو غادر السيرفر")

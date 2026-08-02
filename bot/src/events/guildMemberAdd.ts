@@ -22,7 +22,7 @@ const event: BotEvent = {
     await sendLog(
       client,
       member.guild.id,
-      "memberJoin",
+      "members",
       new EmbedBuilder()
         .setColor(0x57f287)
         .setTitle("📥 عضو جديد انضم")

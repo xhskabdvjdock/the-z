@@ -16,7 +16,7 @@ const event: BotEvent = {
     await sendLog(
       client,
       role.guild.id,
-      "roleUpdate",
+      "roles",
       new EmbedBuilder()
         .setColor(0xed4245)
         .setTitle("➖ تم حذف رتبة")

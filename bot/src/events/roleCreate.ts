@@ -16,7 +16,7 @@ const event: BotEvent = {
     await sendLog(
       client,
       role.guild.id,
-      "roleUpdate",
+      "roles",
       new EmbedBuilder()
         .setColor(0x57f287)
         .setTitle("➕ تم إنشاء رتبة جديدة")
