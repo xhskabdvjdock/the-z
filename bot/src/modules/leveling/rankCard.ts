@@ -61,20 +61,16 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
     ctx.clip();
     ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
     
-    // خلفية سوداء شفافة في أسفل الأفاتار للنص
-    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
-    ctx.fillRect(avatarX, avatarY + avatarSize - 50, avatarSize, 50);
-    
-    // اسم المستخدم على الأفاتار
+    // اسم المستخدم في أعلى الأفاتار
     ctx.font = "bold 14px sans-serif";
     ctx.fillStyle = "#F5F5F5";
     ctx.textAlign = "center";
-    ctx.fillText(truncate(ctx, member.displayName, avatarSize - 20), avatarX + avatarSize / 2, avatarY + avatarSize - 28);
+    ctx.fillText(truncate(ctx, member.displayName, avatarSize - 20), avatarX + avatarSize / 2, avatarY + 25);
     
-    // XP على الأفاتار
-    ctx.font = "12px sans-serif";
+    // XP في أسفل الأفاتار
+    ctx.font = "bold 12px sans-serif";
     ctx.fillStyle = "#F1E0C5";
-    ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, avatarY + avatarSize - 10);
+    ctx.fillText(`${data.currentXp} XP`, avatarX + avatarSize / 2, avatarY + avatarSize - 15);
     
     ctx.restore();
   } catch {
