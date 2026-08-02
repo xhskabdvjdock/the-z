@@ -1,0 +1,44 @@
+name: Deploy Discord Commands
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'bot/src/commands/**'
+      - 'bot/src/deploy-commands.ts'
+      - 'shared/src/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm install
+          cd shared && npm install
+          cd ../bot && npm install
+      
+      - name: Build shared package
+        run: |
+          cd shared
+          npm run build
+      
+      - name: Deploy Discord commands
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          DEV_GUILD_ID: ${{ secrets.DEV_GUILD_ID }}
+        run: |
+          cd bot
+          npm run deploy
