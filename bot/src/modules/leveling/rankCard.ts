@@ -84,6 +84,7 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fillText("SERVER RANK", infoX, labelY);
   ctx.fillText("WEEKLY RANK", infoX + 140, labelY);
   ctx.fillText("WEEKLY EXP", infoX + 280, labelY);
+  ctx.fillText("USERNAME", infoX + 420, labelY);
 
   // قيم البيانات
   ctx.font = "bold 18px sans-serif";
@@ -94,6 +95,7 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fillText(`#${data.rank}`, infoX, valueY);
   ctx.fillText("Off", infoX + 140, valueY);
   ctx.fillText("0", infoX + 280, valueY);
+  ctx.fillText(truncate(ctx, member.displayName, 100), infoX + 420, valueY);
 
   // شريط التقدم في أسفل اللوحة اليسرى
   const progressBarY = HEIGHT - 8;
@@ -147,11 +149,6 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
   ctx.fillStyle = "#F5F5F5";
   ctx.textAlign = "center";
   ctx.fillText(`${data.level}`, rightPanelX + rightPanelWidth / 2, levelInnerBoxY + 22);
-  
-  // اسم المستخدم أسفل المستوى
-  ctx.font = "bold 12px sans-serif";
-  ctx.fillStyle = "#6B7280";
-  ctx.fillText(truncate(ctx, member.displayName, rightPanelWidth - 60), rightPanelX + rightPanelWidth / 2, levelInnerBoxY + 38);
 
   // صندوق EXP
   const expBoxY = levelBoxY + levelBoxHeight + 20;
