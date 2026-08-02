@@ -24,7 +24,7 @@ function createEmptyAutoResponse(): IAutoResponse {
     enabled: true,
     deleteTrigger: false,
     channelIds: [],
-    response: { enabled: true, content: "" }
+    responses: [{ enabled: true, content: "" }]
   };
 }
 
@@ -49,6 +49,30 @@ export default function AutoResponseForm({
 
   const removeItem = (id: string) => {
     setItems(items.filter((it) => it.id !== id));
+  };
+
+  const addResponse = (itemId: string) => {
+    setItems(items.map((it) => 
+      it.id === itemId 
+        ? { ...it, responses: [...it.responses, { enabled: true, content: "" }] }
+        : it
+    ));
+  };
+
+  const removeResponse = (itemId: string, responseIndex: number) => {
+    setItems(items.map((it) =>
+      it.id === itemId
+        ? { ...it, responses: it.responses.filter((_, i) => i !== responseIndex) }
+        : it
+    ));
+  };
+
+  const updateResponse = (itemId: string, responseIndex: number, response: any) => {
+    setItems(items.map((it) =>
+      it.id === itemId
+        ? { ...it, responses: it.responses.map((r, i) => i === responseIndex ? response : r) }
+        : it
+    ));
   };
 
   return (
@@ -124,10 +148,45 @@ export default function AutoResponseForm({
             onChange={(v) => updateItem(item.id, { channelIds: v })}
           />
 
-          <CustomMessageEditor
-            value={item.response}
-            onChange={(msg) => updateItem(item.id, { response: msg })}
-          />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <label className="label !mb-0">الردود ({item.responses.length})</label>
+              <button
+                type="button"
+                className="btn-secondary !px-2.5 !py-1 text-xs"
+                onClick={() => addResponse(item.id)}
+              >
+                + إضافة رد
+              </button>
+            </div>
+
+            {item.responses.length === 0 && (
+              <p className="text-sm text-slate-400">لا توجد ردود مضافة.</p>
+            )}
+
+            {item.responses.map((response, responseIndex) => (
+              <div key={responseIndex} className="card flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                    رد #{responseIndex + 1}
+                  </span>
+                  {item.responses.length > 1 && (
+                    <button
+                      type="button"
+                      className="btn-danger !px-2 !py-1 text-xs"
+                      onClick={() => removeResponse(item.id, responseIndex)}
+                    >
+                      حذف
+                    </button>
+                  )}
+                </div>
+                <CustomMessageEditor
+                  value={response}
+                  onChange={(msg) => updateResponse(item.id, responseIndex, msg)}
+                />
+              </div>
+            ))}
+          </div>
         </section>
       ))}
 

@@ -11,7 +11,13 @@ export default async function AutoResponsePage({ params }: { params: { guildId: 
     getGuildChannels(params.guildId)
   ]);
 
-  const initial = config?.autoResponses ?? [];
+  // Migrate old response field to new responses array for backward compatibility
+  const initial = (config?.autoResponses ?? []).map((ar: any) => {
+    if (ar.response && !ar.responses) {
+      return { ...ar, responses: [ar.response], response: undefined };
+    }
+    return ar;
+  });
 
   return (
     <div>

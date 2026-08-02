@@ -63,7 +63,7 @@ export interface IAutoResponse {
   id: string;
   trigger: string;
   matchType: "exact" | "contains" | "startsWith" | "regex";
-  response: ICustomMessage;
+  responses: ICustomMessage[];
   channelIds: string[];
   enabled: boolean;
   deleteTrigger: boolean;
