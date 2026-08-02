@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+      target: builder
+    container_name: the-z-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./bot/certs:/app/certs
+    networks:
+      - the-z-network
+
+  deploy-commands:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+      target: deploy
+    container_name: the-z-deploy
+    env_file:
+      - .env
+    profiles:
+      - deploy
+
+  clear-commands:
+    build:
+      context: .
+      dockerfile: bot/Dockerfile
+      target: clear
+    container_name: the-z-clear
+    env_file:
+      - .env
+    profiles:
+      - clear
+
+networks:
+  the-z-network:
+    driver: bridge
