@@ -27,6 +27,8 @@ export default async function LoggingPage({ params }: { params: { guildId: strin
       other: config?.logging?.channels?.other ?? ""
     },
     customChannels: {
+      messages: Array.isArray(config?.logging?.customChannels?.messages) ? config.logging.customChannels.messages : [],
+      commands: Array.isArray(config?.logging?.customChannels?.commands) ? config.logging.customChannels.commands : (config?.logging?.customChannels?.commands as any ? [config.logging.customChannels.commands as string] : []),
       media: Array.isArray(config?.logging?.customChannels?.media) ? config.logging.customChannels.media : (config?.logging?.customChannels?.media as any ? [config.logging.customChannels.media as string] : []),
       stickers: Array.isArray(config?.logging?.customChannels?.stickers) ? config.logging.customChannels.stickers : (config?.logging?.customChannels?.stickers as any ? [config.logging.customChannels.stickers as string] : [])
     }

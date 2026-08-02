@@ -26,6 +26,8 @@ const CHANNEL_FIELDS: { key: LoggingChannelKey; label: string; icon: string }[] 
 ];
 
 const CUSTOM_CHANNEL_FIELDS: { key: CustomChannelKey; label: string; icon: string }[] = [
+  { key: "messages", label: "الرسائل", icon: "💬" },
+  { key: "commands", label: "الأوامر", icon: "⚡" },
   { key: "media", label: "الصور والفيديوهات", icon: "🎬" },
   { key: "stickers", label: "الملصقات", icon: "🏷️" }
 ];

@@ -19,23 +19,43 @@ const event: BotEvent = {
     const customChannels = gConfig.logging?.customChannels;
     console.log("Custom channels config:", JSON.stringify(customChannels));
 
-    // التحقق من الصور والفيديوهات - حذف خارج القنوات المخصصة فقط
-    if (customChannels?.media && customChannels.media.length > 0) {
-      const hasMedia = message.attachments.some(a => a.contentType?.startsWith("image/") || a.contentType?.startsWith("video/"));
-      console.log("Media check:", hasMedia, "Channel:", message.channelId, "Allowed:", customChannels.media);
-      if (hasMedia && !customChannels.media.includes(message.channelId)) {
-        console.log("Deleting media in channel:", message.channelId);
+    const channelId = message.channelId;
+    const isTextMessage = !message.attachments.size && !message.stickers.size;
+    const isCommand = message.content.startsWith(gConfig.prefix);
+    const hasMedia = message.attachments.some(a => a.contentType?.startsWith("image/") || a.contentType?.startsWith("video/"));
+    const hasStickers = message.stickers.size > 0;
+
+    // إذا الشات مخصص للرسائل - يُسمح فقط بالرسائل النصية
+    if (customChannels?.messages?.includes(channelId)) {
+      if (!isTextMessage) {
+        console.log("Channel is for messages only, deleting non-text content");
         await message.delete().catch(() => null);
         return;
       }
     }
 
-    // التحقق من الملصقات - حذف خارج القنوات المخصصة فقط
-    if (customChannels?.stickers && customChannels.stickers.length > 0) {
-      const hasStickers = message.stickers.size > 0;
-      console.log("Stickers check:", hasStickers, "Channel:", message.channelId, "Allowed:", customChannels.stickers);
-      if (hasStickers && !customChannels.stickers.includes(message.channelId)) {
-        console.log("Deleting sticker in channel:", message.channelId);
+    // إذا الشات مخصص للأوامر - يُسمح فقط بالأوامر
+    if (customChannels?.commands?.includes(channelId)) {
+      if (!isCommand) {
+        console.log("Channel is for commands only, deleting non-command content");
+        await message.delete().catch(() => null);
+        return;
+      }
+    }
+
+    // إذا الشات مخصص للصور والفيديوهات - يُسمح فقط بالصور والفيديوهات
+    if (customChannels?.media?.includes(channelId)) {
+      if (!hasMedia) {
+        console.log("Channel is for media only, deleting non-media content");
+        await message.delete().catch(() => null);
+        return;
+      }
+    }
+
+    // إذا الشات مخصص للملصقات - يُسمح فقط بالملصقات
+    if (customChannels?.stickers?.includes(channelId)) {
+      if (!hasStickers) {
+        console.log("Channel is for stickers only, deleting non-sticker content");
         await message.delete().catch(() => null);
         return;
       }
