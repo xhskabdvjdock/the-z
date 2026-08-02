@@ -89,16 +89,41 @@ export default function LoggingForm({
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {CUSTOM_CHANNEL_FIELDS.map((field) => (
-            <ChannelSelect
-              key={field.key}
-              label={`${field.icon} ${field.label}`}
-              channels={channels}
-              types={[0, 5]}
-              value={state.customChannels?.[field.key] ?? ""}
-              onChange={(v) =>
-                setState({ ...state, customChannels: { ...state.customChannels, [field.key]: v } })
-              }
-            />
+            <div key={field.key} className="flex flex-col gap-2">
+              <label className="label">{`${field.icon} ${field.label}`}</label>
+              <div className="flex flex-col gap-2">
+                {channels.map((channel) => (
+                  <label key={channel.id} className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={(state.customChannels?.[field.key] ?? []).includes(channel.id)}
+                      onChange={(e) => {
+                        const current = state.customChannels?.[field.key] ?? [];
+                        if (e.target.checked) {
+                          setState({
+                            ...state,
+                            customChannels: {
+                              ...state.customChannels,
+                              [field.key]: [...current, channel.id]
+                            }
+                          });
+                        } else {
+                          setState({
+                            ...state,
+                            customChannels: {
+                              ...state.customChannels,
+                              [field.key]: current.filter((id) => id !== channel.id)
+                            }
+                          });
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <span>{channel.name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </section>

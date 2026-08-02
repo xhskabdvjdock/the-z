@@ -15,6 +15,43 @@ const event: BotEvent = {
 
     const gConfig = await getGuildConfig(client, message.guild.id);
 
+    // التحقق من القنوات المخصصة
+    const customChannels = gConfig.logging?.customChannels;
+
+    // التحقق من الرسائل النصية
+    if (customChannels?.messages && customChannels.messages.length > 0) {
+      const isTextMessage = !message.attachments.size && !message.stickers.size;
+      if (isTextMessage && !customChannels.messages.includes(message.channelId)) {
+        return;
+      }
+    }
+
+    // التحقق من الأوامر
+    if (customChannels?.commands && customChannels.commands.length > 0) {
+      const isCommand = message.content.startsWith(gConfig.prefix);
+      if (isCommand && !customChannels.commands.includes(message.channelId)) {
+        return;
+      }
+    }
+
+    // التحقق من الصور والفيديوهات
+    if (customChannels?.media && customChannels.media.length > 0) {
+      const hasMedia = message.attachments.some(a => a.contentType?.startsWith("image/") || a.contentType?.startsWith("video/"));
+      if (hasMedia && !customChannels.media.includes(message.channelId)) {
+        await message.delete().catch(() => null);
+        return;
+      }
+    }
+
+    // التحقق من الملصقات
+    if (customChannels?.stickers && customChannels.stickers.length > 0) {
+      const hasStickers = message.stickers.size > 0;
+      if (hasStickers && !customChannels.stickers.includes(message.channelId)) {
+        await message.delete().catch(() => null);
+        return;
+      }
+    }
+
     // 1) الرقابة التلقائية أولاً (Auto-Mod)
     const wasActioned = await handleAutoMod(client, message, gConfig);
     if (wasActioned) return;
