@@ -3,15 +3,17 @@ import { GuildMember } from "discord.js";
 import fs from "fs";
 import path from "path";
 
-// --- تحميل ملف الخط كـ Buffer مباشر لضمان العمل في جميع البيئات ---
 let fontName = "sans-serif";
 
 function loadCustomFont() {
-  // المحاولة في أكثر من مسار محتمل لضمان الوصول للملف سواء في dist أو root
+  const rootDir = process.cwd();
+
+  // المسارات التي تبحث عن مجلد fonts خارج مجلد bot وفي جذور المستودع
   const possiblePaths = [
-    path.join(process.cwd(), "fonts", "Cairo-Bold.ttf"),
-    path.join(__dirname, "..", "fonts", "Cairo-Bold.ttf"),
-    path.join(__dirname, "fonts", "Cairo-Bold.ttf")
+    path.resolve(rootDir, "..", "fonts", "Cairo-Bold.ttf"),
+    path.resolve(rootDir, "fonts", "Cairo-Bold.ttf"),
+    path.resolve(__dirname, "..", "..", "..", "..", "fonts", "Cairo-Bold.ttf"),
+    path.resolve(__dirname, "..", "..", "..", "fonts", "Cairo-Bold.ttf"),
   ];
 
   for (const fontPath of possiblePaths) {
@@ -21,18 +23,17 @@ function loadCustomFont() {
         const registered = GlobalFonts.register(fontBuffer, "CairoFont");
         if (registered) {
           fontName = "CairoFont";
-          console.log(`[RankCard] تم تحميل الخط بنجاح من: ${fontPath}`);
+          console.log(`[RankCard] ✅ تم تحميل الخط بنجاح من: ${fontPath}`);
           return;
         }
       } catch (err) {
-        console.error(`[RankCard] فشل قراءة الخط من ${fontPath}:`, err);
+        console.error(`[RankCard] ❌ فشل قراءة الخط من ${fontPath}:`, err);
       }
     }
   }
-  console.warn("[RankCard] تحذير: لم يتم العثور على Cairo-Bold.ttf في المسارات المحددة!");
+  console.warn("[RankCard] ⚠️ تحذير: لم يتم العثور على Cairo-Bold.ttf في المسارات المحددة!");
 }
 
-// تشغيل تحميل الخط فور استدعاء الملف
 loadCustomFont();
 
 interface RankCardData {
@@ -109,7 +110,7 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
     ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
     ctx.restore();
   } catch {
-    // تجاهل خطأ الأفاتار
+    // تجاهل أخطاء الأفاتار
   }
 
   const infoX = avatarX + avatarSize + 30;
