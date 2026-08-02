@@ -3,14 +3,19 @@ import { GuildMember } from "discord.js";
 import fs from "fs";
 import path from "path";
 
-let isFontLoaded = false;
+let isFontRegistered = false;
 
-function loadCustomFont() {
-  // فحص المسار المباشر من جذر مجلد bot والمسارات المترجمة في dist
+async function ensureFontLoaded(): Promise<void> {
+  if (isFontRegistered) return;
+
+  // 1. تجربة جميع المسارات المحتملة لمجلد fonts داخل وخارج dist
+  const rootDir = process.cwd();
   const possiblePaths = [
-    path.resolve(process.cwd(), "fonts", "Cairo-Bold.ttf"),
+    path.resolve(rootDir, "fonts", "Cairo-Bold.ttf"),
+    path.resolve(rootDir, "bot", "fonts", "Cairo-Bold.ttf"),
     path.resolve(__dirname, "..", "..", "..", "fonts", "Cairo-Bold.ttf"),
-    path.resolve(__dirname, "..", "..", "fonts", "Cairo-Bold.ttf")
+    path.resolve(__dirname, "..", "..", "fonts", "Cairo-Bold.ttf"),
+    path.resolve(__dirname, "..", "fonts", "Cairo-Bold.ttf")
   ];
 
   for (const fontPath of possiblePaths) {
@@ -18,19 +23,33 @@ function loadCustomFont() {
       try {
         const fontBuffer = fs.readFileSync(fontPath);
         GlobalFonts.register(fontBuffer, "CairoFont");
-        isFontLoaded = true;
-        console.log(`[RankCard] ✅ تم تحميل الخط بنجاح من: ${fontPath}`);
+        isFontRegistered = true;
+        console.log(`[RankCard] ✅ تم تحميل الخط بنجاح محلياً من: ${fontPath}`);
         return;
       } catch (err) {
-        console.error(`[RankCard] ❌ خطأ أثناء قراءة الخط:`, err);
+        console.error(`[RankCard] ❌ فشل قراءة الخط محلياً من ${fontPath}:`, err);
       }
     }
   }
 
-  console.warn("[RankCard] ⚠️ لم يتم العثور على Cairo-Bold.ttf داخل مجلد bot/fonts!");
+  // 2. إذا فشلت كل المسارات المحلية، نجلب الملف فوراً عبر الشبكة من GitHub RAW
+  try {
+    console.log("[RankCard] 🔄 جاري تحميل الخط مباشرة من GitHub RAW...");
+    const fontUrl = "https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/bot/fonts/Cairo-Bold.ttf";
+    const res = await fetch(fontUrl);
+    if (res.ok) {
+      const arrayBuffer = await res.arrayBuffer();
+      const fontBuffer = Buffer.from(arrayBuffer);
+      GlobalFonts.register(fontBuffer, "CairoFont");
+      isFontRegistered = true;
+      console.log("[RankCard] ✅ تم جلب الخط وتحقينه بنجاح عبر الشبكة!");
+    } else {
+      console.error(`[RankCard] ❌ فشل جلب الخط من GitHub RAW: HTTP ${res.status}`);
+    }
+  } catch (err) {
+    console.error("[RankCard] ❌ خطأ في جلب الخط عبر الشبكة:", err);
+  }
 }
-
-loadCustomFont();
 
 interface RankCardData {
   level: number;
@@ -75,7 +94,9 @@ function truncate(ctx: SKRSContext2D, text: string, maxWidth: number): string {
 }
 
 export async function generateRankCard(member: GuildMember, data: RankCardData): Promise<Buffer> {
-  const fontName = isFontLoaded ? "CairoFont" : "sans-serif";
+  await ensureFontLoaded();
+
+  const fontName = isFontRegistered ? "CairoFont" : "sans-serif";
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
 
@@ -205,7 +226,9 @@ export async function generateRankCard(member: GuildMember, data: RankCardData):
 }
 
 export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buffer> {
-  const fontName = isFontLoaded ? "CairoFont" : "sans-serif";
+  await ensureFontLoaded();
+
+  const fontName = isFontRegistered ? "CairoFont" : "sans-serif";
   const canvas = createCanvas(800, 200);
   const ctx = canvas.getContext("2d");
 
