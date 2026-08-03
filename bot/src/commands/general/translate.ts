@@ -3,6 +3,10 @@ import { BotCommand } from "../../types/command";
 import { config } from "../../config";
 import { translate } from "@vitalets/google-translate-api";
 
+// بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
+const translationCache = new Map<string, { text: string; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+
 const command: BotCommand = {
   name: "translate",
   description: "ترجمة النص تلقائياً (عربي ↔ إنجليزي)",
@@ -16,13 +20,13 @@ const command: BotCommand = {
       : null;
 
     if (!referencedMessage) {
-      await ctx.reply("❌ يجب تحديد رسالة لترجمتها");
+      await ctx.reply("يجب تحديد رسالة لترجمتها");
       return;
     }
 
     const text = referencedMessage.content;
     if (!text || text.trim().length === 0) {
-      await ctx.reply("❌ الرسالة المحددة لا تحتوي على نص");
+      await ctx.reply("الرسالة المحددة لا تحتوي على نص");
       return;
     }
 
@@ -40,6 +44,24 @@ const command: BotCommand = {
       targetLang = "en";
     }
 
+    // التحقق من الذاكرة المؤقتة
+    const cacheKey = `${text.substring(0, 100)}_${targetLang}`;
+    const cached = translationCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      const translatedText = cached.text.length > 4096 
+        ? cached.text.substring(0, 4093) + "..." 
+        : cached.text;
+
+      const embed = new EmbedBuilder()
+        .setColor(config.defaultColor)
+        .setDescription(translatedText);
+
+      await ctx.reply({ embeds: [embed] });
+      return;
+    }
+
     try {
       const result = await translate(text, { to: targetLang });
 
@@ -48,14 +70,22 @@ const command: BotCommand = {
         ? result.text.substring(0, 4093) + "..." 
         : result.text;
 
+      // حفظ في الذاكرة المؤقتة
+      translationCache.set(cacheKey, { text: result.text, timestamp: now });
+
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
         .setDescription(translatedText);
 
       await ctx.reply({ embeds: [embed] });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Translation error:", error);
-      await ctx.reply("❌ فشلت الترجمة، يرجى المحاولة مرة أخرى");
+      
+      if (error.message?.includes('Too Many Requests')) {
+        await ctx.reply("ترجمة كثيرة جداً، يرجى الانتظار قليلاً قبل المحاولة مرة أخرى");
+      } else {
+        await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
+      }
     }
   }
 };
