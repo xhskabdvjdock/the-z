@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-discord-not-quite-black;
+  }
+  
+  body {
+    @apply bg-discord-not-quite-black text-white;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    @apply bg-gradient-to-br from-discord-blurple to-purple-600;
+  }
+
+  .gradient-success {
+    @apply bg-gradient-to-br from-discord-green to-emerald-600;
+  }
+
+  .gradient-danger {
+    @apply bg-gradient-to-br from-discord-red to-rose-600;
+  }
+
+  .glass-effect {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-xl hover:scale-[1.02];
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-discord-blurple to-purple-400;
+  }
+}
