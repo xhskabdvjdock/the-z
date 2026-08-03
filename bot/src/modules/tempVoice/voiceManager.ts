@@ -55,13 +55,7 @@ export async function handleVoiceStateUpdate(
   }
 
   // 3) تحديث قوائم الطرد/نقل الملكية في اللوحة عند انضمام عضو لروم مؤقت قائم
-  if (
-    newState.channelId &&
-    newState.channelId !== oldState.channelId &&
-    newState.channelId !== tvConfig.joinToCreateChannelId
-  ) {
-    await refreshPanelIfTemp(guild, newState.channelId);
-  }
+  // Not needed since panel is sent in voice channel
 }
 
 /** تسجّل معالِجات الأزرار/القوائم/النماذج الخاصة بلوحة تحكم الروم الصوتي */
@@ -153,37 +147,12 @@ async function createTempChannel(
   }
 
   try {
-    // Find a text channel in the same category to send the panel
-    let textChannel;
-    if (newChannel.parentId) {
-      const category = newChannel.parent;
-      if (category) {
-        const textChannels = category.children.cache.filter(c => c.type === ChannelType.GuildText);
-        if (textChannels.size > 0) {
-          textChannel = textChannels.first();
-        }
-      }
-    }
-
-    if (textChannel) {
-      // Send control panel to the existing text channel
-      const panelMessage = await textChannel.send({
-        content: `🎙️ Temporary voice channel created for <@${member.id}>: **${newChannel.name}**`,
-        embeds: [buildControlEmbed()],
-        components: buildControlComponents(newChannel)
-      });
-
-      // Store references for future updates
-      await TempVoiceChannel.findOneAndUpdate(
-        { channelId: newChannel.id },
-        { 
-          textChannelId: textChannel.id,
-          panelMessageId: panelMessage.id
-        } as any
-      );
-    }
+    await newChannel.send({
+      embeds: [buildControlEmbed()],
+      components: buildControlComponents(newChannel)
+    });
   } catch (err) {
-    console.error("فشل إرسال لوحة التحكم:", err);
+    console.error("فشل إرسال لوحة تحكم الروم الصوتي:", err);
   }
 }
 
@@ -205,16 +174,6 @@ async function cleanupIfEmpty(oldState: VoiceState): Promise<void> {
     await channel.delete().catch(() => {});
     await TempVoiceChannel.deleteOne({ channelId }).catch(() => {});
   }
-}
-
-async function refreshPanelIfTemp(guild: Guild, channelId: string): Promise<void> {
-  const doc = await TempVoiceChannel.findOne({ channelId });
-  if (!doc) return;
-
-  const channel = guild.channels.cache.get(channelId);
-  if (!channel || channel.type !== ChannelType.GuildVoice) return;
-
-  await refreshControlPanel(channel);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -364,29 +323,6 @@ function buildControlComponents(channel: VoiceChannel) {
     new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(permissionsSelect),
     buttonRow
   ];
-}
-
-async function refreshControlPanel(channel: VoiceChannel): Promise<void> {
-  const doc = await TempVoiceChannel.findOne({ channelId: channel.id });
-  if (!doc) return;
-
-  const guild = channel.guild;
-  const textChannelId = (doc as any).textChannelId;
-  const panelMessageId = (doc as any).panelMessageId;
-  
-  if (!textChannelId || !panelMessageId) return;
-
-  const textChannel = guild.channels.cache.get(textChannelId);
-  if (!textChannel || textChannel.type !== ChannelType.GuildText) return;
-
-  try {
-    const panelMessage = await textChannel.messages.fetch(panelMessageId).catch(() => null);
-    if (!panelMessage) return;
-
-    await panelMessage.edit({ components: buildControlComponents(channel) }).catch(() => {});
-  } catch (err) {
-    console.error("فشل تحديث لوحة التحكم:", err);
-  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -601,7 +537,6 @@ async function handleClaim(interaction: ButtonInteraction): Promise<void> {
   await doc.save();
 
   await replyEphemeral(interaction, "👑 تم استلام ملكية الروم بنجاح.");
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 /* -------------------------------------------------------------------------- */
@@ -643,7 +578,6 @@ async function handleKickSelect(interaction: StringSelectMenuInteraction): Promi
 
   await targetMember.voice.disconnect().catch(() => {});
   await replyEphemeral(interaction, `🦵 تم طرد **${targetMember.displayName}** من الروم.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleOwnerSelect(interaction: StringSelectMenuInteraction): Promise<void> {
@@ -683,7 +617,6 @@ async function handleOwnerSelect(interaction: StringSelectMenuInteraction): Prom
   await doc.save();
 
   await replyEphemeral(interaction, `🎁 تم نقل ملكية الروم إلى **${targetMember.displayName}**.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 /* -------------------------------------------------------------------------- */
@@ -984,19 +917,16 @@ async function handleClaimFromMenu(interaction: StringSelectMenuInteraction, cha
   }
 
   await replyEphemeral(interaction, "👑 You have successfully claimed ownership of this channel.");
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleLock(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
   await replyEphemeral(interaction, "🔒 Channel locked successfully.");
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleUnlock(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: true });
   await replyEphemeral(interaction, "🔓 Channel unlocked successfully.");
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function showPermitModal(interaction: StringSelectMenuInteraction): Promise<void> {
@@ -1050,13 +980,11 @@ async function showInviteModal(interaction: StringSelectMenuInteraction): Promis
 async function handleGhost(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
   await replyEphemeral(interaction, "👻 Channel is now invisible.");
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleUnghost(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
   await replyEphemeral(interaction, "👁️ Channel is now visible.");
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function showTransferModal(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
@@ -1110,7 +1038,6 @@ async function handleTransferSelect(interaction: StringSelectMenuInteraction): P
   await doc.save();
 
   await replyEphemeral(interaction, `🎁 Ownership transferred to **${targetMember.displayName}**.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1133,7 +1060,6 @@ async function handleNameModalSubmit(interaction: ModalSubmitInteraction): Promi
   const newName = interaction.fields.getTextInputValue("channel_name");
   await channel.setName(newName);
   await replyEphemeral(interaction, `✅ Channel name changed to **${newName}**.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleLimitModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1157,7 +1083,6 @@ async function handleLimitModalSubmit(interaction: ModalSubmitInteraction): Prom
 
   await channel.setUserLimit(limit === 0 ? 0 : limit);
   await replyEphemeral(interaction, `✅ User limit changed to ${limit === 0 ? "unlimited" : limit}.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleStatusModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1176,7 +1101,6 @@ async function handleStatusModalSubmit(interaction: ModalSubmitInteraction): Pro
   const status = interaction.fields.getTextInputValue("channel_status");
   await channel.setName(status);
   await replyEphemeral(interaction, `✅ Channel status changed to **${status}**.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleGameModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1195,7 +1119,6 @@ async function handleGameModalSubmit(interaction: ModalSubmitInteraction): Promi
   const gameName = interaction.fields.getTextInputValue("game_name");
   await channel.setName(gameName);
   await replyEphemeral(interaction, `✅ Channel name changed to game: **${gameName}**.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleBitrateModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1219,7 +1142,6 @@ async function handleBitrateModalSubmit(interaction: ModalSubmitInteraction): Pr
 
   await channel.setBitrate(bitrate * 1000);
   await replyEphemeral(interaction, `✅ Bitrate changed to ${bitrate} kbps.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleRegionModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1255,7 +1177,6 @@ async function handlePermitModalSubmit(interaction: ModalSubmitInteraction): Pro
   const targetId = interaction.fields.getTextInputValue("permit_target");
   await channel.permissionOverwrites.edit(targetId, { Connect: true });
   await replyEphemeral(interaction, `✅ Permitted <@${targetId}> to access the channel.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleRejectModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1274,7 +1195,6 @@ async function handleRejectModalSubmit(interaction: ModalSubmitInteraction): Pro
   const targetId = interaction.fields.getTextInputValue("reject_target");
   await channel.permissionOverwrites.edit(targetId, { Connect: false });
   await replyEphemeral(interaction, `✅ Rejected <@${targetId}> from accessing the channel.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
 
 async function handleInviteModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1293,5 +1213,4 @@ async function handleInviteModalSubmit(interaction: ModalSubmitInteraction): Pro
   const userId = interaction.fields.getTextInputValue("invite_user");
   await channel.permissionOverwrites.edit(userId, { Connect: true });
   await replyEphemeral(interaction, `✅ Invited <@${userId}> to the channel.`);
-  await refreshControlPanel(channel).catch(() => {});
 }
