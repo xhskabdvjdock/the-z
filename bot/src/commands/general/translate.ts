@@ -31,29 +31,26 @@ const command: BotCommand = {
     const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
     
     let targetLang: string;
-    let languageName: string;
-    let title: string;
 
     if (isArabic) {
       targetLang = "en";
-      languageName = "العربية";
-      title = "🇬🇧 ترجمة إلى الإنجليزية";
     } else if (isEnglish) {
       targetLang = "ar";
-      languageName = "الإنجليزية";
-      title = "🇸🇦 ترجمة إلى العربية";
     } else {
       targetLang = "en";
-      languageName = "لغة أخرى";
-      title = "🇬🇧 ترجمة إلى الإنجليزية";
     }
 
     try {
       const result = await translate(text, { to: targetLang });
 
+      // التأكد من أن النص المترجم لا يتجاوز حد Discord
+      const translatedText = result.text.length > 4096 
+        ? result.text.substring(0, 4093) + "..." 
+        : result.text;
+
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
-        .setDescription(result.text);
+        .setDescription(translatedText);
 
       await ctx.reply({ embeds: [embed] });
     } catch (error) {
