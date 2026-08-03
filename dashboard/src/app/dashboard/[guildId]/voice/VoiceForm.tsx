@@ -48,6 +48,14 @@ export default function VoiceForm({
             onChange={(v) => setState({ ...state, categoryId: v })}
           />
 
+          <ChannelSelect
+            label="روم لوحة التحكم (الذي تُرسل فيه اللوحة)"
+            channels={channels}
+            types={[0]}
+            value={state.controlPanelChannelId ?? ""}
+            onChange={(v) => setState({ ...state, controlPanelChannelId: v })}
+          />
+
           <div>
             <label className="label">الحد الافتراضي لعدد الأعضاء (0 = بلا حد)</label>
             <input
