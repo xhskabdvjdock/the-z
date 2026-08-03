@@ -920,13 +920,15 @@ async function handleClaimFromMenu(interaction: StringSelectMenuInteraction, cha
 }
 
 async function handleLock(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
-  await replyEphemeral(interaction, "🔒 Channel locked successfully.");
+  await interaction.editReply({ content: "🔒 Channel locked successfully." });
 }
 
 async function handleUnlock(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: true });
-  await replyEphemeral(interaction, "🔓 Channel unlocked successfully.");
+  await interaction.editReply({ content: "🔓 Channel unlocked successfully." });
 }
 
 async function showPermitModal(interaction: StringSelectMenuInteraction): Promise<void> {
@@ -978,13 +980,15 @@ async function showInviteModal(interaction: StringSelectMenuInteraction): Promis
 }
 
 async function handleGhost(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
-  await replyEphemeral(interaction, "👻 Channel is now invisible.");
+  await interaction.editReply({ content: "👻 Channel is now invisible." });
 }
 
 async function handleUnghost(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await interaction.deferReply({ ephemeral: true });
   await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
-  await replyEphemeral(interaction, "👁️ Channel is now visible.");
+  await interaction.editReply({ content: "👁️ Channel is now visible." });
 }
 
 async function showTransferModal(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
