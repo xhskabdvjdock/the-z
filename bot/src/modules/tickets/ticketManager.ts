@@ -201,6 +201,19 @@ async function handleTicketOpenRequest(
     return;
   }
 
+  // التحقق من الرتب المحظورة
+  const member = interaction.member as GuildMember;
+  if (category.blockedRoleIds && category.blockedRoleIds.length > 0) {
+    const hasBlockedRole = category.blockedRoleIds.some((roleId) => member.roles.cache.has(roleId));
+    if (hasBlockedRole) {
+      await interaction.reply({ 
+        content: "❌ لا يمكنك فتح تذكرة لأنك تمتلك رتبة محظورة من فتح التذاكر.", 
+        ephemeral: true 
+      });
+      return;
+    }
+  }
+
   const maxOpen = gConfig.tickets.maxOpenPerUser;
   if (maxOpen > 0) {
     const openCount = await Ticket.countDocuments({
@@ -334,8 +347,55 @@ async function handleTicketClaim(interaction: ButtonInteraction, client: Extende
     return;
   }
 
+  // إذا كانت التذكرة مستلمة بالفعل
+  if (ticket.claimedBy) {
+    // إذا كان نفس الشخص قام بالاستلام، قم بإلغاء الاستلام
+    if (ticket.claimedBy === member.id) {
+      ticket.claimedBy = undefined;
+      await ticket.save();
+      
+      // تحديث الأزرار
+      const controlRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+        new ButtonBuilder()
+          .setCustomId("ticket_close")
+          .setLabel(category.closeButtonLabel || "إغلاق")
+          .setStyle(ButtonStyle.Danger),
+        new ButtonBuilder()
+          .setCustomId("ticket_claim")
+          .setLabel(category.claimButtonLabel || "استلام")
+          .setStyle(ButtonStyle.Secondary)
+      );
+      
+      await interaction.update({ 
+        content: `✅ تم إلغاء استلام هذه التذكرة بواسطة <@${member.id}>.`,
+        components: [controlRow]
+      });
+      return;
+    } else {
+      // شخص آخر استلم التذكرة بالفعل
+      await interaction.reply({ 
+        content: `❌ هذه التذكرة مستلمة بالفعل بواسطة <@${ticket.claimedBy}>.`, 
+        ephemeral: true 
+      });
+      return;
+    }
+  }
+
+  // استلام التذكرة
   ticket.claimedBy = member.id;
   await ticket.save();
+
+  // تحديث الأزرار لعرض اسم المستلم
+  const controlRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId("ticket_close")
+      .setLabel(category.closeButtonLabel || "إغلاق")
+      .setStyle(ButtonStyle.Danger),
+    new ButtonBuilder()
+      .setCustomId("ticket_claim")
+      .setLabel(`مستلم: ${member.user.username}`)
+      .setStyle(ButtonStyle.Success)
+  );
 
   const claimMsg = category?.claimMessage;
   if (claimMsg?.enabled) {
@@ -355,13 +415,20 @@ async function handleTicketClaim(interaction: ButtonInteraction, client: Extende
       }
     };
     const claimPayload = buildMessageFromCustom(claimMsg, varsCtx);
-    await interaction.reply({ ...claimPayload, content: claimPayload.content || `تم استلام هذه التذكرة بواسطة <@${member.id}>.` });
+    await interaction.update({ 
+      ...claimPayload, 
+      content: claimPayload.content || `تم استلام هذه التذكرة بواسطة <@${member.id}>.`,
+      components: [controlRow]
+    });
   } else {
-    await interaction.reply({ content: `تم استلام هذه التذكرة بواسطة <@${member.id}>.` });
+    await interaction.update({ 
+      content: `تم استلام هذه التذكرة بواسطة <@${member.id}>.`,
+      components: [controlRow]
+    });
   }
 }
 
-/** يعالج زر "إغلاق" التذكرة بعد التحقق من صلاحية الناقر (فريق الدعم أو صاحب التذكرة) */
+/** يعالج زر "إغلاق" التذكرة بعد التحقق من صلاحية الناقر (فريق الدعم فقط) */
 async function handleTicketCloseButton(interaction: ButtonInteraction, client: ExtendedClient): Promise<void> {
   const guild = interaction.guild;
   const channel = interaction.channel;
@@ -379,10 +446,9 @@ async function handleTicketCloseButton(interaction: ButtonInteraction, client: E
   const isStaff =
     category?.staffRoleIds.some((roleId) => member.roles.cache.has(roleId)) ||
     member.permissions.has(PermissionFlagsBits.Administrator);
-  const isOwner = ticket.ownerId === member.id;
 
-  if (!isStaff && !isOwner) {
-    await interaction.reply({ content: "❌ لا تملك صلاحية إغلاق هذه التذكرة.", ephemeral: true });
+  if (!isStaff) {
+    await interaction.reply({ content: "❌ لا تملك صلاحية إغلاق هذه التذكرة. فقط فريق الدعم يمكنه إغلاق التذاكر.", ephemeral: true });
     return;
   }
 

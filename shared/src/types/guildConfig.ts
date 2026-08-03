@@ -33,6 +33,7 @@ export interface ITicketCategory {
   emoji?: string;
   categoryId?: string;
   staffRoleIds: string[];
+  blockedRoleIds: string[];
   logChannelId?: string;
   welcomeMessage?: ICustomMessage;
   questions: string[];

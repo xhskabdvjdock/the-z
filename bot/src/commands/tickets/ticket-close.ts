@@ -22,10 +22,9 @@ const command: BotCommand = {
     const isStaff =
       category?.staffRoleIds.some((roleId) => ctx.member.roles.cache.has(roleId)) ||
       ctx.member.permissions.has(PermissionFlagsBits.Administrator);
-    const isOwner = ticket.ownerId === ctx.user.id;
 
-    if (!isStaff && !isOwner) {
-      await ctx.reply("❌ لا تملك صلاحية إغلاق هذه التذكرة.");
+    if (!isStaff) {
+      await ctx.reply("❌ لا تملك صلاحية إغلاق هذه التذكرة. فقط فريق الدعم يمكنه إغلاق التذاكر.");
       return;
     }
 
