@@ -1,7 +1,7 @@
 import { EmbedBuilder, Message } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
-import { translate } from "@vitalets/google-translate-api";
+import { getTranslationText } from "lingva-scraper";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
@@ -34,13 +34,17 @@ const command: BotCommand = {
     const isArabic = /[\u0600-\u06FF]/.test(text);
     const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
     
+    let sourceLang: string;
     let targetLang: string;
 
     if (isArabic) {
+      sourceLang = "ar";
       targetLang = "en";
     } else if (isEnglish) {
+      sourceLang = "en";
       targetLang = "ar";
     } else {
+      sourceLang = "auto";
       targetLang = "en";
     }
 
@@ -63,15 +67,20 @@ const command: BotCommand = {
     }
 
     try {
-      const result = await translate(text, { to: targetLang });
+      const result = await getTranslationText(sourceLang as any, targetLang as any, text);
+
+      if (!result) {
+        await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
+        return;
+      }
 
       // التأكد من أن النص المترجم لا يتجاوز حد Discord
-      const translatedText = result.text.length > 4096 
-        ? result.text.substring(0, 4093) + "..." 
-        : result.text;
+      const translatedText = result.length > 4096 
+        ? result.substring(0, 4093) + "..." 
+        : result;
 
       // حفظ في الذاكرة المؤقتة
-      translationCache.set(cacheKey, { text: result.text, timestamp: now });
+      translationCache.set(cacheKey, { text: result, timestamp: now });
 
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
@@ -80,12 +89,7 @@ const command: BotCommand = {
       await ctx.reply({ embeds: [embed] });
     } catch (error: any) {
       console.error("Translation error:", error);
-      
-      if (error.message?.includes('Too Many Requests')) {
-        await ctx.reply("ترجمة كثيرة جداً، يرجى الانتظار قليلاً قبل المحاولة مرة أخرى");
-      } else {
-        await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
-      }
+      await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
     }
   }
 };
