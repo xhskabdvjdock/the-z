@@ -249,7 +249,6 @@ async function handleTicketOpenRequest(
   }
 
   await interaction.deferReply({ ephemeral: true });
-  const member = interaction.member as GuildMember;
   const channel = await createTicketChannel(guild, member, category, []);
   
   const openMsg = category.openMessage;
@@ -358,11 +357,11 @@ async function handleTicketClaim(interaction: ButtonInteraction, client: Extende
       const controlRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId("ticket_close")
-          .setLabel(category.closeButtonLabel || "إغلاق")
+          .setLabel(category?.closeButtonLabel || "إغلاق")
           .setStyle(ButtonStyle.Danger),
         new ButtonBuilder()
           .setCustomId("ticket_claim")
-          .setLabel(category.claimButtonLabel || "استلام")
+          .setLabel(category?.claimButtonLabel || "استلام")
           .setStyle(ButtonStyle.Secondary)
       );
       
@@ -389,7 +388,7 @@ async function handleTicketClaim(interaction: ButtonInteraction, client: Extende
   const controlRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
       .setCustomId("ticket_close")
-      .setLabel(category.closeButtonLabel || "إغلاق")
+      .setLabel(category?.closeButtonLabel || "إغلاق")
       .setStyle(ButtonStyle.Danger),
     new ButtonBuilder()
       .setCustomId("ticket_claim")
