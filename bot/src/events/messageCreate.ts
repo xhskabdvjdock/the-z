@@ -34,18 +34,36 @@ const event: BotEvent = {
 
       // تحديد لغة النص
       const isArabic = /[\u0600-\u06FF]/.test(text);
-      const targetLang = isArabic ? "en" : "ar";
+      const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
+      
+      let targetLang: string;
+      let languageName: string;
+      let title: string;
+
+      if (isArabic) {
+        targetLang = "en";
+        languageName = "العربية";
+        title = "🇬🇧 ترجمة إلى الإنجليزية";
+      } else if (isEnglish) {
+        targetLang = "ar";
+        languageName = "الإنجليزية";
+        title = "🇸🇦 ترجمة إلى العربية";
+      } else {
+        targetLang = "en";
+        languageName = "لغة أخرى";
+        title = "🇬🇧 ترجمة إلى الإنجليزية";
+      }
 
       try {
         const result = await translate(text, { to: targetLang });
 
         const embed = new EmbedBuilder()
           .setColor(config.defaultColor)
-          .setTitle(isArabic ? "🇬🇧 ترجمة إلى الإنجليزية" : "🇸🇦 ترجمة إلى العربية")
+          .setTitle(title)
           .setDescription(result.text)
           .addFields(
             { name: "النص الأصلي", value: text.substring(0, 1024) },
-            { name: "اللغة المكتشفة", value: isArabic ? "العربية" : "الإنجليزية" }
+            { name: "اللغة المكتشفة", value: languageName }
           )
           .setTimestamp();
 
