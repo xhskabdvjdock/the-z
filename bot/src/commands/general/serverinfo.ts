@@ -15,7 +15,7 @@ const command: BotCommand = {
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setTitle(`📊 معلومات سيرفر ${guild.name}`)
+      .setTitle(`معلومات سيرفر ${guild.name}`)
       .setThumbnail(guild.iconURL({ size: 512 }))
       .addFields(
         { name: "اسم السيرفر", value: guild.name, inline: true },
@@ -29,13 +29,12 @@ const command: BotCommand = {
         { name: "عدد الأعضاء", value: `${guild.memberCount}`, inline: true },
         {
           name: "عدد الرومات",
-          value: `📝 ${textChannels} نصية / 🔊 ${voiceChannels} صوتية`,
+          value: `${textChannels} نصية / ${voiceChannels} صوتية`,
           inline: true
         },
         { name: "عدد الرتب", value: `${guild.roles.cache.size}`, inline: true },
         { name: "مستوى البوست", value: `المستوى ${guild.premiumTier} (${guild.premiumSubscriptionCount ?? 0} بوست)`, inline: true }
-      )
-      .setTimestamp();
+      );
 
     await ctx.reply({ embeds: [embed] });
   }

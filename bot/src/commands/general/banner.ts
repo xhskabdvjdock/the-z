@@ -13,7 +13,7 @@ const command: BotCommand = {
     const fullUser = await ctx.client.users.fetch(targetUser.id, { force: true }).catch(() => null);
 
     if (!fullUser || !fullUser.banner) {
-      await ctx.reply({ content: "❌ لا يوجد بانر لهذا العضو." });
+      await ctx.reply({ content: "لا يوجد بانر لهذا العضو." });
       return;
     }
 
@@ -21,9 +21,8 @@ const command: BotCommand = {
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setTitle(`🖼️ بانر ${fullUser.tag}`)
-      .setImage(bannerUrl)
-      .setTimestamp();
+      .setTitle(`بانر ${fullUser.tag}`)
+      .setImage(bannerUrl);
 
     await ctx.reply({ embeds: [embed] });
   }

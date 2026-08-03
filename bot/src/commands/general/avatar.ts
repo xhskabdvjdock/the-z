@@ -14,9 +14,8 @@ const command: BotCommand = {
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setTitle(`🖼️ صورة ${target.user.tag}`)
-      .setImage(avatarUrl)
-      .setTimestamp();
+      .setTitle(`صورة ${target.user.tag}`)
+      .setImage(avatarUrl);
 
     await ctx.reply({ embeds: [embed] });
   }

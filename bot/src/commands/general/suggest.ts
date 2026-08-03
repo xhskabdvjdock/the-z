@@ -13,23 +13,16 @@ const command: BotCommand = {
   async run(ctx) {
     const suggestion = ctx.getString("suggestion");
     if (!suggestion) {
-      await ctx.reply({ content: "❌ يرجى كتابة نص الاقتراح." });
+      await ctx.reply({ content: "يرجى كتابة نص الاقتراح." });
       return;
     }
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setAuthor({ name: `اقتراح من ${ctx.user.tag}`, iconURL: ctx.user.displayAvatarURL() })
-      .setDescription(suggestion)
-      .setTimestamp();
+      .setTitle(`اقتراح من ${ctx.user.tag}`)
+      .setDescription(suggestion);
 
     await ctx.reply({ embeds: [embed] });
-
-    const sentMessage = ctx.isSlash ? await ctx.interaction!.fetchReply() : ctx.message;
-    if (sentMessage) {
-      await sentMessage.react("👍").catch(() => null);
-      await sentMessage.react("👎").catch(() => null);
-    }
   }
 };
 

@@ -19,7 +19,7 @@ const command: BotCommand = {
   async run(ctx) {
     const question = ctx.getString("question");
     if (!question) {
-      await ctx.reply({ content: "❌ يرجى كتابة سؤال الاستبيان." });
+      await ctx.reply({ content: "يرجى كتابة سؤال الاستبيان." });
       return;
     }
 
@@ -31,19 +31,18 @@ const command: BotCommand = {
     ].filter((opt): opt is string => !!opt);
 
     if (options.length < 2) {
-      await ctx.reply({ content: "❌ يجب إدخال خيارين على الأقل." });
+      await ctx.reply({ content: "يجب إدخال خيارين على الأقل." });
       return;
     }
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setTitle("📊 استبيان تصويت")
+      .setTitle("استبيان تصويت")
       .setDescription(question)
       .addFields(
         options.map((opt, i) => ({ name: OPTION_EMOJIS[i], value: opt, inline: false }))
       )
-      .setFooter({ text: `بواسطة ${ctx.user.tag}` })
-      .setTimestamp();
+      .setFooter({ text: `بواسطة ${ctx.user.tag}` });
 
     await ctx.reply({ embeds: [embed] });
 
