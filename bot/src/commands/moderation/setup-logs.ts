@@ -19,7 +19,7 @@ const command: BotCommand = {
   ],
   async run(ctx) {
     if (!ctx.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply({ content: "❌ تحتاج صلاحية `إدارة السيرفر` لاستخدام هذا الأمر." });
+      await ctx.reply({ content: "تحتاج صلاحية `إدارة السيرفر` لاستخدام هذا الأمر." });
       return;
     }
 
@@ -27,7 +27,7 @@ const command: BotCommand = {
 
     if (channel && channel.type !== ChannelType.GuildCategory) {
       await ctx.reply({
-        content: "❌ الروم المُحدد غير صالح، يرجى اختيار تصنيف (Category) فعلي."
+        content: "الروم المُحدد غير صالح، يرجى اختيار تصنيف (Category) فعلي."
       });
       return;
     }
@@ -55,23 +55,23 @@ const command: BotCommand = {
           type: ChannelType.GuildCategory
         });
       } catch (error) {
-        await ctx.reply({ content: "❌ فشل في إنشاء التصنيف. تأكد من أن لدي صلاحيات كافية." });
+        await ctx.reply({ content: "فشل في إنشاء التصنيف. تأكد من أن لدي صلاحيات كافية." });
         return;
       }
     }
 
     // أسماء الرومات الجديدة
     const logChannels = [
-      { key: "moderation", name: "〢log-mod" },
-      { key: "members", name: "〢log-members" },
-      { key: "messages", name: "〢log-messages" },
-      { key: "voice", name: "〢log-voice" },
-      { key: "actions", name: "〢log-actions" },
-      { key: "files", name: "〢log-files" },
-      { key: "server", name: "〢log-server" },
-      { key: "roles", name: "〢log-roles" },
-      { key: "channels", name: "〢log-channels" },
-      { key: "other", name: "〢other logs" }
+      { key: "moderation", name: "log-mod" },
+      { key: "members", name: "log-members" },
+      { key: "messages", name: "log-messages" },
+      { key: "voice", name: "log-voice" },
+      { key: "actions", name: "log-actions" },
+      { key: "files", name: "log-files" },
+      { key: "server", name: "log-server" },
+      { key: "roles", name: "log-roles" },
+      { key: "channels", name: "log-channels" },
+      { key: "other", name: "other logs" }
     ];
 
     const createdChannels: { key: string; id: string; name: string }[] = [];
@@ -124,7 +124,7 @@ const command: BotCommand = {
     // إرسال رسالة النتيجة
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setTitle("✅ تم إعداد نظام السجلات")
+      .setTitle("تم إعداد نظام السجلات")
       .setDescription(`تم إنشاء ${createdChannels.length} روم لوج في التصنيف <#${logCategory.id}>`)
       .addFields(
         { name: "التصنيف", value: `<#${logCategory.id}>`, inline: true },

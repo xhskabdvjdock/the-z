@@ -22,22 +22,22 @@ const command: BotCommand = {
     const reason = ctx.getString("reason") ?? "لا يوجد سبب";
 
     if (!target) {
-      await replyWithAutoDelete(ctx, "❌ لم يتم العثور على هذا العضو في السيرفر.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لم يتم العثور على هذا العضو في السيرفر.", ctx.guild.id);
       return;
     }
 
     if (duration === null || duration <= 0 || duration > MAX_TIMEOUT_MINUTES) {
-      await replyWithAutoDelete(ctx, `❌ يجب أن تكون المدة بين 1 و ${MAX_TIMEOUT_MINUTES} دقيقة.`, ctx.guild.id);
+      await replyWithAutoDelete(ctx, `يجب أن تكون المدة بين 1 و ${MAX_TIMEOUT_MINUTES} دقيقة.`, ctx.guild.id);
       return;
     }
 
     if (target.id === ctx.user.id) {
-      await replyWithAutoDelete(ctx, "❌ لا يمكنك كتم نفسك.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لا يمكنك كتم نفسك.", ctx.guild.id);
       return;
     }
 
     if (target.id === ctx.guild.ownerId) {
-      await replyWithAutoDelete(ctx, "❌ لا يمكنك كتم مالك السيرفر.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لا يمكنك كتم مالك السيرفر.", ctx.guild.id);
       return;
     }
 
@@ -45,32 +45,31 @@ const command: BotCommand = {
       ctx.guild.ownerId !== ctx.user.id &&
       target.roles.highest.position >= ctx.member.roles.highest.position
     ) {
-      await replyWithAutoDelete(ctx, "❌ لا يمكنك كتم عضو برتبة مساوية أو أعلى من رتبتك.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لا يمكنك كتم عضو برتبة مساوية أو أعلى من رتبتك.", ctx.guild.id);
       return;
     }
 
     if (!target.moderatable) {
-      await replyWithAutoDelete(ctx, "❌ لا أملك صلاحية كافية لكتم هذا العضو.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لا أملك صلاحية كافية لكتم هذا العضو.", ctx.guild.id);
       return;
     }
 
     try {
       await target.timeout(duration * 60_000, reason);
     } catch {
-      await replyWithAutoDelete(ctx, "❌ حدث خطأ أثناء محاولة تنفيذ الكتم.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "حدث خطأ أثناء محاولة تنفيذ الكتم.", ctx.guild.id);
       return;
     }
 
     const embed = new EmbedBuilder()
       .setColor(0xed4245)
-      .setTitle("🔇 تم كتم عضو")
+      .setTitle("تم كتم عضو")
       .addFields(
         { name: "العضو", value: `${target.user.tag} (${target.id})` },
         { name: "المدة", value: `${duration} دقيقة` },
         { name: "بواسطة", value: ctx.user.tag },
         { name: "السبب", value: reason }
-      )
-      .setTimestamp();
+      );
 
     await ctx.reply({ embeds: [embed] });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);

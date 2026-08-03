@@ -14,7 +14,7 @@ const command: BotCommand = {
     const target = await ctx.getUser("user");
 
     if (!target) {
-      await ctx.reply({ content: "❌ لم يتم العثور على هذا المستخدم." });
+      await ctx.reply({ content: "لم يتم العثور على هذا المستخدم." });
       return;
     }
 
@@ -24,12 +24,11 @@ const command: BotCommand = {
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setAuthor({ name: `تحذيرات ${target.tag}`, iconURL: target.displayAvatarURL() })
-      .setFooter({ text: `العدد الإجمالي: ${warningsList.length}` })
-      .setTimestamp();
+      .setTitle(`تحذيرات ${target.tag}`)
+      .setFooter({ text: `العدد الإجمالي: ${warningsList.length}` });
 
     if (warningsList.length === 0) {
-      embed.setDescription("✅ لا توجد أي تحذيرات مسجّلة لهذا العضو.");
+      embed.setDescription("لا توجد أي تحذيرات مسجّلة لهذا العضو.");
     } else {
       embed.setDescription(
         warningsList

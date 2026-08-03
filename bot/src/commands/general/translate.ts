@@ -53,13 +53,7 @@ const command: BotCommand = {
 
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
-        .setTitle(title)
-        .setDescription(result.text)
-        .addFields(
-          { name: "النص الأصلي", value: text.substring(0, 1024) },
-          { name: "اللغة المكتشفة", value: languageName }
-        )
-        .setTimestamp();
+        .setDescription(result.text);
 
       await ctx.reply({ embeds: [embed] });
     } catch (error) {

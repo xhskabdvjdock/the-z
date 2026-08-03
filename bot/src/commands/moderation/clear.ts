@@ -16,17 +16,17 @@ const command: BotCommand = {
     const amount = ctx.getInteger("amount");
 
     if (amount === null || amount < 1 || amount > 100) {
-      await ctx.reply({ content: "❌ يجب أن يكون العدد بين 1 و 100." });
+      await ctx.reply({ content: "يجب أن يكون العدد بين 1 و 100." });
       return;
     }
 
     if (!(ctx.channel instanceof TextChannel)) {
-      await ctx.reply({ content: "❌ لا يمكن استخدام هذا الأمر في هذا النوع من الرومات." });
+      await ctx.reply({ content: "لا يمكن استخدام هذا الأمر في هذا النوع من الرومات." });
       return;
     }
 
     if (!ctx.guild.members.me?.permissions.has(PermissionFlagsBits.ManageMessages)) {
-      await ctx.reply({ content: "❌ لا أملك صلاحية إدارة الرسائل." });
+      await ctx.reply({ content: "لا أملك صلاحية إدارة الرسائل." });
       return;
     }
 
@@ -35,19 +35,18 @@ const command: BotCommand = {
       const deleted = await ctx.channel.bulkDelete(amount, true);
       deletedCount = deleted.size;
     } catch {
-      await ctx.reply({ content: "❌ حدث خطأ أثناء حذف الرسائل (قد تكون أقدم من 14 يوماً)." });
+      await ctx.reply({ content: "حدث خطأ أثناء حذف الرسائل (قد تكون أقدم من 14 يوماً)." });
       return;
     }
 
     const embed = new EmbedBuilder()
       .setColor(0x57f287)
-      .setTitle("🧹 تم حذف الرسائل")
+      .setTitle("تم حذف الرسائل")
       .addFields(
         { name: "العدد", value: `${deletedCount}` },
         { name: "الروم", value: `${ctx.channel}` },
         { name: "بواسطة", value: ctx.user.tag }
-      )
-      .setTimestamp();
+      );
 
     const reply = await ctx.reply({ embeds: [embed] });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);

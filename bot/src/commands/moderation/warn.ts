@@ -19,17 +19,17 @@ const command: BotCommand = {
     const reason = ctx.getString("reason");
 
     if (!target) {
-      await replyWithAutoDelete(ctx, "❌ لم يتم العثور على هذا العضو في السيرفر.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لم يتم العثور على هذا العضو في السيرفر.", ctx.guild.id);
       return;
     }
 
     if (!reason) {
-      await replyWithAutoDelete(ctx, "❌ يرجى كتابة سبب التحذير.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "يرجى كتابة سبب التحذير.", ctx.guild.id);
       return;
     }
 
     if (target.id === ctx.user.id) {
-      await replyWithAutoDelete(ctx, "❌ لا يمكنك تحذير نفسك.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لا يمكنك تحذير نفسك.", ctx.guild.id);
       return;
     }
 
@@ -42,13 +42,12 @@ const command: BotCommand = {
 
     const embed = new EmbedBuilder()
       .setColor(0xed4245)
-      .setTitle("⚠️ تم توجيه تحذير")
+      .setTitle("تم توجيه تحذير")
       .addFields(
         { name: "العضو", value: `${target.user.tag} (${target.id})` },
         { name: "بواسطة", value: ctx.user.tag },
         { name: "السبب", value: reason }
-      )
-      .setTimestamp();
+      );
 
     await ctx.reply({ embeds: [embed] });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);

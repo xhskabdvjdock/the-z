@@ -22,13 +22,13 @@ const event: BotEvent = {
         : null;
 
       if (!referencedMessage) {
-        await message.reply("❌ يجب تحديد رسالة لترجمتها (رد على رسالة واستخدم ,tr)");
+        await message.reply("يجب تحديد رسالة لترجمتها (رد على رسالة واستخدم ,tr)");
         return;
       }
 
       const text = referencedMessage.content;
       if (!text || text.trim().length === 0) {
-        await message.reply("❌ الرسالة المحددة لا تحتوي على نص");
+        await message.reply("الرسالة المحددة لا تحتوي على نص");
         return;
       }
 
@@ -59,18 +59,12 @@ const event: BotEvent = {
 
         const embed = new EmbedBuilder()
           .setColor(config.defaultColor)
-          .setTitle(title)
-          .setDescription(result.text)
-          .addFields(
-            { name: "النص الأصلي", value: text.substring(0, 1024) },
-            { name: "اللغة المكتشفة", value: languageName }
-          )
-          .setTimestamp();
+          .setDescription(result.text);
 
         await message.reply({ embeds: [embed] });
       } catch (error) {
         console.error("Translation error:", error);
-        await message.reply("❌ فشلت الترجمة، يرجى المحاولة مرة أخرى");
+        await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
       }
       return;
     }

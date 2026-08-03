@@ -16,12 +16,12 @@ const command: BotCommand = {
     const selected = ctx.getChannel("channel") ?? ctx.channel;
 
     if (!(selected instanceof BaseGuildTextChannel)) {
-      await replyWithAutoDelete(ctx, "❌ لا يمكن قفل هذا النوع من الرومات.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لا يمكن قفل هذا النوع من الرومات.", ctx.guild.id);
       return;
     }
 
     if (!ctx.guild.members.me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
-      await replyWithAutoDelete(ctx, "❌ لا أملك صلاحية إدارة الرومات.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "لا أملك صلاحية إدارة الرومات.", ctx.guild.id);
       return;
     }
 
@@ -30,18 +30,17 @@ const command: BotCommand = {
         SendMessages: false
       });
     } catch {
-      await replyWithAutoDelete(ctx, "❌ حدث خطأ أثناء قفل الروم.", ctx.guild.id);
+      await replyWithAutoDelete(ctx, "حدث خطأ أثناء قفل الروم.", ctx.guild.id);
       return;
     }
 
     const embed = new EmbedBuilder()
       .setColor(0xed4245)
-      .setTitle("🔒 تم قفل الروم")
+      .setTitle("تم قفل الروم")
       .addFields(
         { name: "الروم", value: `${selected}` },
         { name: "بواسطة", value: ctx.user.tag }
-      )
-      .setTimestamp();
+      );
 
     await ctx.reply({ embeds: [embed] });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
