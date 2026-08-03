@@ -1,7 +1,7 @@
 import { EmbedBuilder, Message } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
-import { translate } from "@vitalets/google-translate-api";
+import translate = require("@iamtraction/google-translate");
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
