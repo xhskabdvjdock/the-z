@@ -153,28 +153,37 @@ async function createTempChannel(
   }
 
   try {
-    // Send control panel to a specified text channel
-    if (tvConfig.controlPanelChannelId) {
-      const textChannel = guild.channels.cache.get(tvConfig.controlPanelChannelId);
-      if (textChannel && textChannel.type === ChannelType.GuildText) {
-        const panelMessage = await textChannel.send({
-          content: `🎙️ Temporary voice channel created for <@${member.id}>: **${newChannel.name}**`,
-          embeds: [buildControlEmbed()],
-          components: buildControlComponents(newChannel)
-        });
-        
-        // Store references for future updates
-        await TempVoiceChannel.findOneAndUpdate(
-          { channelId: newChannel.id },
-          { 
-            textChannelId: textChannel.id,
-            panelMessageId: panelMessage.id
-          } as any
-        );
+    // Find a text channel in the same category to send the panel
+    let textChannel;
+    if (newChannel.parentId) {
+      const category = newChannel.parent;
+      if (category) {
+        const textChannels = category.children.cache.filter(c => c.type === ChannelType.GuildText);
+        if (textChannels.size > 0) {
+          textChannel = textChannels.first();
+        }
       }
     }
+
+    if (textChannel) {
+      // Send control panel to the existing text channel
+      const panelMessage = await textChannel.send({
+        content: `🎙️ Temporary voice channel created for <@${member.id}>: **${newChannel.name}**`,
+        embeds: [buildControlEmbed()],
+        components: buildControlComponents(newChannel)
+      });
+
+      // Store references for future updates
+      await TempVoiceChannel.findOneAndUpdate(
+        { channelId: newChannel.id },
+        { 
+          textChannelId: textChannel.id,
+          panelMessageId: panelMessage.id
+        } as any
+      );
+    }
   } catch (err) {
-    console.error("فشل إرسال لوحة تحكم الروم الصوتي:", err);
+    console.error("فشل إرسال لوحة التحكم:", err);
   }
 }
 
@@ -192,14 +201,6 @@ async function cleanupIfEmpty(oldState: VoiceState): Promise<void> {
   }
 
   if (channel.type === ChannelType.GuildVoice && channel.members.size === 0) {
-    // Delete the associated text channel
-    if ((doc as any).textChannelId) {
-      const textChannel = oldState.guild.channels.cache.get((doc as any).textChannelId);
-      if (textChannel) {
-        await textChannel.delete().catch(() => {});
-      }
-    }
-    
     // Delete the voice channel
     await channel.delete().catch(() => {});
     await TempVoiceChannel.deleteOne({ channelId }).catch(() => {});
@@ -1107,23 +1108,6 @@ async function handleTransferSelect(interaction: StringSelectMenuInteraction): P
 
   doc.ownerId = targetId;
   await doc.save();
-
-  // Update text channel permissions
-  if ((doc as any).textChannelId) {
-    const textChannel = channel.guild.channels.cache.get((doc as any).textChannelId);
-    if (textChannel && textChannel.type === ChannelType.GuildText) {
-      await textChannel.permissionOverwrites.edit(member.id, {
-        ViewChannel: false,
-        SendMessages: false,
-        ReadMessageHistory: false
-      }).catch(() => {});
-      await textChannel.permissionOverwrites.edit(targetId, {
-        ViewChannel: true,
-        SendMessages: true,
-        ReadMessageHistory: true
-      }).catch(() => {});
-    }
-  }
 
   await replyEphemeral(interaction, `🎁 Ownership transferred to **${targetMember.displayName}**.`);
   await refreshControlPanel(channel).catch(() => {});
