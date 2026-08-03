@@ -66,6 +66,27 @@ export async function handleVoiceStateUpdate(
 
 /** تسجّل معالِجات الأزرار/القوائم/النماذج الخاصة بلوحة تحكم الروم الصوتي */
 export function registerTempVoiceComponents(router: ComponentRouter): void {
+  // New select menus
+  router.registerSelect("temp_channel_settings", handleSettingsSelect);
+  router.registerSelect("temp_channel_permissions", handlePermissionsSelect);
+  router.registerSelect("temp_transfer_select", handleTransferSelect);
+  
+  // New buttons
+  router.registerButton("temp_load_settings", handleLoadSettings);
+  router.registerButton("temp_dashboard", handleDashboard);
+
+  // New modals
+  router.registerModal("temp_name_modal", handleNameModalSubmit);
+  router.registerModal("temp_limit_modal", handleLimitModalSubmit);
+  router.registerModal("temp_status_modal", handleStatusModalSubmit);
+  router.registerModal("temp_game_modal", handleGameModalSubmit);
+  router.registerModal("temp_bitrate_modal", handleBitrateModalSubmit);
+  router.registerModal("temp_region_modal", handleRegionModalSubmit);
+  router.registerModal("temp_permit_modal", handlePermitModalSubmit);
+  router.registerModal("temp_reject_modal", handleRejectModalSubmit);
+  router.registerModal("temp_invite_modal", handleInviteModalSubmit);
+
+  // Legacy handlers (keep for compatibility)
   router.registerButton("voice_lock", (interaction) => handleToggleAction(interaction, "lock"));
   router.registerButton("voice_unlock", (interaction) =>
     handleToggleAction(interaction, "unlock")
@@ -171,30 +192,34 @@ async function refreshPanelIfTemp(guild: Guild, channelId: string): Promise<void
 }
 
 /* -------------------------------------------------------------------------- */
+/* وظائف مساعدة                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/** التحقق من أن المستخدم هو صاحب الروم الصوتي المؤقت */
+async function isChannelOwner(channelId: string, userId: string): Promise<boolean> {
+  const doc = await TempVoiceChannel.findOne({ channelId });
+  if (!doc) return false;
+  return doc.ownerId === userId;
+}
+
+/* -------------------------------------------------------------------------- */
 /* بناء لوحة التحكم                                                            */
 /* -------------------------------------------------------------------------- */
 
 function buildControlEmbed(): EmbedBuilder {
   return new EmbedBuilder()
-    .setColor(config.defaultColor)
-    .setTitle(CONTROL_PANEL_TITLE)
+    .setColor(0x5865F2)
+    .setTitle("⚙️ Welcome to your own temporary voice channel")
     .setDescription(
       [
-        "يمكنك التحكم برومك الصوتي من خلال الأزرار والقوائم أدناه:",
+        "Control your channel using the menus below:",
         "",
-        "🔒 **قفل** — يمنع انضمام أعضاء جدد إلى الروم",
-        "🔓 **فتح** — يسمح لأي عضو بالانضمام إلى الروم",
-        "👁️ **إخفاء** — يخفي الروم عن باقي الأعضاء",
-        "👁️‍🗨️ **إظهار** — يُظهر الروم لباقي الأعضاء",
-        "➕ **زيادة العدد** — يزيد الحد الأقصى للأعضاء بالروم",
-        "➖ **إنقاص العدد** — ينقص الحد الأقصى للأعضاء بالروم",
-        "✏️ **تغيير الاسم** — يفتح نافذة لتغيير اسم الروم",
-        "👑 **استلام الملكية** — تصبح مالك الروم إذا كان المالك الحالي غير متواجد فيه",
-        "🦵 **طرد عضو** — اختر عضواً من القائمة لطرده من الروم",
-        "🎁 **نقل الملكية** — اختر عضواً من القائمة لنقل ملكية الروم إليه"
+        "• Use the dropdowns to manage settings and permissions",
+        "• Alternatively use `/voice` commands",
+        "• Use `/toggle set` to disable this interface"
       ].join("\n")
     )
-    .setFooter({ text: "هذا التحكم متاح فقط لمالك الروم" });
+    .setFooter({ text: "This control panel is only available to the channel owner" });
 }
 
 function buildMemberSelectOptions(channel: VoiceChannel): StringSelectMenuOptionBuilder[] {
@@ -210,66 +235,109 @@ function buildMemberSelectOptions(channel: VoiceChannel): StringSelectMenuOption
 }
 
 function buildControlComponents(channel: VoiceChannel) {
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+  // First select menu: temp_channel_settings
+  const settingsSelect = new StringSelectMenuBuilder()
+    .setCustomId("temp_channel_settings")
+    .setPlaceholder("Change channel settings")
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Name")
+        .setDescription("Change the channel name")
+        .setValue("temp_name"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Limit")
+        .setDescription("Change the channel limit")
+        .setValue("temp_limit"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Status")
+        .setDescription("Change the channel status")
+        .setValue("temp_status"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Game")
+        .setDescription("Change the channel name to the game you're playing")
+        .setValue("temp_game"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("LFM")
+        .setDescription("Post a message to the LFM channel to let others know you're looking for members")
+        .setValue("temp_lfm"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Bitrate")
+        .setDescription("Change the channel bitrate")
+        .setValue("temp_bitrate"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Region")
+        .setDescription("Change the channel voice region")
+        .setValue("temp_region"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Text")
+        .setDescription("Create a temporary text channel")
+        .setValue("temp_text"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("NSFW")
+        .setDescription("Set your temporary channel to NSFW")
+        .setValue("temp_nsfw"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Claim")
+        .setDescription("Claim ownership of the channel")
+        .setValue("temp_claim")
+    );
+
+  // Second select menu: temp_channel_permissions
+  const permissionsSelect = new StringSelectMenuBuilder()
+    .setCustomId("temp_channel_permissions")
+    .setPlaceholder("Change channel permissions")
+    .addOptions(
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Lock")
+        .setDescription("Lock the channel")
+        .setValue("temp_lock"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Unlock")
+        .setDescription("Unlock the channel")
+        .setValue("temp_unlock"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Permit")
+        .setDescription("Permit users/roles to access the channel")
+        .setValue("temp_permit"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Reject")
+        .setDescription("Reject/kick users/roles from accessing the channel")
+        .setValue("temp_reject"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Invite")
+        .setDescription("Invite a user to access the channel")
+        .setValue("temp_invite"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Ghost")
+        .setDescription("Make your channel invisible")
+        .setValue("temp_ghost"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Unghost")
+        .setDescription("Make your channel visible")
+        .setValue("temp_unghost"),
+      new StringSelectMenuOptionBuilder()
+        .setLabel("Transfer")
+        .setDescription("Transfer ownership to another user")
+        .setValue("temp_transfer")
+    );
+
+  // Third row: Buttons
+  const buttonRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder()
-      .setCustomId("voice_lock")
-      .setEmoji("🔒")
-      .setLabel("قفل")
-      .setStyle(ButtonStyle.Danger),
+      .setCustomId("temp_load_settings")
+      .setLabel("Load Settings")
+      .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId("voice_unlock")
-      .setEmoji("🔓")
-      .setLabel("فتح")
-      .setStyle(ButtonStyle.Success),
-    new ButtonBuilder()
-      .setCustomId("voice_hide")
-      .setEmoji("👁️")
-      .setLabel("إخفاء")
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("voice_unhide")
-      .setEmoji("👁️‍🗨️")
-      .setLabel("إظهار")
+      .setCustomId("temp_dashboard")
+      .setLabel("Dashboard")
       .setStyle(ButtonStyle.Secondary)
   );
 
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder()
-      .setCustomId("voice_increase")
-      .setEmoji("➕")
-      .setLabel("زيادة العدد")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("voice_decrease")
-      .setEmoji("➖")
-      .setLabel("إنقاص العدد")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("voice_rename")
-      .setEmoji("✏️")
-      .setLabel("تغيير الاسم")
-      .setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder()
-      .setCustomId("voice_claim")
-      .setEmoji("👑")
-      .setLabel("استلام الملكية")
-      .setStyle(ButtonStyle.Secondary)
-  );
-
-  const kickSelect = new StringSelectMenuBuilder()
-    .setCustomId("voice_kick_select")
-    .setPlaceholder("🦵 اختر عضواً لطرده من الروم")
-    .addOptions(buildMemberSelectOptions(channel));
-
-  const ownerSelect = new StringSelectMenuBuilder()
-    .setCustomId("voice_owner_select")
-    .setPlaceholder("🎁 اختر عضواً لنقل ملكية الروم إليه")
-    .addOptions(buildMemberSelectOptions(channel));
-
-  const row3 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(kickSelect);
-  const row4 = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(ownerSelect);
-
-  return [row1, row2, row3, row4];
+  return [
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(settingsSelect),
+    new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(permissionsSelect),
+    buttonRow
+  ];
 }
 
 async function refreshControlPanel(channel: VoiceChannel): Promise<void> {
@@ -312,9 +380,13 @@ async function resolveVoiceContext(
 
 async function replyEphemeral(
   interaction: ButtonInteraction | StringSelectMenuInteraction | ModalSubmitInteraction,
-  content: string
+  content: string | { embeds: EmbedBuilder[] }
 ): Promise<void> {
-  await interaction.reply({ content, ephemeral: true });
+  if (typeof content === "string") {
+    await interaction.reply({ content, ephemeral: true });
+  } else {
+    await interaction.reply({ ...content, ephemeral: true });
+  }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -566,4 +638,585 @@ async function handleOwnerSelect(interaction: StringSelectMenuInteraction): Prom
 
   await replyEphemeral(interaction, `🎁 تم نقل ملكية الروم إلى **${targetMember.displayName}**.`);
   await refreshControlPanel(channel).catch(() => {});
+}
+
+/* -------------------------------------------------------------------------- */
+/* معالجات القوائم الجديدة                                                      */
+/* -------------------------------------------------------------------------- */
+
+async function handleSettingsSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ هذا الروم الصوتي لم يعد موجوداً.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  // Check ownership
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ أنت لست صاحب هذا الروم الصوتي!");
+    return;
+  }
+
+  const action = interaction.values[0];
+  
+  switch (action) {
+    case "temp_name":
+      await showNameModal(interaction);
+      break;
+    case "temp_limit":
+      await showLimitModal(interaction);
+      break;
+    case "temp_status":
+      await showStatusModal(interaction);
+      break;
+    case "temp_game":
+      await showGameModal(interaction);
+      break;
+    case "temp_lfm":
+      await handleLFM(interaction, channel);
+      break;
+    case "temp_bitrate":
+      await showBitrateModal(interaction);
+      break;
+    case "temp_region":
+      await showRegionModal(interaction);
+      break;
+    case "temp_text":
+      await handleCreateTextChannel(interaction, channel);
+      break;
+    case "temp_nsfw":
+      await handleToggleNSFW(interaction, channel);
+      break;
+    case "temp_claim":
+      await handleClaimFromMenu(interaction, channel, doc, member);
+      break;
+    default:
+      await replyEphemeral(interaction, "❌ إجراء غير معروف.");
+  }
+}
+
+async function handlePermissionsSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ هذا الروم الصوتي لم يعد موجوداً.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  // Check ownership
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ أنت لست صاحب هذا الروم الصوتي!");
+    return;
+  }
+
+  const action = interaction.values[0];
+  
+  switch (action) {
+    case "temp_lock":
+      await handleLock(interaction, channel);
+      break;
+    case "temp_unlock":
+      await handleUnlock(interaction, channel);
+      break;
+    case "temp_permit":
+      await showPermitModal(interaction);
+      break;
+    case "temp_reject":
+      await showRejectModal(interaction);
+      break;
+    case "temp_invite":
+      await showInviteModal(interaction);
+      break;
+    case "temp_ghost":
+      await handleGhost(interaction, channel);
+      break;
+    case "temp_unghost":
+      await handleUnghost(interaction, channel);
+      break;
+    case "temp_transfer":
+      await showTransferModal(interaction, channel);
+      break;
+    default:
+      await replyEphemeral(interaction, "❌ إجراء غير معروف.");
+  }
+}
+
+async function handleLoadSettings(interaction: ButtonInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ هذا الروم الصوتي لم يعد موجوداً.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  // Check ownership
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ أنت لست صاحب هذا الروم الصوتي!");
+    return;
+  }
+
+  const embed = new EmbedBuilder()
+    .setColor(0x5865F2)
+    .setTitle("⚙️ Current Channel Settings")
+    .addFields(
+      { name: "Channel Name", value: channel.name, inline: true },
+      { name: "User Limit", value: channel.userLimit ? channel.userLimit.toString() : "Unlimited", inline: true },
+      { name: "Owner", value: `<@${doc.ownerId}>`, inline: true },
+      { name: "Locked", value: doc.locked ? "Yes" : "No", inline: true },
+      { name: "Hidden", value: doc.hidden ? "Yes" : "No", inline: true }
+    );
+
+  await replyEphemeral(interaction, { embeds: [embed] });
+}
+
+async function handleDashboard(interaction: ButtonInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ هذا الروم الصوتي لم يعد موجوداً.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  // Check ownership
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ أنت لست صاحب هذا الروم الصوتي!");
+    return;
+  }
+
+  await replyEphemeral(interaction, "🔗 Dashboard feature coming soon!");
+}
+
+/* -------------------------------------------------------------------------- */
+/* معالجات الإجراءات الفرعية                                                     */
+/* -------------------------------------------------------------------------- */
+
+async function showNameModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_name_modal")
+    .setTitle("Change Channel Name")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("channel_name")
+          .setLabel("New channel name")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100)
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function showLimitModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_limit_modal")
+    .setTitle("Change User Limit")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("user_limit")
+          .setLabel("User limit (0-99, 0 for unlimited)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder("0")
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function showStatusModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_status_modal")
+    .setTitle("Change Channel Status")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("channel_status")
+          .setLabel("Channel status (e.g., AFK, Gaming)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(50)
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function showGameModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_game_modal")
+    .setTitle("Set Game Name")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("game_name")
+          .setLabel("Game name")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setMaxLength(100)
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function handleLFM(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await replyEphemeral(interaction, "🔍 LFM feature coming soon!");
+}
+
+async function showBitrateModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_bitrate_modal")
+    .setTitle("Change Bitrate")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("bitrate")
+          .setLabel("Bitrate in kbps (8-384)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder("64")
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function showRegionModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_region_modal")
+    .setTitle("Change Voice Region")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("region")
+          .setLabel("Region code (e.g., us-west, europe)")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+          .setPlaceholder("us-west")
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function handleCreateTextChannel(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await replyEphemeral(interaction, "💬 Text channel creation coming soon!");
+}
+
+async function handleToggleNSFW(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await replyEphemeral(interaction, "⚠️ NSFW toggle coming soon!");
+}
+
+async function handleClaimFromMenu(interaction: StringSelectMenuInteraction, channel: VoiceChannel, doc: LiveDoc<ITempVoiceChannel>, member: GuildMember): Promise<void> {
+  if (doc.ownerId === member.id) {
+    await replyEphemeral(interaction, "✅ You are already the owner of this channel.");
+    return;
+  }
+
+  const ownerStillPresent = channel.members.has(doc.ownerId);
+  if (ownerStillPresent) {
+    await replyEphemeral(interaction, "❌ You cannot claim ownership while the current owner is in the channel.");
+    return;
+  }
+
+  doc.ownerId = member.id;
+  await doc.save();
+
+  await replyEphemeral(interaction, "👑 You have successfully claimed ownership of this channel.");
+  await refreshControlPanel(channel).catch(() => {});
+}
+
+async function handleLock(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
+  await replyEphemeral(interaction, "🔒 Channel locked successfully.");
+}
+
+async function handleUnlock(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: true });
+  await replyEphemeral(interaction, "🔓 Channel unlocked successfully.");
+}
+
+async function showPermitModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_permit_modal")
+    .setTitle("Permit User/Role")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("permit_target")
+          .setLabel("User ID or Role ID")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function showRejectModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_reject_modal")
+    .setTitle("Reject/Kick User/Role")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("reject_target")
+          .setLabel("User ID or Role ID")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function showInviteModal(interaction: StringSelectMenuInteraction): Promise<void> {
+  const modal = new ModalBuilder()
+    .setCustomId("temp_invite_modal")
+    .setTitle("Invite User")
+    .addComponents(
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder()
+          .setCustomId("invite_user")
+          .setLabel("User ID")
+          .setStyle(TextInputStyle.Short)
+          .setRequired(true)
+      )
+    );
+  await interaction.showModal(modal);
+}
+
+async function handleGhost(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
+  await replyEphemeral(interaction, "👻 Channel is now invisible.");
+}
+
+async function handleUnghost(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
+  await replyEphemeral(interaction, "👁️ Channel is now visible.");
+}
+
+async function showTransferModal(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
+  const members = Array.from(channel.members.values());
+  if (members.length === 0) {
+    await replyEphemeral(interaction, "❌ No members available to transfer ownership to.");
+    return;
+  }
+
+  const options = members
+    .filter(m => m.id !== interaction.user.id)
+    .slice(0, 25)
+    .map(m => new StringSelectMenuOptionBuilder().setLabel(m.displayName).setValue(m.id));
+
+  const select = new StringSelectMenuBuilder()
+    .setCustomId("temp_transfer_select")
+    .setPlaceholder("Select a member to transfer ownership to")
+    .addOptions(options);
+
+  const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+  await interaction.reply({ content: "Select a member to transfer ownership to:", components: [row], ephemeral: true });
+}
+
+async function handleTransferSelect(interaction: StringSelectMenuInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  // Check ownership
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const targetId = interaction.values[0];
+  if (targetId === member.id) {
+    await replyEphemeral(interaction, "✅ You are already the owner of this channel.");
+    return;
+  }
+
+  const targetMember = channel.members.get(targetId);
+  if (!targetMember) {
+    await replyEphemeral(interaction, "❌ This member is no longer in the channel.");
+    return;
+  }
+
+  doc.ownerId = targetId;
+  await doc.save();
+
+  await replyEphemeral(interaction, `🎁 Ownership transferred to **${targetMember.displayName}**.`);
+  await refreshControlPanel(channel).catch(() => {});
+}
+
+/* -------------------------------------------------------------------------- */
+/* معالجات النماذج (Modals)                                                     */
+/* -------------------------------------------------------------------------- */
+
+async function handleNameModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const newName = interaction.fields.getTextInputValue("channel_name");
+  await channel.setName(newName);
+  await replyEphemeral(interaction, `✅ Channel name changed to **${newName}**.`);
+}
+
+async function handleLimitModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const limit = parseInt(interaction.fields.getTextInputValue("user_limit"), 10);
+  if (isNaN(limit) || limit < 0 || limit > 99) {
+    await replyEphemeral(interaction, "❌ Invalid limit. Must be between 0 and 99.");
+    return;
+  }
+
+  await channel.setUserLimit(limit === 0 ? 0 : limit);
+  await replyEphemeral(interaction, `✅ User limit changed to ${limit === 0 ? "unlimited" : limit}.`);
+}
+
+async function handleStatusModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const status = interaction.fields.getTextInputValue("channel_status");
+  await channel.setName(status);
+  await replyEphemeral(interaction, `✅ Channel status changed to **${status}**.`);
+}
+
+async function handleGameModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const gameName = interaction.fields.getTextInputValue("game_name");
+  await channel.setName(gameName);
+  await replyEphemeral(interaction, `✅ Channel name changed to game: **${gameName}**.`);
+}
+
+async function handleBitrateModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const bitrate = parseInt(interaction.fields.getTextInputValue("bitrate"), 10);
+  if (isNaN(bitrate) || bitrate < 8 || bitrate > 384) {
+    await replyEphemeral(interaction, "❌ Invalid bitrate. Must be between 8 and 384 kbps.");
+    return;
+  }
+
+  await channel.setBitrate(bitrate * 1000);
+  await replyEphemeral(interaction, `✅ Bitrate changed to ${bitrate} kbps.`);
+}
+
+async function handleRegionModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const region = interaction.fields.getTextInputValue("region");
+  await replyEphemeral(interaction, "🌐 Region setting coming soon!");
+}
+
+async function handlePermitModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const targetId = interaction.fields.getTextInputValue("permit_target");
+  await channel.permissionOverwrites.edit(targetId, { Connect: true });
+  await replyEphemeral(interaction, `✅ Permitted <@${targetId}> to access the channel.`);
+}
+
+async function handleRejectModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const targetId = interaction.fields.getTextInputValue("reject_target");
+  await channel.permissionOverwrites.edit(targetId, { Connect: false });
+  await replyEphemeral(interaction, `✅ Rejected <@${targetId}> from accessing the channel.`);
+}
+
+async function handleInviteModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
+  const ctx = await resolveVoiceContext(interaction);
+  if (!ctx) {
+    await replyEphemeral(interaction, "❌ This voice channel no longer exists.");
+    return;
+  }
+  const { channel, doc, member } = ctx;
+
+  if (doc.ownerId !== member.id) {
+    await replyEphemeral(interaction, "❌ You are not the owner of this voice channel!");
+    return;
+  }
+
+  const userId = interaction.fields.getTextInputValue("invite_user");
+  await channel.permissionOverwrites.edit(userId, { Connect: true });
+  await replyEphemeral(interaction, `✅ Invited <@${userId}> to the channel.`);
 }
