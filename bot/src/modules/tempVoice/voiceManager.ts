@@ -192,6 +192,15 @@ async function cleanupIfEmpty(oldState: VoiceState): Promise<void> {
   }
 
   if (channel.type === ChannelType.GuildVoice && channel.members.size === 0) {
+    // Delete the associated text channel
+    if ((doc as any).textChannelId) {
+      const textChannel = oldState.guild.channels.cache.get((doc as any).textChannelId);
+      if (textChannel) {
+        await textChannel.delete().catch(() => {});
+      }
+    }
+    
+    // Delete the voice channel
     await channel.delete().catch(() => {});
     await TempVoiceChannel.deleteOne({ channelId }).catch(() => {});
   }
@@ -551,6 +560,15 @@ async function handleRenameModalSubmit(interaction: ModalSubmitInteraction): Pro
   }
 
   await channel.setName(newName.slice(0, 100));
+
+  // Rename the associated text channel
+  if ((doc as any).textChannelId) {
+    const textChannel = channel.guild.channels.cache.get((doc as any).textChannelId);
+    if (textChannel && textChannel.type === ChannelType.GuildText) {
+      await textChannel.setName(`text-${newName.slice(0, 100)}`).catch(() => {});
+    }
+  }
+
   await replyEphemeral(interaction, `✅ تم تغيير اسم الروم إلى **${newName}**.`);
 }
 
@@ -947,6 +965,23 @@ async function handleClaimFromMenu(interaction: StringSelectMenuInteraction, cha
   doc.ownerId = member.id;
   await doc.save();
 
+  // Update text channel permissions
+  if ((doc as any).textChannelId) {
+    const textChannel = channel.guild.channels.cache.get((doc as any).textChannelId);
+    if (textChannel && textChannel.type === ChannelType.GuildText) {
+      await textChannel.permissionOverwrites.edit(doc.ownerId, {
+        ViewChannel: false,
+        SendMessages: false,
+        ReadMessageHistory: false
+      }).catch(() => {});
+      await textChannel.permissionOverwrites.edit(member.id, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true
+      }).catch(() => {});
+    }
+  }
+
   await replyEphemeral(interaction, "👑 You have successfully claimed ownership of this channel.");
   await refreshControlPanel(channel).catch(() => {});
 }
@@ -1072,6 +1107,23 @@ async function handleTransferSelect(interaction: StringSelectMenuInteraction): P
 
   doc.ownerId = targetId;
   await doc.save();
+
+  // Update text channel permissions
+  if ((doc as any).textChannelId) {
+    const textChannel = channel.guild.channels.cache.get((doc as any).textChannelId);
+    if (textChannel && textChannel.type === ChannelType.GuildText) {
+      await textChannel.permissionOverwrites.edit(member.id, {
+        ViewChannel: false,
+        SendMessages: false,
+        ReadMessageHistory: false
+      }).catch(() => {});
+      await textChannel.permissionOverwrites.edit(targetId, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true
+      }).catch(() => {});
+    }
+  }
 
   await replyEphemeral(interaction, `🎁 Ownership transferred to **${targetMember.displayName}**.`);
   await refreshControlPanel(channel).catch(() => {});
