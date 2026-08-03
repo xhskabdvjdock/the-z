@@ -219,7 +219,7 @@ export interface IGuildConfig {
   };
 
   moderation: {
-    autoDeleteConfirmation: number; // بالثواني، 0 يعني لا تحذف
+    autoDeleteConfirmation: number; // بالثواني، 0 يعني لا تحذف، الافتراضي 3
   };
 
   antiNuke: {
@@ -353,7 +353,7 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     },
 
     moderation: {
-      autoDeleteConfirmation: 0
+      autoDeleteConfirmation: 3
     },
 
     antiNuke: {

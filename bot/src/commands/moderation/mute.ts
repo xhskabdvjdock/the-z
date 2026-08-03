@@ -1,6 +1,7 @@
 import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
+import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
 
 const MAX_TIMEOUT_MINUTES = 40320; // الحد الأقصى المسموح به من ديسكورد (28 يوماً)
 
@@ -21,22 +22,22 @@ const command: BotCommand = {
     const reason = ctx.getString("reason") ?? "لا يوجد سبب";
 
     if (!target) {
-      await ctx.reply({ content: "❌ لم يتم العثور على هذا العضو في السيرفر." });
+      await replyWithAutoDelete(ctx, "❌ لم يتم العثور على هذا العضو في السيرفر.", ctx.guild.id);
       return;
     }
 
     if (duration === null || duration <= 0 || duration > MAX_TIMEOUT_MINUTES) {
-      await ctx.reply({ content: `❌ يجب أن تكون المدة بين 1 و ${MAX_TIMEOUT_MINUTES} دقيقة.` });
+      await replyWithAutoDelete(ctx, `❌ يجب أن تكون المدة بين 1 و ${MAX_TIMEOUT_MINUTES} دقيقة.`, ctx.guild.id);
       return;
     }
 
     if (target.id === ctx.user.id) {
-      await ctx.reply({ content: "❌ لا يمكنك كتم نفسك." });
+      await replyWithAutoDelete(ctx, "❌ لا يمكنك كتم نفسك.", ctx.guild.id);
       return;
     }
 
     if (target.id === ctx.guild.ownerId) {
-      await ctx.reply({ content: "❌ لا يمكنك كتم مالك السيرفر." });
+      await replyWithAutoDelete(ctx, "❌ لا يمكنك كتم مالك السيرفر.", ctx.guild.id);
       return;
     }
 
@@ -44,19 +45,19 @@ const command: BotCommand = {
       ctx.guild.ownerId !== ctx.user.id &&
       target.roles.highest.position >= ctx.member.roles.highest.position
     ) {
-      await ctx.reply({ content: "❌ لا يمكنك كتم عضو برتبة مساوية أو أعلى من رتبتك." });
+      await replyWithAutoDelete(ctx, "❌ لا يمكنك كتم عضو برتبة مساوية أو أعلى من رتبتك.", ctx.guild.id);
       return;
     }
 
     if (!target.moderatable) {
-      await ctx.reply({ content: "❌ لا أملك صلاحية كافية لكتم هذا العضو." });
+      await replyWithAutoDelete(ctx, "❌ لا أملك صلاحية كافية لكتم هذا العضو.", ctx.guild.id);
       return;
     }
 
     try {
       await target.timeout(duration * 60_000, reason);
     } catch {
-      await ctx.reply({ content: "❌ حدث خطأ أثناء محاولة تنفيذ الكتم." });
+      await replyWithAutoDelete(ctx, "❌ حدث خطأ أثناء محاولة تنفيذ الكتم.", ctx.guild.id);
       return;
     }
 

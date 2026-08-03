@@ -1,6 +1,7 @@
 import { BaseGuildTextChannel, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
+import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
 
 const command: BotCommand = {
   name: "slowmode",
@@ -15,24 +16,24 @@ const command: BotCommand = {
     const seconds = ctx.getInteger("seconds");
 
     if (seconds === null || seconds < 0 || seconds > 21600) {
-      await ctx.reply({ content: "❌ يجب أن تكون المدة بين 0 و 21600 ثانية." });
+      await replyWithAutoDelete(ctx, "❌ يجب أن تكون المدة بين 0 و 21600 ثانية.", ctx.guild.id);
       return;
     }
 
     if (!(ctx.channel instanceof BaseGuildTextChannel)) {
-      await ctx.reply({ content: "❌ لا يمكن استخدام هذا الأمر في هذا النوع من الرومات." });
+      await replyWithAutoDelete(ctx, "❌ لا يمكن استخدام هذا الأمر في هذا النوع من الرومات.", ctx.guild.id);
       return;
     }
 
     if (!ctx.guild.members.me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
-      await ctx.reply({ content: "❌ لا أملك صلاحية إدارة الرومات." });
+      await replyWithAutoDelete(ctx, "❌ لا أملك صلاحية إدارة الرومات.", ctx.guild.id);
       return;
     }
 
     try {
       await ctx.channel.setRateLimitPerUser(seconds);
     } catch {
-      await ctx.reply({ content: "❌ حدث خطأ أثناء تحديد وضع البطيء." });
+      await replyWithAutoDelete(ctx, "❌ حدث خطأ أثناء تحديد وضع البطيء.", ctx.guild.id);
       return;
     }
 

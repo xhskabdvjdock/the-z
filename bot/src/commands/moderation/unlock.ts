@@ -1,6 +1,7 @@
 import { BaseGuildTextChannel, EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
+import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
 
 const command: BotCommand = {
   name: "unlock",
@@ -15,12 +16,12 @@ const command: BotCommand = {
     const selected = ctx.getChannel("channel") ?? ctx.channel;
 
     if (!(selected instanceof BaseGuildTextChannel)) {
-      await ctx.reply({ content: "❌ لا يمكن فتح هذا النوع من الرومات." });
+      await replyWithAutoDelete(ctx, "❌ لا يمكن فتح هذا النوع من الرومات.", ctx.guild.id);
       return;
     }
 
     if (!ctx.guild.members.me?.permissions.has(PermissionFlagsBits.ManageChannels)) {
-      await ctx.reply({ content: "❌ لا أملك صلاحية إدارة الرومات." });
+      await replyWithAutoDelete(ctx, "❌ لا أملك صلاحية إدارة الرومات.", ctx.guild.id);
       return;
     }
 
@@ -29,7 +30,7 @@ const command: BotCommand = {
         SendMessages: null
       });
     } catch {
-      await ctx.reply({ content: "❌ حدث خطأ أثناء فتح الروم." });
+      await replyWithAutoDelete(ctx, "❌ حدث خطأ أثناء فتح الروم.", ctx.guild.id);
       return;
     }
 

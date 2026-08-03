@@ -1,6 +1,7 @@
 import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
+import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
 
 const command: BotCommand = {
   name: "unmute",
@@ -13,24 +14,24 @@ const command: BotCommand = {
     const target = await ctx.getMember("user");
 
     if (!target) {
-      await ctx.reply({ content: "❌ لم يتم العثور على هذا العضو في السيرفر." });
+      await replyWithAutoDelete(ctx, "❌ لم يتم العثور على هذا العضو في السيرفر.", ctx.guild.id);
       return;
     }
 
     if (!target.isCommunicationDisabled()) {
-      await ctx.reply({ content: "❌ هذا العضو ليس مكتوماً حالياً." });
+      await replyWithAutoDelete(ctx, "❌ هذا العضو ليس مكتوماً حالياً.", ctx.guild.id);
       return;
     }
 
     if (!ctx.guild.members.me?.permissions.has(PermissionFlagsBits.ModerateMembers)) {
-      await ctx.reply({ content: "❌ لا أملك صلاحية إدارة كتم الأعضاء." });
+      await replyWithAutoDelete(ctx, "❌ لا أملك صلاحية إدارة كتم الأعضاء.", ctx.guild.id);
       return;
     }
 
     try {
       await target.timeout(null);
     } catch {
-      await ctx.reply({ content: "❌ حدث خطأ أثناء محاولة فك الكتم." });
+      await replyWithAutoDelete(ctx, "❌ حدث خطأ أثناء محاولة فك الكتم.", ctx.guild.id);
       return;
     }
 

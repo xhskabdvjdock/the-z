@@ -2,6 +2,7 @@ import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { Warning } from "@thez/shared";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
+import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
 
 const command: BotCommand = {
   name: "warn",
@@ -18,17 +19,17 @@ const command: BotCommand = {
     const reason = ctx.getString("reason");
 
     if (!target) {
-      await ctx.reply({ content: "❌ لم يتم العثور على هذا العضو في السيرفر." });
+      await replyWithAutoDelete(ctx, "❌ لم يتم العثور على هذا العضو في السيرفر.", ctx.guild.id);
       return;
     }
 
     if (!reason) {
-      await ctx.reply({ content: "❌ يرجى كتابة سبب التحذير." });
+      await replyWithAutoDelete(ctx, "❌ يرجى كتابة سبب التحذير.", ctx.guild.id);
       return;
     }
 
     if (target.id === ctx.user.id) {
-      await ctx.reply({ content: "❌ لا يمكنك تحذير نفسك." });
+      await replyWithAutoDelete(ctx, "❌ لا يمكنك تحذير نفسك.", ctx.guild.id);
       return;
     }
 
