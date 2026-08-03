@@ -691,12 +691,16 @@ async function handlePermissionsSelect(interaction: StringSelectMenuInteraction)
 
   const action = interaction.values[0];
   
+  await interaction.deferReply({ ephemeral: true });
+  
   switch (action) {
     case "temp_lock":
-      await handleLock(interaction, channel);
+      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
+      await interaction.editReply({ content: "🔒 Channel locked successfully." });
       break;
     case "temp_unlock":
-      await handleUnlock(interaction, channel);
+      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: true });
+      await interaction.editReply({ content: "🔓 Channel unlocked successfully." });
       break;
     case "temp_permit":
       await showPermitModal(interaction);
@@ -708,16 +712,18 @@ async function handlePermissionsSelect(interaction: StringSelectMenuInteraction)
       await showInviteModal(interaction);
       break;
     case "temp_ghost":
-      await handleGhost(interaction, channel);
+      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
+      await interaction.editReply({ content: "👻 Channel is now invisible." });
       break;
     case "temp_unghost":
-      await handleUnghost(interaction, channel);
+      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
+      await interaction.editReply({ content: "👁️ Channel is now visible." });
       break;
     case "temp_transfer":
       await showTransferModal(interaction, channel);
       break;
     default:
-      await interaction.reply({ content: "❌ Unknown action.", ephemeral: true });
+      await interaction.editReply({ content: "❌ Unknown action." });
   }
 }
 
@@ -919,18 +925,6 @@ async function handleClaimFromMenu(interaction: StringSelectMenuInteraction, cha
   await replyEphemeral(interaction, "👑 You have successfully claimed ownership of this channel.");
 }
 
-async function handleLock(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
-  await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
-  await interaction.editReply({ content: "🔒 Channel locked successfully." });
-}
-
-async function handleUnlock(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
-  await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: true });
-  await interaction.editReply({ content: "🔓 Channel unlocked successfully." });
-}
-
 async function showPermitModal(interaction: StringSelectMenuInteraction): Promise<void> {
   const modal = new ModalBuilder()
     .setCustomId("temp_permit_modal")
@@ -977,18 +971,6 @@ async function showInviteModal(interaction: StringSelectMenuInteraction): Promis
       )
     );
   await interaction.showModal(modal);
-}
-
-async function handleGhost(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
-  await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
-  await interaction.editReply({ content: "👻 Channel is now invisible." });
-}
-
-async function handleUnghost(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
-  await interaction.deferReply({ ephemeral: true });
-  await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
-  await interaction.editReply({ content: "👁️ Channel is now visible." });
 }
 
 async function showTransferModal(interaction: StringSelectMenuInteraction, channel: VoiceChannel): Promise<void> {
