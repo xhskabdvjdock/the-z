@@ -25,7 +25,7 @@ const command: BotCommand = {
   ],
   async run(ctx) {
     if (!ctx.member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      await ctx.reply({ content: "❌ تحتاج صلاحية `إدارة السيرفر` لاستخدام هذا الأمر." });
+      await ctx.reply({ content: "تحتاج صلاحية `إدارة السيرفر` لاستخدام هذا الأمر." });
       return;
     }
 
@@ -34,14 +34,14 @@ const command: BotCommand = {
 
     if (!joinChannel || joinChannel.type !== ChannelType.GuildVoice) {
       await ctx.reply({
-        content: "❌ يجب اختيار قناة صوتية صالحة لتكون قناة الانضمام (Join to Create)."
+        content: "يجب اختيار قناة صوتية صالحة لتكون قناة الانضمام (Join to Create)."
       });
       return;
     }
 
     if (category && category.type !== ChannelType.GuildCategory) {
       await ctx.reply({
-        content: "❌ التصنيف المُحدد غير صالح، يرجى اختيار تصنيف (Category) فعلي."
+        content: "التصنيف المُحدد غير صالح، يرجى اختيار تصنيف (Category) فعلي."
       });
       return;
     }
@@ -62,7 +62,7 @@ const command: BotCommand = {
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setTitle("✅ تم إعداد نظام الرومات الصوتية المؤقتة")
+      .setTitle("تم إعداد نظام الرومات الصوتية المؤقتة")
       .setDescription("سيقوم البوت الآن بإنشاء روم صوتي مؤقت تلقائياً لكل عضو ينضم لقناة الانضمام.")
       .addFields(
         { name: "قناة الانضمام", value: `<#${joinChannel.id}>`, inline: true },

@@ -20,7 +20,7 @@ const command: BotCommand = {
     const gConfig = await getGuildConfig(ctx.client, ctx.guild.id);
 
     if (!gConfig.tickets.categories.length) {
-      await ctx.reply("❌ لا توجد تصنيفات تذاكر معرّفة بعد. أضِف تصنيفاً واحداً على الأقل من لوحة التحكم أولاً.");
+      await ctx.reply("لا توجد تصنيفات تذاكر معرّفة بعد. أضِف تصنيفاً واحداً على الأقل من لوحة التحكم أولاً.");
       return;
     }
 
@@ -28,12 +28,12 @@ const command: BotCommand = {
     const targetChannel = (selectedChannel as TextChannel | null) ?? (ctx.channel as TextChannel);
 
     if (targetChannel.type !== ChannelType.GuildText) {
-      await ctx.reply("❌ يجب اختيار روم نصي لإرسال لوحة التذاكر فيه.");
+      await ctx.reply("يجب اختيار روم نصي لإرسال لوحة التذاكر فيه.");
       return;
     }
 
     await sendTicketPanel(targetChannel, gConfig);
-    await ctx.reply(`✅ تم إرسال لوحة التذاكر بنجاح في <#${targetChannel.id}>.`);
+    await ctx.reply(`تم إرسال لوحة التذاكر بنجاح في <#${targetChannel.id}>.`);
   }
 };
 

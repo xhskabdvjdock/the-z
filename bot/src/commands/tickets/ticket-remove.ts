@@ -20,7 +20,7 @@ const command: BotCommand = {
     const ticket = await Ticket.findOne({ channelId: channel.id });
 
     if (!ticket) {
-      await ctx.reply("❌ هذا الأمر يعمل فقط داخل روم تذكرة.");
+      await ctx.reply("هذا الأمر يعمل فقط داخل روم تذكرة.");
       return;
     }
 
@@ -31,13 +31,13 @@ const command: BotCommand = {
       ctx.member.permissions.has(PermissionFlagsBits.Administrator);
 
     if (!isStaff) {
-      await ctx.reply("❌ لا تملك صلاحية استخدام هذا الأمر.");
+      await ctx.reply("لا تملك صلاحية استخدام هذا الأمر.");
       return;
     }
 
     const user = await ctx.getUser("user");
     if (!user) {
-      await ctx.reply("❌ يجب تحديد عضو صحيح.");
+      await ctx.reply("يجب تحديد عضو صحيح.");
       return;
     }
 
@@ -46,7 +46,7 @@ const command: BotCommand = {
     ticket.addedUserIds = ticket.addedUserIds.filter((id: string) => id !== user.id);
     await ticket.save();
 
-    await ctx.reply(`✅ تم إزالة <@${user.id}> من هذه التذكرة.`);
+    await ctx.reply(`تم إزالة <@${user.id}> من هذه التذكرة.`);
   }
 };
 
