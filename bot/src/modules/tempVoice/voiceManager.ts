@@ -715,11 +715,11 @@ async function handlePermissionsSelect(interaction: StringSelectMenuInteraction)
   
   switch (action) {
     case "temp_lock":
-      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: false });
+      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
       await interaction.editReply({ content: "🔒 Channel locked successfully." });
       break;
     case "temp_unlock":
-      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: true });
+      await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
       await interaction.editReply({ content: "🔓 Channel unlocked successfully." });
       break;
     case "temp_ghost":
