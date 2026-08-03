@@ -1,7 +1,6 @@
 import { EmbedBuilder, Message } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
-import { getTranslationText } from "lingva-scraper";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
@@ -34,17 +33,13 @@ const command: BotCommand = {
     const isArabic = /[\u0600-\u06FF]/.test(text);
     const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
     
-    let sourceLang: string;
     let targetLang: string;
 
     if (isArabic) {
-      sourceLang = "ar";
       targetLang = "en";
     } else if (isEnglish) {
-      sourceLang = "en";
       targetLang = "ar";
     } else {
-      sourceLang = "auto";
       targetLang = "en";
     }
 
@@ -67,20 +62,34 @@ const command: BotCommand = {
     }
 
     try {
-      const result = await getTranslationText(sourceLang as any, targetLang as any, text);
+      // استخدام LibreTranslate API العام
+      const response = await fetch('https://libretranslate.de/translate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          q: text,
+          source: 'auto',
+          target: targetLang,
+          format: 'text'
+        })
+      });
 
-      if (!result) {
+      const data = await response.json() as { translatedText: string };
+
+      if (!data.translatedText) {
         await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
         return;
       }
 
       // التأكد من أن النص المترجم لا يتجاوز حد Discord
-      const translatedText = result.length > 4096 
-        ? result.substring(0, 4093) + "..." 
-        : result;
+      const translatedText = data.translatedText.length > 4096 
+        ? data.translatedText.substring(0, 4093) + "..." 
+        : data.translatedText;
 
       // حفظ في الذاكرة المؤقتة
-      translationCache.set(cacheKey, { text: result, timestamp: now });
+      translationCache.set(cacheKey, { text: data.translatedText, timestamp: now });
 
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
