@@ -7,7 +7,7 @@ const event: BotEvent = {
   async execute(client) {
     console.log(`✅ تم تسجيل الدخول باسم ${client.user?.tag}`);
     client.user?.setPresence({
-      activities: [{ name: "إدارة السيرفر | /help", type: ActivityType.Watching }],
+      activities: [{ name: "beta version | /help", type: ActivityType.Watching }],
       status: "online"
     });
   }
