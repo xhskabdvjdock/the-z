@@ -691,6 +691,26 @@ async function handlePermissionsSelect(interaction: StringSelectMenuInteraction)
 
   const action = interaction.values[0];
   
+  // For modal actions, don't defer - show modal directly
+  if (["temp_permit", "temp_reject", "temp_invite", "temp_transfer"].includes(action)) {
+    switch (action) {
+      case "temp_permit":
+        await showPermitModal(interaction);
+        break;
+      case "temp_reject":
+        await showRejectModal(interaction);
+        break;
+      case "temp_invite":
+        await showInviteModal(interaction);
+        break;
+      case "temp_transfer":
+        await showTransferModal(interaction, channel);
+        break;
+    }
+    return;
+  }
+  
+  // For permission actions, defer and execute
   await interaction.deferReply({ ephemeral: true });
   
   switch (action) {
@@ -702,15 +722,6 @@ async function handlePermissionsSelect(interaction: StringSelectMenuInteraction)
       await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { Connect: true });
       await interaction.editReply({ content: "🔓 Channel unlocked successfully." });
       break;
-    case "temp_permit":
-      await showPermitModal(interaction);
-      break;
-    case "temp_reject":
-      await showRejectModal(interaction);
-      break;
-    case "temp_invite":
-      await showInviteModal(interaction);
-      break;
     case "temp_ghost":
       await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
       await interaction.editReply({ content: "👻 Channel is now invisible." });
@@ -718,9 +729,6 @@ async function handlePermissionsSelect(interaction: StringSelectMenuInteraction)
     case "temp_unghost":
       await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
       await interaction.editReply({ content: "👁️ Channel is now visible." });
-      break;
-    case "temp_transfer":
-      await showTransferModal(interaction, channel);
       break;
     default:
       await interaction.editReply({ content: "❌ Unknown action." });
