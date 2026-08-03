@@ -392,19 +392,19 @@ async function handleToggleAction(
   switch (action) {
     case "lock":
       await channel.permissionOverwrites.edit(everyone, { Connect: false });
-      await replyEphemeral(interaction, "🔒 تم قفل الروم بنجاح.");
+      await replyEphemeral(interaction, "تم قفل الروم بنجاح.");
       break;
     case "unlock":
       await channel.permissionOverwrites.edit(everyone, { Connect: null });
-      await replyEphemeral(interaction, "🔓 تم فتح الروم بنجاح.");
+      await replyEphemeral(interaction, "تم فتح الروم بنجاح.");
       break;
     case "hide":
       await channel.permissionOverwrites.edit(everyone, { ViewChannel: false });
-      await replyEphemeral(interaction, "👁️ تم إخفاء الروم بنجاح.");
+      await replyEphemeral(interaction, "تم إخفاء الروم بنجاح.");
       break;
     case "unhide":
       await channel.permissionOverwrites.edit(everyone, { ViewChannel: null });
-      await replyEphemeral(interaction, "👁️‍🗨️ تم إظهار الروم بنجاح.");
+      await replyEphemeral(interaction, "تم إظهار الروم بنجاح.");
       break;
   }
 }
@@ -433,8 +433,8 @@ async function handleLimitChange(interaction: ButtonInteraction, delta: number):
   await replyEphemeral(
     interaction,
     next === 0
-      ? "✅ تم إلغاء الحد الأقصى للأعضاء (غير محدود)."
-      : `✅ تم ضبط الحد الأقصى للأعضاء إلى ${next}.`
+      ? " تم إلغاء الحد الأقصى للأعضاء (غير محدود)."
+      : ` تم ضبط الحد الأقصى للأعضاء إلى ${next}.`
   );
 }
 
@@ -506,7 +506,7 @@ async function handleRenameModalSubmit(interaction: ModalSubmitInteraction): Pro
     }
   }
 
-  await replyEphemeral(interaction, `✅ تم تغيير اسم الروم إلى **${newName}**.`);
+  await replyEphemeral(interaction, ` تم تغيير اسم الروم إلى **${newName}**.`);
 }
 
 async function handleClaim(interaction: ButtonInteraction): Promise<void> {
@@ -523,7 +523,7 @@ async function handleClaim(interaction: ButtonInteraction): Promise<void> {
   }
 
   if (doc.ownerId === member.id) {
-    await replyEphemeral(interaction, "✅ أنت بالفعل مالك هذا الروم.");
+    await replyEphemeral(interaction, " أنت بالفعل مالك هذا الروم.");
     return;
   }
 
@@ -536,7 +536,7 @@ async function handleClaim(interaction: ButtonInteraction): Promise<void> {
   doc.ownerId = member.id;
   await doc.save();
 
-  await replyEphemeral(interaction, "👑 تم استلام ملكية الروم بنجاح.");
+  await replyEphemeral(interaction, "تم استلام ملكية الروم بنجاح.");
 }
 
 /* -------------------------------------------------------------------------- */
@@ -577,7 +577,7 @@ async function handleKickSelect(interaction: StringSelectMenuInteraction): Promi
   }
 
   await targetMember.voice.disconnect().catch(() => {});
-  await replyEphemeral(interaction, `🦵 تم طرد **${targetMember.displayName}** من الروم.`);
+  await replyEphemeral(interaction, `تم طرد **${targetMember.displayName}** من الروم.`);
 }
 
 async function handleOwnerSelect(interaction: StringSelectMenuInteraction): Promise<void> {
@@ -603,7 +603,7 @@ async function handleOwnerSelect(interaction: StringSelectMenuInteraction): Prom
     return;
   }
   if (targetId === member.id) {
-    await replyEphemeral(interaction, "✅ أنت بالفعل مالك هذا الروم.");
+    await replyEphemeral(interaction, " أنت بالفعل مالك هذا الروم.");
     return;
   }
 
@@ -616,7 +616,7 @@ async function handleOwnerSelect(interaction: StringSelectMenuInteraction): Prom
   doc.ownerId = targetId;
   await doc.save();
 
-  await replyEphemeral(interaction, `🎁 تم نقل ملكية الروم إلى **${targetMember.displayName}**.`);
+  await replyEphemeral(interaction, `تم نقل ملكية الروم إلى **${targetMember.displayName}**.`);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -716,22 +716,22 @@ async function handlePermissionsSelect(interaction: StringSelectMenuInteraction)
   switch (action) {
     case "temp_lock":
       await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
-      await interaction.editReply({ content: "🔒 Channel locked successfully." });
+      await interaction.editReply({ content: "Channel locked successfully." });
       break;
     case "temp_unlock":
       await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
-      await interaction.editReply({ content: "🔓 Channel unlocked successfully." });
+      await interaction.editReply({ content: "Channel unlocked successfully." });
       break;
     case "temp_ghost":
       await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: false });
-      await interaction.editReply({ content: "👻 Channel is now invisible." });
+      await interaction.editReply({ content: "Channel is now invisible." });
       break;
     case "temp_unghost":
       await channel.permissionOverwrites.edit(channel.guild.roles.everyone, { ViewChannel: true });
-      await interaction.editReply({ content: "👁️ Channel is now visible." });
+      await interaction.editReply({ content: "Channel is now visible." });
       break;
     default:
-      await interaction.editReply({ content: "❌ Unknown action." });
+      await interaction.editReply({ content: "Unknown action." });
   }
 }
 
@@ -900,7 +900,7 @@ async function handleToggleNSFW(interaction: StringSelectMenuInteraction, channe
 
 async function handleClaimFromMenu(interaction: StringSelectMenuInteraction, channel: VoiceChannel, doc: LiveDoc<ITempVoiceChannel>, member: GuildMember): Promise<void> {
   if (doc.ownerId === member.id) {
-    await replyEphemeral(interaction, "✅ You are already the owner of this channel.");
+    await replyEphemeral(interaction, " You are already the owner of this channel.");
     return;
   }
 
@@ -930,7 +930,7 @@ async function handleClaimFromMenu(interaction: StringSelectMenuInteraction, cha
     }
   }
 
-  await replyEphemeral(interaction, "👑 You have successfully claimed ownership of this channel.");
+  await replyEphemeral(interaction, "You have successfully claimed ownership of this channel.");
 }
 
 async function showPermitModal(interaction: StringSelectMenuInteraction): Promise<void> {
@@ -1018,7 +1018,7 @@ async function handleTransferSelect(interaction: StringSelectMenuInteraction): P
 
   const targetId = interaction.values[0];
   if (targetId === member.id) {
-    await replyEphemeral(interaction, "✅ You are already the owner of this channel.");
+    await replyEphemeral(interaction, " You are already the owner of this channel.");
     return;
   }
 
@@ -1031,7 +1031,7 @@ async function handleTransferSelect(interaction: StringSelectMenuInteraction): P
   doc.ownerId = targetId;
   await doc.save();
 
-  await replyEphemeral(interaction, `🎁 Ownership transferred to **${targetMember.displayName}**.`);
+  await replyEphemeral(interaction, `Ownership transferred to **${targetMember.displayName}**.`);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -1053,7 +1053,7 @@ async function handleNameModalSubmit(interaction: ModalSubmitInteraction): Promi
 
   const newName = interaction.fields.getTextInputValue("channel_name");
   await channel.setName(newName);
-  await replyEphemeral(interaction, `✅ Channel name changed to **${newName}**.`);
+  await replyEphemeral(interaction, ` Channel name changed to **${newName}**.`);
 }
 
 async function handleLimitModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1076,7 +1076,7 @@ async function handleLimitModalSubmit(interaction: ModalSubmitInteraction): Prom
   }
 
   await channel.setUserLimit(limit === 0 ? 0 : limit);
-  await replyEphemeral(interaction, `✅ User limit changed to ${limit === 0 ? "unlimited" : limit}.`);
+  await replyEphemeral(interaction, ` User limit changed to ${limit === 0 ? "unlimited" : limit}.`);
 }
 
 async function handleStatusModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1094,7 +1094,7 @@ async function handleStatusModalSubmit(interaction: ModalSubmitInteraction): Pro
 
   const status = interaction.fields.getTextInputValue("channel_status");
   await channel.setName(status);
-  await replyEphemeral(interaction, `✅ Channel status changed to **${status}**.`);
+  await replyEphemeral(interaction, ` Channel status changed to **${status}**.`);
 }
 
 async function handleGameModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1112,7 +1112,7 @@ async function handleGameModalSubmit(interaction: ModalSubmitInteraction): Promi
 
   const gameName = interaction.fields.getTextInputValue("game_name");
   await channel.setName(gameName);
-  await replyEphemeral(interaction, `✅ Channel name changed to game: **${gameName}**.`);
+  await replyEphemeral(interaction, ` Channel name changed to game: **${gameName}**.`);
 }
 
 async function handleBitrateModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1135,7 +1135,7 @@ async function handleBitrateModalSubmit(interaction: ModalSubmitInteraction): Pr
   }
 
   await channel.setBitrate(bitrate * 1000);
-  await replyEphemeral(interaction, `✅ Bitrate changed to ${bitrate} kbps.`);
+  await replyEphemeral(interaction, ` Bitrate changed to ${bitrate} kbps.`);
 }
 
 async function handleRegionModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1170,7 +1170,7 @@ async function handlePermitModalSubmit(interaction: ModalSubmitInteraction): Pro
 
   const targetId = interaction.fields.getTextInputValue("permit_target");
   await channel.permissionOverwrites.edit(targetId, { Connect: true });
-  await replyEphemeral(interaction, `✅ Permitted <@${targetId}> to access the channel.`);
+  await replyEphemeral(interaction, ` Permitted <@${targetId}> to access the channel.`);
 }
 
 async function handleRejectModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1188,7 +1188,7 @@ async function handleRejectModalSubmit(interaction: ModalSubmitInteraction): Pro
 
   const targetId = interaction.fields.getTextInputValue("reject_target");
   await channel.permissionOverwrites.edit(targetId, { Connect: false });
-  await replyEphemeral(interaction, `✅ Rejected <@${targetId}> from accessing the channel.`);
+  await replyEphemeral(interaction, ` Rejected <@${targetId}> from accessing the channel.`);
 }
 
 async function handleInviteModalSubmit(interaction: ModalSubmitInteraction): Promise<void> {
@@ -1206,5 +1206,5 @@ async function handleInviteModalSubmit(interaction: ModalSubmitInteraction): Pro
 
   const userId = interaction.fields.getTextInputValue("invite_user");
   await channel.permissionOverwrites.edit(userId, { Connect: true });
-  await replyEphemeral(interaction, `✅ Invited <@${userId}> to the channel.`);
+  await replyEphemeral(interaction, ` Invited <@${userId}> to the channel.`);
 }
