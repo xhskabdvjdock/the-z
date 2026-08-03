@@ -158,6 +158,15 @@ export default function TicketsForm({
           />
         </div>
 
+        <div className="card bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+          <h3 className="font-bold text-blue-900 dark:text-blue-100 mb-2">ℹ️ التعديلات الجديدة على نظام التذاكر</h3>
+          <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside">
+            <li><strong>نظام الاستلام المتقدم:</strong> عند استلام التذكرة يظهر اسم المستلم على الزر، ولا يمكن لآخرين استلامها. يمكن إلغاء الاستلام بالضغط مرة ثانية.</li>
+            <li><strong>إغلاق التذاكر:</strong> فقط فريق الدعم (Staff) يمكنه إغلاق التذاكر، صاحب التذكرة لم يعد يستطيع إغلاقها.</li>
+            <li><strong>الرتب المحظورة:</strong> يمكنك تحديد رتب محظورة من فتح التذاكر من كل تصنيف (انظر إعدادات التصنيف).</li>
+          </ul>
+        </div>
+
         <SaveButton onSave={() => saveTicketsConfig(guildId, state)} />
       </section>
 
@@ -235,6 +244,12 @@ export default function TicketsForm({
                 values={cat.blockedRoleIds ?? []}
                 onChange={(v) => updateCategory(index, { blockedRoleIds: v })}
               />
+              
+              <div className="card bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 sm:col-span-2">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>⚠️ ملاحظة:</strong> أعضاء فريق الدعم فقط يمكنهم استلام وإغلاق التذاكر. الرتب المحظورة لا يمكنها فتح التذاكر من هذا التصنيف.
+                </p>
+              </div>
 
               <div>
                 <label className="label">صيغة اسم روم التذكرة</label>
