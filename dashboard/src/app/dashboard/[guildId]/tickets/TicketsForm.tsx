@@ -18,6 +18,7 @@ function createCategory(): ITicketCategory {
     emoji: "",
     categoryId: "",
     staffRoleIds: [],
+    blockedRoleIds: [],
     logChannelId: "",
     welcomeMessage: { enabled: true, content: "" },
     questions: [],
@@ -226,6 +227,13 @@ export default function TicketsForm({
                 options={roleOptions}
                 values={cat.staffRoleIds}
                 onChange={(v) => updateCategory(index, { staffRoleIds: v })}
+              />
+
+              <MultiSelect
+                label="رتب محظورة من فتح التذاكر من هذا التصنيف"
+                options={roleOptions}
+                values={cat.blockedRoleIds ?? []}
+                onChange={(v) => updateCategory(index, { blockedRoleIds: v })}
               />
 
               <div>
