@@ -27,3 +27,26 @@ export async function saveCommandOverrides(guildId: string, overrides: ICommandO
     throw error;
   }
 }
+
+export async function saveModerationSettings(guildId: string, settings: { autoDeleteConfirmation: number }) {
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
+
+    console.log("Saving moderation settings for guild:", guildId);
+    console.log("Data:", JSON.stringify(settings, null, 2));
+
+    await GuildConfig.findOneAndUpdate(
+      { guildId },
+      { $set: { "moderation.autoDeleteConfirmation": settings.autoDeleteConfirmation } },
+      { upsert: true }
+    );
+
+    console.log("Moderation settings saved successfully");
+
+    revalidatePath(`/dashboard/${guildId}/commands`);
+  } catch (error) {
+    console.error("Error saving moderation settings:", error);
+    throw error;
+  }
+}

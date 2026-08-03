@@ -1,5 +1,5 @@
 import { ensureDb } from "@/lib/db";
-import { DEFAULT_COMMANDS, GuildConfig, ICommandOverride } from "@thez/shared";
+import { DEFAULT_COMMANDS, GuildConfig, ICommandOverride, IGuildConfig } from "@thez/shared";
 import { getGuildChannels, getGuildRoles } from "@/lib/discord";
 import CommandsForm, { CommandRow } from "./CommandsForm";
 
@@ -43,7 +43,13 @@ export default async function CommandsPage({ params }: { params: { guildId: stri
       <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
         تحكم بتفعيل وتقييد وتخصيص كل أوامر البوت من مكان واحد.
       </p>
-      <CommandsForm guildId={params.guildId} commands={commands} channels={channels} roles={roles} />
+      <CommandsForm 
+        guildId={params.guildId} 
+        commands={commands} 
+        channels={channels} 
+        roles={roles}
+        initialConfig={config || { moderation: { autoDeleteConfirmation: 3 } } as any}
+      />
     </div>
   );
 }

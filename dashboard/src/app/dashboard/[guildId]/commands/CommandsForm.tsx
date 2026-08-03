@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CommandMeta, ICommandOverride, ICustomMessage } from "@thez/shared/client";
+import { CommandMeta, ICommandOverride, ICustomMessage, IGuildConfig } from "@thez/shared/client";
 import { DiscordChannel, DiscordRole } from "@/lib/discord";
 import Toggle from "@/components/form/Toggle";
 import MultiSelect from "@/components/form/MultiSelect";
 import CustomMessageEditor from "@/components/form/CustomMessageEditor";
 import SaveButton from "@/components/form/SaveButton";
-import { saveCommandOverrides } from "./actions";
+import { saveCommandOverrides, saveModerationSettings } from "./actions";
 
 export interface CommandRow extends ICommandOverride {
   category: CommandMeta["category"];
@@ -29,14 +29,19 @@ export default function CommandsForm({
   guildId,
   commands,
   channels,
-  roles
+  roles,
+  initialConfig
 }: {
   guildId: string;
   commands: CommandRow[];
   channels: DiscordChannel[];
   roles: DiscordRole[];
+  initialConfig: IGuildConfig;
 }) {
   const [state, setState] = useState<CommandRow[]>(commands);
+  const [moderationSettings, setModerationSettings] = useState({
+    autoDeleteConfirmation: initialConfig.moderation?.autoDeleteConfirmation ?? 3
+  });
 
   const updateCommand = (name: string, patch: Partial<CommandRow>) => {
     setState((prev) => prev.map((cmd) => (cmd.name === name ? { ...cmd, ...patch } : cmd)));
@@ -52,13 +57,35 @@ export default function CommandsForm({
     items: state.filter((cmd) => cmd.category === category)
   })).filter((g) => g.items.length > 0);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const overrides: ICommandOverride[] = state.map(({ category, descriptionAr, ...rest }) => rest);
-    return saveCommandOverrides(guildId, overrides);
+    await saveCommandOverrides(guildId, overrides);
+    await saveModerationSettings(guildId, moderationSettings);
   };
 
   return (
     <div className="flex flex-col gap-6 pb-4">
+      <section className="card flex flex-col gap-4">
+        <h2 className="text-lg font-bold">⚙️ إعدادات الإشراف</h2>
+        <div>
+          <label className="label">مدة حذف رد الإشراف التلقائي (بالثواني)</label>
+          <input
+            type="number"
+            min={0}
+            max={60}
+            className="input"
+            value={moderationSettings.autoDeleteConfirmation}
+            onChange={(e) => setModerationSettings({ 
+              ...moderationSettings, 
+              autoDeleteConfirmation: Number(e.target.value) 
+            })}
+          />
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+            0 = لا تحذف، القيمة الافتراضية 3 ثواني
+          </p>
+        </div>
+      </section>
+
       {groups.map((group) => (
         <section key={group.category} className="card flex flex-col gap-3">
           <h2 className="text-lg font-bold">{group.category}</h2>
