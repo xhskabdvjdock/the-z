@@ -1,4 +1,4 @@
-import { Message } from "discord.js";
+import { Message, EmbedBuilder } from "discord.js";
 import { BotEvent } from "../types/event";
 import { getGuildConfig } from "../utils/guildConfig";
 import { buildPrefixContext } from "../utils/context";
@@ -7,11 +7,55 @@ import { buildMessageFromCustom } from "../utils/embed";
 import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
+import { translate } from "@vitalets/google-translate-api";
+import { config } from "../config";
 
 const event: BotEvent = {
   name: "messageCreate",
   async execute(client, message: Message) {
     if (message.author.bot || !message.guild) return;
+
+    // تحقق من أمر الترجمة ,tr
+    if (message.content.startsWith(",tr")) {
+      const referencedMessage = message.reference?.messageId 
+        ? await message.channel.messages.fetch(message.reference.messageId).catch(() => null)
+        : null;
+
+      if (!referencedMessage) {
+        await message.reply("❌ يجب تحديد رسالة لترجمتها (رد على رسالة واستخدم ,tr)");
+        return;
+      }
+
+      const text = referencedMessage.content;
+      if (!text || text.trim().length === 0) {
+        await message.reply("❌ الرسالة المحددة لا تحتوي على نص");
+        return;
+      }
+
+      // تحديد لغة النص
+      const isArabic = /[\u0600-\u06FF]/.test(text);
+      const targetLang = isArabic ? "en" : "ar";
+
+      try {
+        const result = await translate(text, { to: targetLang });
+
+        const embed = new EmbedBuilder()
+          .setColor(config.defaultColor)
+          .setTitle(isArabic ? "🇬🇧 ترجمة إلى الإنجليزية" : "🇸🇦 ترجمة إلى العربية")
+          .setDescription(result.text)
+          .addFields(
+            { name: "النص الأصلي", value: text.substring(0, 1024) },
+            { name: "اللغة المكتشفة", value: isArabic ? "العربية" : "الإنجليزية" }
+          )
+          .setTimestamp();
+
+        await message.reply({ embeds: [embed] });
+      } catch (error) {
+        console.error("Translation error:", error);
+        await message.reply("❌ فشلت الترجمة، يرجى المحاولة مرة أخرى");
+      }
+      return;
+    }
 
     const gConfig = await getGuildConfig(client, message.guild.id);
 
