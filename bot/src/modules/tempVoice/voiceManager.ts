@@ -8,6 +8,7 @@ import {
   Guild,
   GuildMember,
   ModalBuilder,
+  PermissionFlagsBits,
   ModalSubmitInteraction,
   StringSelectMenuBuilder,
   StringSelectMenuInteraction,
@@ -153,34 +154,58 @@ async function createTempChannel(
   }
 
   try {
-    // Store text channel reference for this voice channel
+    // Create a private text channel for this voice channel
+    let textChannel;
+    if (newChannel.parentId) {
+      textChannel = await guild.channels.create({
+        name: `text-${newChannel.name}`,
+        type: ChannelType.GuildText,
+        parent: newChannel.parentId,
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+          },
+          {
+            id: member.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+          }
+        ]
+      });
+    } else {
+      textChannel = await guild.channels.create({
+        name: `text-${newChannel.name}`,
+        type: ChannelType.GuildText,
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]
+          },
+          {
+            id: member.id,
+            allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory]
+          }
+        ]
+      });
+    }
+
+    // Send control panel to the created text channel
+    const panelMessage = await textChannel.send({
+      content: `🎙️ Temporary voice channel created for <@${member.id}>: **${newChannel.name}**`,
+      embeds: [buildControlEmbed()],
+      components: buildControlComponents(newChannel)
+    });
+
+    // Store references for future updates
     await TempVoiceChannel.findOneAndUpdate(
       { channelId: newChannel.id },
-      { textChannelId: tvConfig.controlPanelChannelId || null }
+      { 
+        textChannelId: textChannel.id,
+        panelMessageId: panelMessage.id
+      } as any
     );
-    
-    // Send control panel to text channel
-    if (tvConfig.controlPanelChannelId) {
-      const textChannel = guild.channels.cache.get(tvConfig.controlPanelChannelId);
-      if (textChannel && textChannel.type === ChannelType.GuildText) {
-        const panelMessage = await textChannel.send({
-          content: `🎙️ Temporary voice channel created for <@${member.id}>: **${newChannel.name}**`,
-          embeds: [buildControlEmbed()],
-          components: buildControlComponents(newChannel)
-        });
-        
-        // Store references for future updates
-        await TempVoiceChannel.findOneAndUpdate(
-          { channelId: newChannel.id },
-          { 
-            textChannelId: textChannel.id,
-            panelMessageId: panelMessage.id
-          } as any
-        );
-      }
-    }
   } catch (err) {
-    console.error("فشل إرسال لوحة تحكم الروم الصوتي:", err);
+    console.error("فشل إنشاء الروم النصي أو إرسال لوحة التحكم:", err);
   }
 }
 
@@ -198,6 +223,15 @@ async function cleanupIfEmpty(oldState: VoiceState): Promise<void> {
   }
 
   if (channel.type === ChannelType.GuildVoice && channel.members.size === 0) {
+    // Delete the associated text channel
+    if ((doc as any).textChannelId) {
+      const textChannel = oldState.guild.channels.cache.get((doc as any).textChannelId);
+      if (textChannel) {
+        await textChannel.delete().catch(() => {});
+      }
+    }
+    
+    // Delete the voice channel
     await channel.delete().catch(() => {});
     await TempVoiceChannel.deleteOne({ channelId }).catch(() => {});
   }
@@ -557,6 +591,15 @@ async function handleRenameModalSubmit(interaction: ModalSubmitInteraction): Pro
   }
 
   await channel.setName(newName.slice(0, 100));
+
+  // Rename the associated text channel
+  if ((doc as any).textChannelId) {
+    const textChannel = channel.guild.channels.cache.get((doc as any).textChannelId);
+    if (textChannel && textChannel.type === ChannelType.GuildText) {
+      await textChannel.setName(`text-${newName.slice(0, 100)}`).catch(() => {});
+    }
+  }
+
   await replyEphemeral(interaction, `✅ تم تغيير اسم الروم إلى **${newName}**.`);
 }
 
@@ -953,6 +996,23 @@ async function handleClaimFromMenu(interaction: StringSelectMenuInteraction, cha
   doc.ownerId = member.id;
   await doc.save();
 
+  // Update text channel permissions
+  if ((doc as any).textChannelId) {
+    const textChannel = channel.guild.channels.cache.get((doc as any).textChannelId);
+    if (textChannel && textChannel.type === ChannelType.GuildText) {
+      await textChannel.permissionOverwrites.edit(doc.ownerId, {
+        ViewChannel: false,
+        SendMessages: false,
+        ReadMessageHistory: false
+      }).catch(() => {});
+      await textChannel.permissionOverwrites.edit(member.id, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true
+      }).catch(() => {});
+    }
+  }
+
   await replyEphemeral(interaction, "👑 You have successfully claimed ownership of this channel.");
   await refreshControlPanel(channel).catch(() => {});
 }
@@ -1078,6 +1138,23 @@ async function handleTransferSelect(interaction: StringSelectMenuInteraction): P
 
   doc.ownerId = targetId;
   await doc.save();
+
+  // Update text channel permissions
+  if ((doc as any).textChannelId) {
+    const textChannel = channel.guild.channels.cache.get((doc as any).textChannelId);
+    if (textChannel && textChannel.type === ChannelType.GuildText) {
+      await textChannel.permissionOverwrites.edit(member.id, {
+        ViewChannel: false,
+        SendMessages: false,
+        ReadMessageHistory: false
+      }).catch(() => {});
+      await textChannel.permissionOverwrites.edit(targetId, {
+        ViewChannel: true,
+        SendMessages: true,
+        ReadMessageHistory: true
+      }).catch(() => {});
+    }
+  }
 
   await replyEphemeral(interaction, `🎁 Ownership transferred to **${targetMember.displayName}**.`);
   await refreshControlPanel(channel).catch(() => {});
