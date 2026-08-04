@@ -9,7 +9,7 @@ import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
 import translate from "translate";
 import { config } from "../config";
-import { AfkUser } from "@thez/shared";
+import { AfkUser, JailUser } from "@thez/shared";
 
 // ضبط المحرك مجاناً
 translate.engine = "google";
@@ -260,6 +260,139 @@ const event: BotEvent = {
         );
 
       await message.reply({ embeds: [embed], components: [row] });
+      return;
+    }
+
+    // Handle jail command
+    if (message.content.startsWith(",jail")) {
+      const args = message.content.slice(5).trim().split(/\s+/);
+      const targetId = args[0]?.replace(/[<@!>]/g, "");
+      
+      if (!targetId) {
+        await message.reply("Please specify a user to jail.");
+        return;
+      }
+
+      const targetMember = await message.guild.members.fetch(targetId).catch(() => null);
+      if (!targetMember) {
+        await message.reply("User not found.");
+        return;
+      }
+
+      // Check if user is admin
+      if (!message.member?.permissions.has("Administrator")) {
+        await message.reply("Only administrators can use this command.");
+        return;
+      }
+
+      // Check if target is admin
+      if (targetMember.permissions.has("Administrator")) {
+        await message.reply("Cannot jail administrators.");
+        return;
+      }
+
+      const gConfig = await getGuildConfig(client, targetMember.guild.id);
+      if (!gConfig.jail?.enabled || !gConfig.jail.roleId) {
+        await message.reply("Jail system is not configured.");
+        return;
+      }
+
+      const jailRole = targetMember.guild.roles.cache.get(gConfig.jail.roleId);
+      if (!jailRole) {
+        await message.reply("Jail role not found.");
+        return;
+      }
+
+      // Check if already jailed
+      const existingJail = await JailUser.findOne({ userId: targetId, guildId: targetMember.guild.id });
+      if (existingJail) {
+        await message.reply("User is already jailed.");
+        return;
+      }
+
+      // Store current roles
+      const currentRoles = targetMember.roles.cache
+        .filter(r => r.id !== targetMember.guild.id && !gConfig.jail.removeRoles.includes(r.id))
+        .map(r => r.id);
+
+      // Remove specified roles
+      const rolesToRemove = targetMember.roles.cache.filter(r => gConfig.jail.removeRoles.includes(r.id));
+      if (rolesToRemove.size > 0) {
+        await targetMember.roles.remove(rolesToRemove).catch(() => null);
+      }
+
+      // Give jail role
+      await targetMember.roles.add(jailRole).catch(() => null);
+
+      // Save to database
+      await JailUser.create({
+        userId: targetId,
+        guildId: targetMember.guild.id,
+        originalRoles: currentRoles,
+        jailedBy: message.author.id,
+        jailedAt: new Date()
+      });
+
+      await message.reply(`Successfully jailed ${targetMember.user.tag}.`);
+      return;
+    }
+
+    // Handle unjail command
+    if (message.content.startsWith(",unjail")) {
+      const args = message.content.slice(7).trim().split(/\s+/);
+      const targetId = args[0]?.replace(/[<@!>]/g, "");
+      
+      if (!targetId) {
+        await message.reply("Please specify a user to unjail.");
+        return;
+      }
+
+      const targetMember = await message.guild.members.fetch(targetId).catch(() => null);
+      if (!targetMember) {
+        await message.reply("User not found.");
+        return;
+      }
+
+      // Check if user is admin
+      if (!message.member?.permissions.has("Administrator")) {
+        await message.reply("Only administrators can use this command.");
+        return;
+      }
+
+      const gConfig = await getGuildConfig(client, targetMember.guild.id);
+      if (!gConfig.jail?.enabled || !gConfig.jail.roleId) {
+        await message.reply("Jail system is not configured.");
+        return;
+      }
+
+      const jailRole = targetMember.guild.roles.cache.get(gConfig.jail.roleId);
+      if (!jailRole) {
+        await message.reply("Jail role not found.");
+        return;
+      }
+
+      // Check if jailed
+      const jailRecord = await JailUser.findOne({ userId: targetId, guildId: targetMember.guild.id });
+      if (!jailRecord) {
+        await message.reply("User is not jailed.");
+        return;
+      }
+
+      // Remove jail role
+      await targetMember.roles.remove(jailRole).catch(() => null);
+
+      // Restore original roles
+      for (const roleId of jailRecord.originalRoles) {
+        const role = targetMember.guild.roles.cache.get(roleId);
+        if (role) {
+          await targetMember.roles.add(role).catch(() => null);
+        }
+      }
+
+      // Delete jail record
+      await JailUser.deleteOne({ userId: targetId, guildId: targetMember.guild.id });
+
+      await message.reply(`Successfully unjailed ${targetMember.user.tag}.`);
       return;
     }
 
