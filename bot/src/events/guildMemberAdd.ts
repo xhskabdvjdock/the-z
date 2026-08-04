@@ -5,11 +5,30 @@ import { handleAutoRole } from "../modules/autoRole";
 import { handleMemberJoinCaptcha } from "../modules/captcha/captcha";
 import { sendWelcomeMessage } from "../modules/welcome/welcomeManager";
 import { sendLog } from "../modules/logging/logger";
+import { JailUser } from "@thez/shared";
 
 const event: BotEvent = {
   name: "guildMemberAdd",
   async execute(client, member: GuildMember) {
     const gConfig = await getGuildConfig(client, member.guild.id);
+
+    // Check if user was jailed before leaving
+    if (gConfig.jail?.enabled && gConfig.jail.roleId) {
+      const jailRecord = await JailUser.findOne({ userId: member.id, guildId: member.guild.id });
+      if (jailRecord) {
+        const jailRole = member.guild.roles.cache.get(gConfig.jail.roleId);
+        if (jailRole) {
+          // Re-apply jail role
+          await member.roles.add(jailRole).catch(() => null);
+          
+          // Remove roles that should be removed when jailed
+          const rolesToRemove = member.roles.cache.filter(r => gConfig.jail.removeRoles.includes(r.id));
+          if (rolesToRemove.size > 0) {
+            await member.roles.remove(rolesToRemove).catch(() => null);
+          }
+        }
+      }
+    }
 
     if (gConfig.captcha?.enabled) {
       const handled = await handleMemberJoinCaptcha(client, member, gConfig);
