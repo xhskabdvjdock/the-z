@@ -1,6 +1,8 @@
 import { EmbedBuilder, VoiceState } from "discord.js";
 import { BotEvent } from "../types/event";
 import { sendLog } from "../modules/logging/logger";
+import { getGuildConfig } from "../utils/guildConfig";
+import { handleVoiceStateUpdate as handleTempVoiceUpdate } from "../modules/tempVoice/voiceManager";
 
 const event: BotEvent = {
   name: "voiceStateUpdate",
@@ -9,6 +11,10 @@ const event: BotEvent = {
 
     const member = newState.member;
     if (!member) return;
+
+    // Handle temporary voice channels
+    const gConfig = await getGuildConfig(client, newState.guild.id);
+    await handleTempVoiceUpdate(client, oldState, newState, gConfig);
 
     const changes: string[] = [];
 
