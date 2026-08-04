@@ -41,6 +41,7 @@ export default async function AutomodPage({ params }: { params: { guildId: strin
     punishment: config?.automod?.punishment ?? "delete",
     muteRoleId: config?.automod?.muteRoleId ?? "",
     punishments: config?.automod?.punishments ?? {},
+    timeoutDurations: config?.automod?.timeoutDurations ?? {},
     autoDeleteConfirmation: config?.moderation?.autoDeleteConfirmation ?? 0
   };
 

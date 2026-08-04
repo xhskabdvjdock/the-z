@@ -5,7 +5,11 @@ import { GuildConfig, IGuildConfig } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 
-export type AutomodInput = IGuildConfig["automod"] & { autoDeleteConfirmation?: number; punishments?: any };
+export type AutomodInput = Omit<IGuildConfig["automod"], "punishments" | "timeoutDurations"> & { 
+  autoDeleteConfirmation?: number; 
+  punishments?: any; 
+  timeoutDurations?: any 
+};
 
 export async function saveAutomodConfig(guildId: string, data: AutomodInput) {
   try {
@@ -15,13 +19,13 @@ export async function saveAutomodConfig(guildId: string, data: AutomodInput) {
     console.log("Saving automod config for guild:", guildId);
     console.log("Data:", JSON.stringify(data, null, 2));
 
-    const { autoDeleteConfirmation, punishments, ...automodData } = data;
+    const { autoDeleteConfirmation, punishments, timeoutDurations, ...automodData } = data;
 
     await GuildConfig.findOneAndUpdate(
       { guildId },
       { 
         $set: { 
-          automod: { ...automodData, punishments },
+          automod: { ...automodData, punishments, timeoutDurations },
           "moderation.autoDeleteConfirmation": autoDeleteConfirmation ?? 0
         } 
       },

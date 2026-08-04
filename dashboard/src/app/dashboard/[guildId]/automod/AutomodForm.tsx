@@ -8,12 +8,13 @@ import MultiSelect from "@/components/form/MultiSelect";
 import SaveButton from "@/components/form/SaveButton";
 import { saveAutomodConfig, AutomodInput } from "./actions";
 
-const PUNISHMENT_LABELS: Record<AutomodInput["punishment"], string> = {
+const PUNISHMENT_LABELS: Record<string, string> = {
   delete: "حذف الرسالة فقط",
   warn: "تحذير",
   mute: "كتم",
   kick: "طرد",
-  ban: "حظر"
+  ban: "حظر",
+  timeout: "توقيف مؤقت"
 };
 
 const VIOLATION_PUNISHMENT_LABELS: Record<keyof NonNullable<AutomodInput["punishments"]>, string> = {
@@ -37,7 +38,7 @@ export default function AutomodForm({
   channels: DiscordChannel[];
   roles: DiscordRole[];
 }) {
-  const [state, setState] = useState<AutomodInput>(initial);
+  const [state, setState] = useState<AutomodInput & { timeoutDurations?: any }>(initial);
   const [badWordsText, setBadWordsText] = useState(initial.badWords.join("\n"));
 
   const channelOptions = channels
@@ -232,28 +233,51 @@ export default function AutomodForm({
         
         <div className="grid grid-cols-1 gap-4">
           {Object.entries(VIOLATION_PUNISHMENT_LABELS).map(([key, label]) => (
-            <div key={key} className="flex items-center gap-3">
-              <label className="label w-48">{label}</label>
-              <select
-                className="input flex-1"
-                value={(state.punishments as any)?.[key] || state.punishment}
-                onChange={(e) => 
-                  setState({ 
-                    ...state, 
-                    punishments: { 
-                      ...(state.punishments || {}), 
-                      [key]: e.target.value as AutomodInput["punishment"] 
-                    } 
-                  })
-                }
-              >
-                <option value="">استخدام العقوبة العامة</option>
-                {Object.entries(PUNISHMENT_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
+            <div key={key} className="flex flex-col gap-2">
+              <div className="flex items-center gap-3">
+                <label className="label w-48">{label}</label>
+                <select
+                  className="input flex-1"
+                  value={(state.punishments as any)?.[key] || state.punishment}
+                  onChange={(e) => 
+                    setState({ 
+                      ...state, 
+                      punishments: { 
+                        ...(state.punishments || {}), 
+                        [key]: e.target.value as AutomodInput["punishment"] 
+                      } 
+                    })
+                  }
+                >
+                  <option value="">استخدام العقوبة العامة</option>
+                  {Object.entries(PUNISHMENT_LABELS).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {(state.punishments as any)?.[key] === "timeout" && (
+                <div className="flex items-center gap-3 mr-48">
+                  <label className="label">مدة التوقيف (دقائق):</label>
+                  <input
+                    type="number"
+                    className="input w-32"
+                    value={(state.timeoutDurations as any)?.[key] || 10}
+                    onChange={(e) => 
+                      setState({ 
+                        ...state, 
+                        timeoutDurations: { 
+                          ...(state.timeoutDurations || {}), 
+                          [key]: Number(e.target.value) 
+                        } 
+                      })
+                    }
+                    min="1"
+                    max="40320"
+                  />
+                </div>
+              )}
             </div>
           ))}
         </div>

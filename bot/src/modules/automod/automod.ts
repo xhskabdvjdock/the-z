@@ -34,7 +34,8 @@ const PUNISHMENT_LABELS: Record<string, string> = {
   warn: "تحذير",
   mute: "كتم مؤقت",
   kick: "طرد",
-  ban: "حظر"
+  ban: "حظر",
+  timeout: "توقيف مؤقت"
 };
 
 /**
@@ -130,9 +131,12 @@ export async function handleAutoMod(
 
   // Get specific punishment for this violation type, fallback to global punishment
   const specificPunishment = (automod as any).punishments?.[violation] || automod.punishment;
+  
+  // Get timeout duration for this violation type (in minutes)
+  const timeoutDuration = (automod as any).timeoutDurations?.[violation] || 10; // default 10 minutes
 
   await message.delete().catch(() => null);
-  await applyPunishment(client, member, specificPunishment, VIOLATION_LABELS[violation], automod.muteRoleId);
+  await applyPunishment(client, member, specificPunishment, VIOLATION_LABELS[violation], automod.muteRoleId, timeoutDuration);
 
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
@@ -153,9 +157,10 @@ export async function handleAutoMod(
 async function applyPunishment(
   client: ExtendedClient,
   member: GuildMember,
-  punishment: IGuildConfig["automod"]["punishment"],
+  punishment: any,
   reasonLabel: string,
-  muteRoleId?: string
+  muteRoleId?: string,
+  timeoutDuration?: number
 ) {
   const reason = `مخالفة رقابة تلقائية: ${reasonLabel}`;
 
@@ -180,6 +185,12 @@ async function applyPunishment(
         } else {
           await member.timeout(10 * 60 * 1000, reason).catch(() => null);
         }
+        break;
+      }
+
+      case "timeout": {
+        const durationMs = (timeoutDuration || 10) * 60 * 1000; // convert minutes to ms
+        await member.timeout(durationMs, reason).catch(() => null);
         break;
       }
 

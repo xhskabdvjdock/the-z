@@ -214,16 +214,25 @@ export interface IGuildConfig {
     badWords: string[];
     whitelistRoleIds: string[];
     whitelistChannelIds: string[];
-    punishment: "delete" | "warn" | "mute" | "kick" | "ban";
+    punishment: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
     muteRoleId?: string;
     punishments: {
-      antiInvite?: "delete" | "warn" | "mute" | "kick" | "ban";
-      antiLink?: "delete" | "warn" | "mute" | "kick" | "ban";
-      antiSpam?: "delete" | "warn" | "mute" | "kick" | "ban";
-      antiMention?: "delete" | "warn" | "mute" | "kick" | "ban";
-      antiCaps?: "delete" | "warn" | "mute" | "kick" | "ban";
-      antiRepeat?: "delete" | "warn" | "mute" | "kick" | "ban";
-      badWords?: "delete" | "warn" | "mute" | "kick" | "ban";
+      antiInvite?: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
+      antiLink?: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
+      antiSpam?: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
+      antiMention?: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
+      antiCaps?: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
+      antiRepeat?: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
+      badWords?: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
+    };
+    timeoutDurations: {
+      antiInvite?: number; // in minutes
+      antiLink?: number;
+      antiSpam?: number;
+      antiMention?: number;
+      antiCaps?: number;
+      antiRepeat?: number;
+      badWords?: number;
     };
   };
 
@@ -359,7 +368,8 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       whitelistRoleIds: [],
       whitelistChannelIds: [],
       punishment: "delete",
-      punishments: {}
+      punishments: {},
+      timeoutDurations: {}
     },
 
     moderation: {
