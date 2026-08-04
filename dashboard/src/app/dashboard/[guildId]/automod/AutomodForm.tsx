@@ -16,6 +16,16 @@ const PUNISHMENT_LABELS: Record<AutomodInput["punishment"], string> = {
   ban: "حظر"
 };
 
+const VIOLATION_PUNISHMENT_LABELS: Record<keyof NonNullable<AutomodInput["punishments"]>, string> = {
+  antiInvite: "عقوبة نشر روابط الدعوات",
+  antiLink: "عقوبة نشر الروابط",
+  antiSpam: "عقوبة السبام",
+  antiMention: "عقوبة الإشارات الكثيرة",
+  antiCaps: "عقوبة الأحرف الكبيرة",
+  antiRepeat: "عقوبة تكرار الأحرف",
+  badWords: "عقوبة الكلمات الممنوعة"
+};
+
 export default function AutomodForm({
   guildId,
   initial,
@@ -217,7 +227,41 @@ export default function AutomodForm({
       </section>
 
       <section className="card flex flex-col gap-4">
-        <h2 className="text-lg font-bold">⚖️ العقوبة</h2>
+        <h2 className="text-lg font-bold">⚖️ العقوبات المخصصة</h2>
+        <p className="text-sm text-gray-500">حدد عقوبة منفصلة لكل نوع من الانتهاكات. إذا لم يتم تحديد عقوبة، سيتم استخدام العقوبة العامة.</p>
+        
+        <div className="grid grid-cols-1 gap-4">
+          {Object.entries(VIOLATION_PUNISHMENT_LABELS).map(([key, label]) => (
+            <div key={key} className="flex items-center gap-3">
+              <label className="label w-48">{label}</label>
+              <select
+                className="input flex-1"
+                value={(state.punishments as any)?.[key] || state.punishment}
+                onChange={(e) => 
+                  setState({ 
+                    ...state, 
+                    punishments: { 
+                      ...(state.punishments || {}), 
+                      [key]: e.target.value as AutomodInput["punishment"] 
+                    } 
+                  })
+                }
+              >
+                <option value="">استخدام العقوبة العامة</option>
+                {Object.entries(PUNISHMENT_LABELS).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="card flex flex-col gap-4">
+        <h2 className="text-lg font-bold">⚖️ العقوبة العامة</h2>
+        <p className="text-sm text-gray-500">العقوبة الافتراضية عندما لا يتم تحديد عقوبة مخصصة.</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
             <label className="label">نوع العقوبة</label>

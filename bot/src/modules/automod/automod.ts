@@ -16,9 +16,10 @@ type ViolationType =
   | "antiCaps"
   | "antiRepeat"
   | "antiMention"
-  | "antiSpam";
+  | "antiSpam"
+  | "punishments";
 
-const VIOLATION_LABELS: Record<ViolationType, string> = {
+const VIOLATION_LABELS: Record<string, string> = {
   antiInvite: "نشر رابط دعوة ديسكورد",
   antiLink: "نشر رابط خارجي",
   badWords: "استخدام كلمة محظورة",
@@ -127,8 +128,11 @@ export async function handleAutoMod(
 
   if (!violation) return false;
 
+  // Get specific punishment for this violation type, fallback to global punishment
+  const specificPunishment = (automod as any).punishments?.[violation] || automod.punishment;
+
   await message.delete().catch(() => null);
-  await applyPunishment(client, member, automod.punishment, VIOLATION_LABELS[violation], automod.muteRoleId);
+  await applyPunishment(client, member, specificPunishment, VIOLATION_LABELS[violation], automod.muteRoleId);
 
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
@@ -136,7 +140,7 @@ export async function handleAutoMod(
     .setDescription(
       `تم اتخاذ إجراء بحق ${member} في ${message.channel}\n` +
         `**السبب:** ${VIOLATION_LABELS[violation]}\n` +
-        `**العقوبة:** ${PUNISHMENT_LABELS[automod.punishment] ?? automod.punishment}`
+        `**العقوبة:** ${PUNISHMENT_LABELS[specificPunishment] ?? specificPunishment}`
     )
     .addFields({ name: "محتوى الرسالة", value: content.slice(0, 1000) || "—" })
     .setFooter({ text: `${message.author.tag} (${message.author.id})` });

@@ -216,6 +216,15 @@ export interface IGuildConfig {
     whitelistChannelIds: string[];
     punishment: "delete" | "warn" | "mute" | "kick" | "ban";
     muteRoleId?: string;
+    punishments: {
+      antiInvite?: "delete" | "warn" | "mute" | "kick" | "ban";
+      antiLink?: "delete" | "warn" | "mute" | "kick" | "ban";
+      antiSpam?: "delete" | "warn" | "mute" | "kick" | "ban";
+      antiMention?: "delete" | "warn" | "mute" | "kick" | "ban";
+      antiCaps?: "delete" | "warn" | "mute" | "kick" | "ban";
+      antiRepeat?: "delete" | "warn" | "mute" | "kick" | "ban";
+      badWords?: "delete" | "warn" | "mute" | "kick" | "ban";
+    };
   };
 
   moderation: {
@@ -349,7 +358,8 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       badWords: [],
       whitelistRoleIds: [],
       whitelistChannelIds: [],
-      punishment: "delete"
+      punishment: "delete",
+      punishments: {}
     },
 
     moderation: {
