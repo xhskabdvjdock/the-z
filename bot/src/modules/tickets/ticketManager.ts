@@ -522,7 +522,25 @@ export async function closeTicket(
             { name: "أُغلقت بواسطة", value: `<@${closedById}>`, inline: true }
           )
           .setTimestamp();
-        await (logChannel as TextChannel).send({ embeds: [logEmbed], files: [attachment] });
+
+        const logMessage = await (logChannel as TextChannel).send({ 
+          embeds: [logEmbed], 
+          files: [attachment]
+        });
+
+        // Get the attachment URL from the sent message
+        const transcriptAttachment = logMessage.attachments.first();
+        if (transcriptAttachment) {
+          const row = new ActionRowBuilder<ButtonBuilder>()
+            .addComponents(
+              new ButtonBuilder()
+                .setLabel("Open Transcript in Browser")
+                .setStyle(ButtonStyle.Link)
+                .setURL(transcriptAttachment.url)
+            );
+
+          await logMessage.edit({ components: [row] });
+        }
       }
     }
   } catch (err) {
