@@ -76,6 +76,12 @@ const event: BotEvent = {
       try {
         const translatedText = await translate(text, { to: targetLang });
 
+        // التحقق من أن الترجمة نجحت وأن النص المترجم ليس نفس النص الأصلي
+        if (!translatedText || translatedText.trim() === "" || translatedText === text) {
+          await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
+          return;
+        }
+
         // التأكد من أن النص المترجم لا يتجاوز حد Discord
         const finalText = translatedText.length > 4096 
           ? translatedText.substring(0, 4093) + "..." 
