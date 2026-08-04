@@ -76,8 +76,8 @@ const event: BotEvent = {
       try {
         const translatedText = await translate(text, { to: targetLang });
 
-        // التحقق من أن الترجمة نجحت وأن النص المترجم ليس نفس النص الأصلي
-        if (!translatedText || translatedText.trim() === "" || translatedText === text) {
+        // التحقق من أن الترجمة نجحت
+        if (!translatedText || translatedText.trim() === "") {
           await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
           return;
         }
