@@ -35,16 +35,13 @@ const command: BotCommand = {
 
     // تحديد لغة النص واللغة المستهدفة
     const isArabic = /[\u0600-\u06FF]/.test(text);
-    const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
     
     let targetLang: string;
 
     if (isArabic) {
       targetLang = "en";
-    } else if (isEnglish) {
-      targetLang = "ar";
     } else {
-      targetLang = "en";
+      targetLang = "ar";
     }
 
     // التحقق من الذاكرة المؤقتة
