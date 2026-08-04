@@ -639,9 +639,7 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
 export function registerTicketComponents(router: ComponentRouter): void {
   router.registerSelect("ticket_open_select", async (interaction: StringSelectMenuInteraction, client) => {
     if (interaction.values[0] === "restart") {
-      // Refresh the select menu
-      await interaction.update({ content: "Refreshing ticket options..." });
-      
+      // Reset the select menu to allow reuse
       if (!interaction.guildId) return;
       
       const gConfig = await getGuildConfig(client, interaction.guildId);
@@ -663,8 +661,7 @@ export function registerTicketComponents(router: ComponentRouter): void {
           emoji: undefined
         });
       
-      await interaction.editReply({ 
-        content: "Ticket options refreshed", 
+      await interaction.update({ 
         components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)] 
       });
       return;
