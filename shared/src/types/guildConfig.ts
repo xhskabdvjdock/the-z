@@ -194,7 +194,8 @@ export interface IGuildConfig {
       roles?: string;
       channels?: string;
       other?: string;
-    };
+      invites?: string;
+    } & Record<string, string | undefined>;
     customChannels: {
       messages?: string[];
       commands?: string[];

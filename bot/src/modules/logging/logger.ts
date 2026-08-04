@@ -13,7 +13,9 @@ export type LogChannelKey =
   | "server"
   | "roles"
   | "channels"
-  | "other";
+  | "other"
+  | "invites"
+  | string;
 
 /** يرسل تضمين (Embed) جاهز لروم اللوق المخصص لهذا النوع من الأحداث */
 export async function sendLog(
@@ -26,7 +28,7 @@ export async function sendLog(
   try {
     const gConfig = await getGuildConfig(client, guildId);
     if (!gConfig.logging?.enabled) return;
-    const channelId = gConfig.logging.channels?.[key];
+    const channelId = (gConfig.logging.channels as any)?.[key];
     if (!channelId) return;
 
     const channel = await client.channels.fetch(channelId).catch(() => null);

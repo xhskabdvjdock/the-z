@@ -13,15 +13,21 @@ const event: BotEvent = {
       await antiNukeRoleDelete(client, role, gConfig).catch(() => null);
     }
 
-    await sendLog(
-      client,
-      role.guild.id,
-      "roles",
-      new EmbedBuilder()
-        .setColor(0xed4245)
-        .setTitle("➖ تم حذف رتبة")
-        .setDescription(`\`${role.name}\``)
-    );
+    const auditLogs = await role.guild.fetchAuditLogs({ limit: 1, type: 32 }).catch(() => null);
+    const executor = auditLogs?.entries.first()?.executor;
+
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setTitle("Role Deleted")
+      .addFields(
+        { name: "Role", value: `${role.name} (${role.id})`, inline: true },
+        { name: "Color", value: role.hexColor || "Default", inline: true },
+        { name: "Deleted By", value: executor ? `${executor.tag}` : "Unknown", inline: true }
+      )
+      .setFooter({ text: `Role ID: ${role.id}` })
+      .setTimestamp();
+
+    await sendLog(client, role.guild.id, "roles", embed);
   }
 };
 
