@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { ExtendedClient } from "../client";
 import { BotCommand } from "../types/command";
+import { getGuildConfig } from "../utils/guildConfig";
 
 function walk(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -27,4 +28,17 @@ export function loadCommands(client: ExtendedClient) {
   }
 
   console.log(`✅ تم تحميل ${client.commands.size} أمر.`);
+}
+
+export async function checkCommandOverride(client: ExtendedClient, commandName: string, guildId: string): Promise<{ allowed: boolean; reason?: string }> {
+  const gConfig = await getGuildConfig(client, guildId);
+  const override = gConfig.commandOverrides?.find((c) => c.name === commandName);
+
+  if (!override) return { allowed: true };
+
+  if (!override.enabled) {
+    return { allowed: false, reason: "This command is disabled in this server." };
+  }
+
+  return { allowed: true };
 }

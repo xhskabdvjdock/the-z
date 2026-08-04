@@ -15,6 +15,7 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
   { name: "botinfo", category: "عام", descriptionAr: "معلومات عن البوت" },
   { name: "suggest", category: "عام", descriptionAr: "إرسال اقتراح" },
   { name: "poll", category: "عام", descriptionAr: "إنشاء استبيان تصويت" },
+  { name: "afk", category: "عام", descriptionAr: "تعيين حالة AFK" },
 
   { name: "ban", category: "إشراف", descriptionAr: "حظر عضو" },
   { name: "unban", category: "إشراف", descriptionAr: "فك حظر عضو" },

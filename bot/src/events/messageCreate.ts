@@ -1,4 +1,4 @@
-import { Message, EmbedBuilder } from "discord.js";
+import { Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 import { BotEvent } from "../types/event";
 import { getGuildConfig } from "../utils/guildConfig";
 import { buildPrefixContext } from "../utils/context";
@@ -9,6 +9,7 @@ import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
 import translate from "translate";
 import { config } from "../config";
+import { AfkUser } from "@thez/shared";
 
 // ضبط المحرك مجاناً
 translate.engine = "google";
@@ -96,6 +97,148 @@ const event: BotEvent = {
         console.error("Translation error:", error);
         await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
       }
+      return;
+    }
+
+    // Handle prefix commands: afk, avatar, banner
+    if (message.content.startsWith(",afk")) {
+      const reason = message.content.slice(4).trim() || "No reason provided";
+      const guildId = message.guild.id;
+      const userId = message.author.id;
+
+      try {
+        const existingAfk = await AfkUser.findOne({ guildId, userId });
+
+        if (existingAfk && existingAfk.status) {
+          await AfkUser.findOneAndUpdate(
+            { guildId, userId },
+            { $set: { status: false, mentionCount: 0 } }
+          );
+
+          const embed = new EmbedBuilder()
+            .setColor(config.defaultColor)
+            .setDescription("You are no longer AFK.");
+
+          await message.reply({ embeds: [embed] });
+          return;
+        }
+
+        const afkData = {
+          guildId,
+          userId,
+          status: true,
+          reason,
+          mentionCount: 0,
+          since: new Date()
+        };
+
+        if (existingAfk) {
+          await AfkUser.findOneAndUpdate({ guildId, userId }, { $set: afkData });
+        } else {
+          await AfkUser.create(afkData);
+        }
+
+        const embed = new EmbedBuilder()
+          .setColor(config.defaultColor)
+          .setDescription(`You are now AFK. Reason: ${reason}`);
+
+        await message.reply({ embeds: [embed] });
+      } catch (error) {
+        console.error("Error setting AFK status:", error);
+        await message.reply({ content: "Failed to set AFK status. Please try again." });
+      }
+      return;
+    }
+
+    if (message.content.startsWith(",avatar")) {
+      const args = message.content.slice(7).trim().split(/\s+/);
+      const useServerAvatar = args.includes("server");
+      const userId = args.find(a => a.match(/^\d+$/)) || message.author.id;
+      
+      const targetMember = await message.guild.members.fetch(userId).catch(() => null);
+      if (!targetMember) {
+        await message.reply({ content: "Could not find that user." });
+        return;
+      }
+      
+      let avatarUrl: string;
+      let avatarType: string;
+
+      if (useServerAvatar && targetMember.avatar) {
+        avatarUrl = targetMember.avatarURL({ size: 4096 }) || targetMember.user.displayAvatarURL({ size: 4096 });
+        avatarType = "Server Avatar";
+      } else {
+        avatarUrl = targetMember.user.displayAvatarURL({ size: 4096 });
+        avatarType = "Global Avatar";
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(config.defaultColor)
+        .setTitle(`${targetMember.user.tag}'s ${avatarType}`)
+        .setImage(avatarUrl);
+
+      const row = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+          new ButtonBuilder()
+            .setLabel("Download")
+            .setStyle(ButtonStyle.Link)
+            .setURL(avatarUrl),
+          new ButtonBuilder()
+            .setLabel("Open in Browser")
+            .setStyle(ButtonStyle.Link)
+            .setURL(avatarUrl)
+        );
+
+      await message.reply({ embeds: [embed], components: [row] });
+      return;
+    }
+
+    if (message.content.startsWith(",banner")) {
+      const args = message.content.slice(7).trim().split(/\s+/);
+      const useServerBanner = args.includes("server");
+      const userId = args.find(a => a.match(/^\d+$/)) || message.author.id;
+      
+      const targetMember = await message.guild.members.fetch(userId).catch(() => null);
+      if (!targetMember) {
+        await message.reply({ content: "Could not find that user." });
+        return;
+      }
+      
+      let bannerUrl: string | null;
+      let bannerType: string;
+
+      if (useServerBanner) {
+        bannerUrl = targetMember.guild.bannerURL({ size: 4096 });
+        bannerType = "Server Banner";
+      } else {
+        const fullUser = await message.client.users.fetch(targetMember.user.id, { force: true }).catch(() => null);
+        bannerUrl = fullUser?.bannerURL({ size: 4096 }) ?? null;
+        bannerType = "Profile Banner";
+      }
+
+      if (!bannerUrl) {
+        await message.reply({ content: "This user does not have a banner." });
+        return;
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(config.defaultColor)
+        .setTitle(`${targetMember.user.tag}'s ${bannerType}`)
+        .setImage(bannerUrl);
+
+      const row = new ActionRowBuilder<ButtonBuilder>()
+        .addComponents(
+          new ButtonBuilder()
+            .setLabel("Download")
+            .setStyle(ButtonStyle.Link)
+            .setURL(bannerUrl),
+          new ButtonBuilder()
+            .setLabel("Open in Browser")
+            .setStyle(ButtonStyle.Link)
+            .setURL(bannerUrl)
+        );
+
+      await message.reply({ embeds: [embed], components: [row] });
       return;
     }
 
@@ -207,7 +350,37 @@ const event: BotEvent = {
     const responded = await handleAutoResponse(client, message, gConfig);
     if (responded) return;
 
-    // 4) نظام الخبرة (نصي)
+    // 4) نظام AFK
+    // Check if mentioned users are AFK
+    const mentionedUsers = message.mentions.users.filter(u => !u.bot);
+    for (const [userId, user] of mentionedUsers) {
+      const afkUser = await AfkUser.findOne({ guildId: message.guild.id, userId });
+      if (afkUser && afkUser.status) {
+        // Increment mention count
+        await AfkUser.updateOne(
+          { guildId: message.guild.id, userId },
+          { $inc: { mentionCount: 1 } }
+        );
+
+        // Send AFK message
+        await message.reply(`User ${user.tag} is currently AFK. Reason: ${afkUser.reason || "No reason provided"}`);
+      }
+    }
+
+    // Check if message author is AFK and coming back
+    const authorAfk = await AfkUser.findOne({ guildId: message.guild.id, userId: message.author.id });
+    if (authorAfk && authorAfk.status) {
+      // Remove AFK status
+      await AfkUser.updateOne(
+        { guildId: message.guild.id, userId: message.author.id },
+        { $set: { status: false, mentionCount: 0 } }
+      );
+
+      // Send welcome back message
+      await message.reply(`Welcome back! You have ${authorAfk.mentionCount} unread mentions while you were away.`);
+    }
+
+    // 5) نظام الخبرة (نصي)
     await handleMessageXp(client, message, gConfig);
   }
 };

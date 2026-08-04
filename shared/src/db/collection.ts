@@ -107,9 +107,17 @@ function setSimplePath(obj: any, path: string, value: any): void {
  */
 function applyUpdate(data: any, update: Record<string, any>, filter: Filter): any {
   const setOps: Record<string, any> = { ...(update.$set ?? {}) };
+  const incOps: Record<string, any> = update.$inc ?? {};
+  
   for (const [key, value] of Object.entries(update)) {
     if (key.startsWith("$")) continue;
     setOps[key] = value;
+  }
+
+  // Handle $inc operations
+  for (const [path, value] of Object.entries(incOps)) {
+    const current = getSimplePath(data, path);
+    setSimplePath(data, path, (current || 0) + value);
   }
 
   for (const [path, value] of Object.entries(setOps)) {
@@ -364,5 +372,30 @@ export class Collection<T extends Record<string, any>> {
 
     const match = rows.find((r: any) => matchesFilter(r.data, filter));
     if (match) await pool.query(`DELETE FROM ${this.tableName} WHERE id = $1`, [match.id]);
+  }
+
+  async updateOne(filter: Filter, update: Record<string, any>): Promise<void> {
+    await this.ensureTable();
+    const pool = getPool();
+    const indexValue = filter[this.indexField];
+
+    const rows =
+      typeof indexValue === "string"
+        ? (await pool.query(`SELECT id, data FROM ${this.tableName} WHERE key_id = $1`, [indexValue]))
+            .rows
+        : (await pool.query(`SELECT id, data FROM ${this.tableName}`)).rows;
+
+    const match = rows.find((r: any) => matchesFilter(r.data, filter));
+    if (!match) return;
+
+    const updatedData = applyUpdate({ ...match.data }, update, filter);
+    await pool.query(
+      `UPDATE ${this.tableName} SET data = $1::jsonb, key_id = $2, updated_at = now() WHERE id = $3`,
+      [JSON.stringify(updatedData), updatedData[this.indexField] ?? null, match.id]
+    );
+  }
+
+  async insertOne(input: Partial<T>): Promise<void> {
+    await this.create(input);
   }
 }

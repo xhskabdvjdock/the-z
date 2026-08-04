@@ -21,9 +21,17 @@ const event: BotEvent = {
         const gConfig = await getGuildConfig(client, interaction.guild.id);
         const override = gConfig.commandOverrides?.find((c) => c.name === command.name);
 
+        if (override && !override.enabled) {
+          await interaction.reply({
+            content: "This command is disabled in this server.",
+            ephemeral: true
+          });
+          return;
+        }
+
         if (override && !override.slashEnabled) {
           await interaction.reply({
-            content: "❌ تم تعطيل استخدام هذا الأمر كـ Slash Command في هذا السيرفر.",
+            content: "This command is disabled as a Slash Command in this server.",
             ephemeral: true
           });
           return;
