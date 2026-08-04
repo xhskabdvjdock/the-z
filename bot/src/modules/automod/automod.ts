@@ -138,16 +138,54 @@ export async function handleAutoMod(
   await message.delete().catch(() => null);
   await applyPunishment(client, member, specificPunishment, VIOLATION_LABELS[violation], automod.muteRoleId, timeoutDuration);
 
+  // Build detailed log embed
   const embed = new EmbedBuilder()
     .setColor(0xed4245)
-    .setTitle("🛡️ رقابة تلقائية")
-    .setDescription(
-      `تم اتخاذ إجراء بحق ${member} في ${message.channel}\n` +
-        `**السبب:** ${VIOLATION_LABELS[violation]}\n` +
-        `**العقوبة:** ${PUNISHMENT_LABELS[specificPunishment] ?? specificPunishment}`
-    )
-    .addFields({ name: "محتوى الرسالة", value: content.slice(0, 1000) || "—" })
-    .setFooter({ text: `${message.author.tag} (${message.author.id})` });
+    .setTitle("🛡️ Auto-Mod Violation")
+    .addFields(
+      { name: "User", value: `${member.user.tag} (${member.id})`, inline: true },
+      { name: "Channel", value: `${message.channelId}`, inline: true },
+      { name: "Violation Type", value: VIOLATION_LABELS[violation], inline: true },
+      { name: "Punishment", value: PUNISHMENT_LABELS[specificPunishment] ?? specificPunishment, inline: true }
+    );
+
+  // Add timeout duration if applicable
+  if (specificPunishment === "timeout") {
+    embed.addFields({ 
+      name: "Timeout Duration", 
+      value: `${timeoutDuration} minutes`, 
+      inline: true 
+    });
+  }
+
+  // Add message content
+  if (content) {
+    const truncatedContent = content.length > 1000 ? content.slice(0, 997) + "..." : content;
+    embed.addFields({ name: "Message Content", value: truncatedContent || "—" });
+  }
+
+  // Add user information
+  embed.addFields(
+    { name: "User Created", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
+    { name: "Joined Server", value: `<t:${Math.floor(member.joinedAt!.getTime() / 1000)}:R>`, inline: true }
+  );
+
+  // Add roles if user has any
+  if (member.roles.cache.size > 1) {
+    const roles = member.roles.cache
+      .filter(r => r.id !== member.guild.id)
+      .map(r => r.name)
+      .slice(0, 5)
+      .join(", ");
+    embed.addFields({ 
+      name: "Roles", 
+      value: roles || "No additional roles", 
+      inline: true 
+    });
+  }
+
+  embed.setFooter({ text: `User ID: ${member.id} | Message ID: ${message.id}` });
+  embed.setTimestamp();
 
   await sendLog(client, message.guild.id, "moderation", embed);
 

@@ -13,15 +13,31 @@ const event: BotEvent = {
       await antiNukeRoleCreate(client, role, gConfig).catch(() => null);
     }
 
-    await sendLog(
-      client,
-      role.guild.id,
-      "roles",
-      new EmbedBuilder()
-        .setColor(0x57f287)
-        .setTitle("➕ تم إنشاء رتبة جديدة")
-        .setDescription(`${role} (\`${role.name}\`)`)
-    );
+    const auditLogs = await role.guild.fetchAuditLogs({ limit: 1, type: 30 }).catch(() => null);
+    const executor = auditLogs?.entries.first()?.executor;
+
+    const permissions = role.permissions.toArray()
+      .filter(p => !p.includes("ADMINISTRATOR"))
+      .slice(0, 5)
+      .join(", ");
+
+    const embed = new EmbedBuilder()
+      .setColor(0x57f287)
+      .setTitle("➕ Role Created")
+      .addFields(
+        { name: "Role", value: `${role.name} (${role.id})`, inline: true },
+        { name: "Color", value: role.hexColor || "Default", inline: true },
+        { name: "Created By", value: executor ? `${executor.tag}` : "Unknown", inline: true }
+      );
+
+    if (permissions) {
+      embed.addFields({ name: "Key Permissions", value: permissions, inline: false });
+    }
+
+    embed.setFooter({ text: `Role ID: ${role.id}` });
+    embed.setTimestamp();
+
+    await sendLog(client, role.guild.id, "roles", embed);
   }
 };
 

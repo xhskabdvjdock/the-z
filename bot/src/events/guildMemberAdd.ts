@@ -19,17 +19,23 @@ const event: BotEvent = {
     await handleAutoRole(client, member);
     await sendWelcomeMessage(client, member, gConfig);
 
-    await sendLog(
-      client,
-      member.guild.id,
-      "members",
-      new EmbedBuilder()
-        .setColor(0x57f287)
-        .setTitle("📥 عضو جديد انضم")
-        .setDescription(`${member} (\`${member.user.tag}\`)`)
-        .addFields({ name: "عدد الأعضاء", value: `${member.guild.memberCount}` })
-        .setThumbnail(member.user.displayAvatarURL())
-    );
+    const accountAge = Date.now() - member.user.createdTimestamp;
+    const isNewAccount = accountAge < 7 * 24 * 60 * 60 * 1000; // less than 7 days
+
+    const embed = new EmbedBuilder()
+      .setColor(0x57f287)
+      .setTitle("📥 Member Joined")
+      .addFields(
+        { name: "User", value: `${member.user.tag} (${member.id})`, inline: true },
+        { name: "Account Age", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
+        { name: "Server Members", value: `${member.guild.memberCount}`, inline: true },
+        { name: "New Account", value: isNewAccount ? "Yes ⚠️" : "No", inline: true }
+      )
+      .setThumbnail(member.user.displayAvatarURL())
+      .setFooter({ text: `User ID: ${member.id}` })
+      .setTimestamp();
+
+    await sendLog(client, member.guild.id, "members", embed);
   }
 };
 

@@ -13,15 +13,22 @@ const event: BotEvent = {
       await antiNukeBanAdd(client, ban.guild, ban.user, gConfig).catch(() => null);
     }
 
-    await sendLog(
-      client,
-      ban.guild.id,
-      "moderation",
-      new EmbedBuilder()
-        .setColor(0xed4245)
-        .setTitle("🔨 تم حظر عضو")
-        .setDescription(`${ban.user.tag} (\`${ban.user.id}\`)`)
-    );
+    const auditLogs = await ban.guild.fetchAuditLogs({ limit: 1, type: 22 }).catch(() => null);
+    const executor = auditLogs?.entries.first()?.executor;
+
+    const embed = new EmbedBuilder()
+      .setColor(0xed4245)
+      .setTitle("🔨 Member Banned")
+      .addFields(
+        { name: "User", value: `${ban.user.tag} (${ban.user.id})`, inline: true },
+        { name: "Reason", value: ban.reason || "No reason provided", inline: true },
+        { name: "Banned By", value: executor ? `${executor.tag}` : "Unknown", inline: true },
+        { name: "Account Created", value: `<t:${Math.floor(ban.user.createdTimestamp / 1000)}:R>`, inline: true }
+      )
+      .setFooter({ text: `User ID: ${ban.user.id}` })
+      .setTimestamp();
+
+    await sendLog(client, ban.guild.id, "moderation", embed);
   }
 };
 
