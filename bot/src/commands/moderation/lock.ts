@@ -1,4 +1,4 @@
-import { BaseGuildTextChannel, EmbedBuilder, PermissionFlagsBits } from "discord.js";
+import { BaseGuildTextChannel, EmbedBuilder, PermissionFlagsBits, ChannelType, ThreadChannel } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
 import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
@@ -15,7 +15,8 @@ const command: BotCommand = {
   async run(ctx) {
     const selected = ctx.getChannel("channel") ?? ctx.channel;
 
-    if (!(selected instanceof BaseGuildTextChannel)) {
+    // Allow BaseGuildTextChannel (TextChannel and NewsChannel) and ThreadChannel (voice chat)
+    if (!(selected instanceof BaseGuildTextChannel) && !(selected instanceof ThreadChannel)) {
       await replyWithAutoDelete(ctx, "لا يمكن قفل هذا النوع من الرومات.", ctx.guild.id);
       return;
     }
@@ -26,9 +27,15 @@ const command: BotCommand = {
     }
 
     try {
-      await selected.permissionOverwrites.edit(ctx.guild.roles.everyone, {
-        SendMessages: false
-      });
+      if (selected instanceof ThreadChannel) {
+        // For threads (voice chat), lock the thread
+        await selected.setLocked(true);
+      } else {
+        // For channels, edit permission overwrites
+        await selected.permissionOverwrites.edit(ctx.guild.roles.everyone, {
+          SendMessages: false
+        });
+      }
     } catch {
       await replyWithAutoDelete(ctx, "حدث خطأ أثناء قفل الروم.", ctx.guild.id);
       return;

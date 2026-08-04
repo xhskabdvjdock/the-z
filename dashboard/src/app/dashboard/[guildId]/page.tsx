@@ -24,6 +24,7 @@ export default async function GuildOverviewPage({ params }: { params: { guildId:
     { label: "الرقابة التلقائية", enabled: !!config?.automod?.enabled, href: "automod" },
     { label: "مكافحة الغزو", enabled: !!config?.antiNuke?.enabled, href: "antinuke" },
     { label: "نظام التحقق", enabled: !!config?.captcha?.enabled, href: "captcha" },
+    { label: "نظام السجن", enabled: !!config?.jail?.enabled, href: "jail" },
     { label: "السجلات", enabled: !!config?.logging?.enabled, href: "logging" }
   ];
 

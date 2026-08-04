@@ -241,6 +241,13 @@ export interface IGuildConfig {
     autoDeleteConfirmation: number; // بالثواني، 0 يعني لا تحذف، الافتراضي 3
   };
 
+  jail: {
+    enabled: boolean;
+    roleId: string; // The jail role to give
+    removeRoles: string[]; // Roles to remove when jailing
+    allowAdminBypass: boolean; // Allow admins to bypass jail check
+  };
+
   antiNuke: {
     enabled: boolean;
     maxBans: number;
@@ -355,6 +362,13 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       enabled: false,
       channels: {},
       customChannels: {}
+    },
+
+    jail: {
+      enabled: false,
+      roleId: "",
+      removeRoles: [],
+      allowAdminBypass: true
     },
 
     automod: {

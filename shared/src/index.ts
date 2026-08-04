@@ -6,6 +6,7 @@ export * from "./models/LevelUser";
 export * from "./models/Warning";
 export * from "./models/DashboardUser";
 export * from "./models/AfkUser";
+export * from "./models/JailUser";
 export * from "./utils/variables";
 export * from "./utils/leveling";
 export * from "./constants/commands";
