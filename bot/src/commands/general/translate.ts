@@ -63,7 +63,7 @@ const command: BotCommand = {
     }
 
     try {
-      const translatedText = await translate(text, { to: targetLang });
+      const translatedText = await translate(text, { to: targetLang, from: isArabic ? 'ar' : 'auto' });
 
       // التحقق من أن الترجمة نجحت
       if (!translatedText || translatedText.trim() === "") {
