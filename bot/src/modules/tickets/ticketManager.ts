@@ -514,12 +514,12 @@ export async function closeTicket(
       if (logChannel?.isTextBased()) {
         const logEmbed = new EmbedBuilder()
           .setColor(config.defaultColor)
-          .setTitle("🎫 سجل تذكرة مغلقة")
+          .setTitle("Ticket Transcript Closed")
           .addFields(
-            { name: "الرقم", value: `#${ticket.number}`, inline: true },
-            { name: "التصنيف", value: category?.name ?? ticket.categoryKey, inline: true },
-            { name: "صاحب التذكرة", value: `<@${ticket.ownerId}>`, inline: true },
-            { name: "أُغلقت بواسطة", value: `<@${closedById}>`, inline: true }
+            { name: "Number", value: `#${ticket.number}`, inline: true },
+            { name: "Category", value: category?.name ?? ticket.categoryKey, inline: true },
+            { name: "Ticket Owner", value: `<@${ticket.ownerId}>`, inline: true },
+            { name: "Closed By", value: `<@${closedById}>`, inline: true }
           )
           .setTimestamp();
 
@@ -534,7 +534,7 @@ export async function closeTicket(
           const row = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
               new ButtonBuilder()
-                .setLabel("Open Transcript in Browser")
+                .setLabel("Open Transcript")
                 .setStyle(ButtonStyle.Link)
                 .setURL(transcriptAttachment.url)
             );
