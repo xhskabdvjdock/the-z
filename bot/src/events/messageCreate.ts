@@ -7,8 +7,11 @@ import { buildMessageFromCustom } from "../utils/embed";
 import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
-import { translate } from "@vitalets/google-translate-api";
+import translate from "translate";
 import { config } from "../config";
+
+// ضبط المحرك مجاناً
+translate.engine = "google";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
@@ -88,15 +91,15 @@ const event: BotEvent = {
         const loadingMsg = await message.reply("جاري الترجمة...");
 
         // تنفيذ عملية الترجمة باستخدام المكتبة
-        const result = await translate(textToTranslate, { to: targetLang });
+        const translatedText = await translate(textToTranslate, { to: targetLang });
 
         // التأكد من أن النص المترجم لا يتجاوز حد Discord
-        const translatedText = result.text.length > 4096 
-          ? result.text.substring(0, 4093) + "..." 
-          : result.text;
+        const finalText = translatedText.length > 4096 
+          ? translatedText.substring(0, 4093) + "..." 
+          : translatedText;
 
         // حفظ في الذاكرة المؤقتة
-        translationCache.set(cacheKey, { text: result.text, timestamp: now });
+        translationCache.set(cacheKey, { text: translatedText, timestamp: now });
 
         // إنشاء الـ Embed
         const embed = new EmbedBuilder()
@@ -104,7 +107,7 @@ const event: BotEvent = {
           .setTitle("نتيجة الترجمة")
           .addFields(
             { name: "النص الأصلي", value: textToTranslate.substring(0, 1000) },
-            { name: "الترجمة", value: translatedText },
+            { name: "الترجمة", value: finalText },
             { name: "التفاصيل", value: `إلى ${targetLang.toUpperCase()}`, inline: true }
           )
           .setFooter({ text: `طلب بواسطة ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
@@ -114,12 +117,7 @@ const event: BotEvent = {
         await loadingMsg.edit({ content: null, embeds: [embed] });
       } catch (error: any) {
         console.error("Translation error:", error);
-        
-        if (error.message?.includes('Too Many Requests')) {
-          await message.reply("ترجمة كثيرة جداً، يرجى الانتظار قليلاً قبل المحاولة مرة أخرى");
-        } else {
-          await message.reply("حدث خطأ أثناء محاولة الترجمة، تأكد من صحة رمز اللغة والنص.");
-        }
+        await message.reply("تعذر الاتصال بخدمة الترجمة حالياً، حاول مجدداً بعد قليل.");
       }
       return;
     }

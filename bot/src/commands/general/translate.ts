@@ -1,7 +1,10 @@
 import { EmbedBuilder, Message } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
-import { translate } from "@vitalets/google-translate-api";
+import translate from "translate";
+
+// ضبط المحرك مجاناً
+translate.engine = "google";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
@@ -71,15 +74,15 @@ const command: BotCommand = {
       const loadingMsg = await ctx.reply("جاري الترجمة...");
 
       // تنفيذ عملية الترجمة باستخدام المكتبة
-      const result = await translate(text, { to: targetLang });
+      const translatedText = await translate(text, { to: targetLang });
 
       // التأكد من أن النص المترجم لا يتجاوز حد Discord
-      const translatedText = result.text.length > 4096 
-        ? result.text.substring(0, 4093) + "..." 
-        : result.text;
+      const finalText = translatedText.length > 4096 
+        ? translatedText.substring(0, 4093) + "..." 
+        : translatedText;
 
       // حفظ في الذاكرة المؤقتة
-      translationCache.set(cacheKey, { text: result.text, timestamp: now });
+      translationCache.set(cacheKey, { text: translatedText, timestamp: now });
 
       // إنشاء الـ Embed
       const embed = new EmbedBuilder()
@@ -87,7 +90,7 @@ const command: BotCommand = {
         .setTitle("نتيجة الترجمة")
         .addFields(
           { name: "النص الأصلي", value: text.substring(0, 1000) },
-          { name: "الترجمة", value: translatedText },
+          { name: "الترجمة", value: finalText },
           { name: "التفاصيل", value: `إلى ${targetLang.toUpperCase()}`, inline: true }
         )
         .setFooter({ text: `طلب بواسطة ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
@@ -101,12 +104,7 @@ const command: BotCommand = {
       }
     } catch (error: any) {
       console.error("Translation error:", error);
-      
-      if (error.message?.includes('Too Many Requests')) {
-        await ctx.reply("ترجمة كثيرة جداً، يرجى الانتظار قليلاً قبل المحاولة مرة أخرى");
-      } else {
-        await ctx.reply("حدث خطأ أثناء محاولة الترجمة، تأكد من صحة رمز اللغة والنص.");
-      }
+      await ctx.reply("تعذر الاتصال بخدمة الترجمة حالياً، حاول مجدداً بعد قليل.");
     }
   }
 };
