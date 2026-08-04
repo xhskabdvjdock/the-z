@@ -7,7 +7,7 @@ import { buildMessageFromCustom } from "../utils/embed";
 import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
-import translate = require("@iamtraction/google-translate");
+import { translate } from "google-translate-api-x";
 import { config } from "../config";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
