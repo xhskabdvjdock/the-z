@@ -1,7 +1,6 @@
 import { EmbedBuilder, Message } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
-import { translate } from "google-translate-api-x";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
@@ -34,13 +33,17 @@ const command: BotCommand = {
     const isArabic = /[\u0600-\u06FF]/.test(text);
     const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
     
+    let sourceLang: string;
     let targetLang: string;
 
     if (isArabic) {
+      sourceLang = "ar";
       targetLang = "en";
     } else if (isEnglish) {
+      sourceLang = "en";
       targetLang = "ar";
     } else {
+      sourceLang = "auto";
       targetLang = "en";
     }
 
@@ -63,34 +66,23 @@ const command: BotCommand = {
     }
 
     try {
-      // استخدام LibreTranslate API العام
-      const response = await fetch('https://libretranslate.de/translate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          q: text,
-          source: 'auto',
-          target: targetLang,
-          format: 'text'
-        })
-      });
+      // استخدام MyMemory API المجانية
+      const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
+      const response = await fetch(apiUrl);
+      const data = await response.json() as { responseData: { translatedText: string } };
 
-      const data = await response.json() as { translatedText: string };
-
-      if (!data.translatedText) {
+      if (!data.responseData?.translatedText) {
         await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
         return;
       }
 
       // التأكد من أن النص المترجم لا يتجاوز حد Discord
-      const translatedText = data.translatedText.length > 4096 
-        ? data.translatedText.substring(0, 4093) + "..." 
-        : data.translatedText;
+      const translatedText = data.responseData.translatedText.length > 4096 
+        ? data.responseData.translatedText.substring(0, 4093) + "..." 
+        : data.responseData.translatedText;
 
       // حفظ في الذاكرة المؤقتة
-      translationCache.set(cacheKey, { text: data.translatedText, timestamp: now });
+      translationCache.set(cacheKey, { text: data.responseData.translatedText, timestamp: now });
 
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
