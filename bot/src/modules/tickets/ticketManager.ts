@@ -596,7 +596,12 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
             value: c.key,
             emoji: c.emoji || undefined
           }))
-        );
+        )
+        .addOptions({
+          label: "Restart",
+          value: "restart",
+          emoji: undefined
+        });
       messagePayload.components = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)];
     } else {
       const buttonStyleMap: Record<string, ButtonStyle> = {
@@ -632,9 +637,41 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
 
 /** يسجّل جميع معالجات الأزرار/القوائم/النماذج الخاصة بنظام التذاكر في الموجّه المركزي */
 export function registerTicketComponents(router: ComponentRouter): void {
-  router.registerSelect("ticket_open_select", (interaction, client) =>
-    handleTicketOpenRequest(interaction, client, interaction.values[0])
-  );
+  router.registerSelect("ticket_open_select", async (interaction: StringSelectMenuInteraction, client) => {
+    if (interaction.values[0] === "restart") {
+      // Refresh the select menu
+      await interaction.update({ content: "Refreshing ticket options..." });
+      
+      if (!interaction.guildId) return;
+      
+      const gConfig = await getGuildConfig(client, interaction.guildId);
+      const categories = gConfig.tickets.categories ?? [];
+      
+      const select = new StringSelectMenuBuilder()
+        .setCustomId("ticket_open_select")
+        .setPlaceholder("اختر نوع التذكرة")
+        .addOptions(
+          categories.slice(0, 25).map((c) => ({
+            label: c.name.slice(0, 100),
+            value: c.key,
+            emoji: c.emoji || undefined
+          }))
+        )
+        .addOptions({
+          label: "Restart",
+          value: "restart",
+          emoji: undefined
+        });
+      
+      await interaction.editReply({ 
+        content: "Ticket options refreshed", 
+        components: [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)] 
+      });
+      return;
+    }
+    
+    await handleTicketOpenRequest(interaction, client, interaction.values[0]);
+  });
 
   router.registerButton("ticket_open_", (interaction, client) =>
     handleTicketOpenRequest(interaction, client, interaction.customId.replace("ticket_open_", ""))
