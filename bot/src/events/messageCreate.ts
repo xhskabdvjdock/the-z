@@ -153,9 +153,30 @@ const event: BotEvent = {
     if (message.content.startsWith(",avatar")) {
       const args = message.content.slice(7).trim().split(/\s+/);
       const useServerAvatar = args.includes("server");
-      const userId = args.find(a => a.match(/^\d+$/)) || message.author.id;
       
-      const targetMember = await message.guild.members.fetch(userId).catch(() => null);
+      let targetMember;
+      
+      // Check if message mentions a user
+      if (message.mentions.users.size > 0) {
+        const mentionedUser = message.mentions.users.first();
+        if (mentionedUser && !mentionedUser.bot) {
+          targetMember = await message.guild.members.fetch(mentionedUser.id).catch(() => null);
+        }
+      }
+      
+      // If no mention, try to get from args
+      if (!targetMember) {
+        const userId = args.find(a => a.match(/^\d+$/));
+        if (userId) {
+          targetMember = await message.guild.members.fetch(userId).catch(() => null);
+        }
+      }
+      
+      // Default to author if no target found
+      if (!targetMember) {
+        targetMember = message.member;
+      }
+      
       if (!targetMember) {
         await message.reply({ content: "Could not find that user." });
         return;

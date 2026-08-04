@@ -15,6 +15,11 @@ const command: BotCommand = {
     const targetMember = (await ctx.getMember("user")) ?? ctx.member;
     const useServerAvatar = ctx.getBoolean("server") ?? false;
     
+    if (!targetMember) {
+      await ctx.reply({ content: "Could not find that user." });
+      return;
+    }
+    
     let avatarUrl: string;
     let avatarType: string;
 
