@@ -33,7 +33,7 @@ const command: BotCommand = {
       return;
     }
 
-    // تحديد لغة النص
+    // تحديد لغة النص واللغة المستهدفة
     const isArabic = /[\u0600-\u06FF]/.test(text);
     const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
     
@@ -59,21 +59,13 @@ const command: BotCommand = {
 
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
-        .setTitle("نتيجة الترجمة")
-        .addFields(
-          { name: "النص الأصلي", value: text.substring(0, 1000) },
-          { name: "الترجمة", value: translatedText }
-        );
+        .setDescription(translatedText);
 
       await ctx.reply({ embeds: [embed] });
       return;
     }
 
     try {
-      // إرسال إشعار مؤقت بأن الترجمة جارية
-      const loadingMsg = await ctx.reply("جاري الترجمة...");
-
-      // تنفيذ عملية الترجمة باستخدام المكتبة
       const translatedText = await translate(text, { to: targetLang });
 
       // التأكد من أن النص المترجم لا يتجاوز حد Discord
@@ -84,27 +76,14 @@ const command: BotCommand = {
       // حفظ في الذاكرة المؤقتة
       translationCache.set(cacheKey, { text: translatedText, timestamp: now });
 
-      // إنشاء الـ Embed
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
-        .setTitle("نتيجة الترجمة")
-        .addFields(
-          { name: "النص الأصلي", value: text.substring(0, 1000) },
-          { name: "الترجمة", value: finalText },
-          { name: "التفاصيل", value: `إلى ${targetLang.toUpperCase()}`, inline: true }
-        )
-        .setFooter({ text: `طلب بواسطة ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
-        .setTimestamp();
+        .setDescription(finalText);
 
-      // تعديل رسالة الانتظار بالنتيجة النهائية
-      if (loadingMsg) {
-        await loadingMsg.edit({ content: null, embeds: [embed] });
-      } else {
-        await ctx.reply({ embeds: [embed] });
-      }
+      await ctx.reply({ embeds: [embed] });
     } catch (error: any) {
       console.error("Translation error:", error);
-      await ctx.reply("تعذر الاتصال بخدمة الترجمة حالياً، حاول مجدداً بعد قليل.");
+      await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
     }
   }
 };
