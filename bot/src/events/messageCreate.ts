@@ -7,6 +7,7 @@ import { buildMessageFromCustom } from "../utils/embed";
 import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
+import { translate } from "@vitalets/google-translate-api";
 import { config } from "../config";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
@@ -20,41 +21,48 @@ const event: BotEvent = {
 
     // تحقق من أمر الترجمة ,tr
     if (message.content.startsWith(",tr")) {
-      const referencedMessage = message.reference?.messageId 
-        ? await message.channel.messages.fetch(message.reference.messageId).catch(() => null)
-        : null;
+      let textToTranslate = "";
+      let targetLang = "ar"; // اللغة الافتراضية للترجمة هي العربية
 
-      if (!referencedMessage) {
-        await message.reply("يجب تحديد رسالة لترجمتها (رد على رسالة واستخدم ,tr)");
-        return;
-      }
+      // 1. التحقق مما إذا كان المستخدم يطرد/يرد على رسالة معينة (Reply)
+      if (message.reference && message.reference.messageId) {
+        const referencedMessage = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+        if (referencedMessage) {
+          textToTranslate = referencedMessage.content;
+        }
 
-      const text = referencedMessage.content;
-      if (!text || text.trim().length === 0) {
-        await message.reply("الرسالة المحددة لا تحتوي على نص");
-        return;
-      }
-
-      // تحديد لغة النص
-      const isArabic = /[\u0600-\u06FF]/.test(text);
-      const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
-      
-      let sourceLang: string;
-      let targetLang: string;
-
-      if (isArabic) {
-        sourceLang = "ar";
-        targetLang = "en";
-      } else if (isEnglish) {
-        sourceLang = "en";
-        targetLang = "ar";
+        // إذا كتب المستخدم رمز لغة بعد الأمر مثل: ,tr en
+        const args = message.content.slice(3).trim().split(/ +/);
+        if (args[0] && args[0].length === 2) {
+          targetLang = args[0].toLowerCase();
+        } else if (args.length > 0 && args[0]) {
+          // في حال كتب نص إضافي وهو يقصد الترجمة
+          textToTranslate = args.join(" ");
+        }
       } else {
-        sourceLang = "auto";
-        targetLang = "en";
+        // 2. في حال لم يقم بالرد على رسالة، وقام بكتابة النص مباشرة: ,tr en Hello
+        const args = message.content.slice(3).trim().split(/ +/);
+        if (args.length === 0 || (args.length === 1 && args[0] === "")) {
+          await message.reply("يرجى الرد على الرسالة المراد ترجمتها أو كتابة النص بعد الأمر!");
+          return;
+        }
+
+        // فحص ما إذا كانت أول كلمة هي رمز لغة (مثل en, ar, fr)
+        if (args[0].length === 2) {
+          targetLang = args[0].toLowerCase();
+          textToTranslate = args.slice(1).join(" ");
+        } else {
+          textToTranslate = args.join(" ");
+        }
+      }
+
+      if (!textToTranslate || textToTranslate.trim() === "") {
+        await message.reply("لا يوجد نص لترجمته في هذه الرسالة!");
+        return;
       }
 
       // التحقق من الذاكرة المؤقتة
-      const cacheKey = `${text.substring(0, 100)}_${targetLang}`;
+      const cacheKey = `${textToTranslate.substring(0, 100)}_${targetLang}`;
       const cached = translationCache.get(cacheKey);
       const now = Date.now();
 
@@ -65,39 +73,53 @@ const event: BotEvent = {
 
         const embed = new EmbedBuilder()
           .setColor(config.defaultColor)
-          .setDescription(translatedText);
+          .setTitle("نتيجة الترجمة")
+          .addFields(
+            { name: "النص الأصلي", value: textToTranslate.substring(0, 1000) },
+            { name: "الترجمة", value: translatedText }
+          );
 
         await message.reply({ embeds: [embed] });
         return;
       }
 
       try {
-        // استخدام MyMemory API المجانية
-        const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
-        const response = await fetch(apiUrl);
-        const data = await response.json() as { responseData: { translatedText: string } };
+        // إرسال إشعار مؤقت بأن الترجمة جارية
+        const loadingMsg = await message.reply("جاري الترجمة...");
 
-        if (!data.responseData?.translatedText) {
-          await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
-          return;
-        }
+        // تنفيذ عملية الترجمة باستخدام المكتبة
+        const result = await translate(textToTranslate, { to: targetLang });
 
         // التأكد من أن النص المترجم لا يتجاوز حد Discord
-        const translatedText = data.responseData.translatedText.length > 4096 
-          ? data.responseData.translatedText.substring(0, 4093) + "..." 
-          : data.responseData.translatedText;
+        const translatedText = result.text.length > 4096 
+          ? result.text.substring(0, 4093) + "..." 
+          : result.text;
 
         // حفظ في الذاكرة المؤقتة
-        translationCache.set(cacheKey, { text: data.responseData.translatedText, timestamp: now });
+        translationCache.set(cacheKey, { text: result.text, timestamp: now });
 
+        // إنشاء الـ Embed
         const embed = new EmbedBuilder()
           .setColor(config.defaultColor)
-          .setDescription(translatedText);
+          .setTitle("نتيجة الترجمة")
+          .addFields(
+            { name: "النص الأصلي", value: textToTranslate.substring(0, 1000) },
+            { name: "الترجمة", value: translatedText },
+            { name: "التفاصيل", value: `إلى ${targetLang.toUpperCase()}`, inline: true }
+          )
+          .setFooter({ text: `طلب بواسطة ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+          .setTimestamp();
 
-        await message.reply({ embeds: [embed] });
+        // تعديل رسالة الانتظار بالنتيجة النهائية
+        await loadingMsg.edit({ content: null, embeds: [embed] });
       } catch (error: any) {
         console.error("Translation error:", error);
-        await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
+        
+        if (error.message?.includes('Too Many Requests')) {
+          await message.reply("ترجمة كثيرة جداً، يرجى الانتظار قليلاً قبل المحاولة مرة أخرى");
+        } else {
+          await message.reply("حدث خطأ أثناء محاولة الترجمة، تأكد من صحة رمز اللغة والنص.");
+        }
       }
       return;
     }

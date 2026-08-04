@@ -1,6 +1,7 @@
 import { EmbedBuilder, Message } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
+import { translate } from "@vitalets/google-translate-api";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
@@ -33,17 +34,13 @@ const command: BotCommand = {
     const isArabic = /[\u0600-\u06FF]/.test(text);
     const isEnglish = /^[a-zA-Z\s.,!?'"()-]+$/.test(text);
     
-    let sourceLang: string;
     let targetLang: string;
 
     if (isArabic) {
-      sourceLang = "ar";
       targetLang = "en";
     } else if (isEnglish) {
-      sourceLang = "en";
       targetLang = "ar";
     } else {
-      sourceLang = "auto";
       targetLang = "en";
     }
 
@@ -59,39 +56,57 @@ const command: BotCommand = {
 
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
-        .setDescription(translatedText);
+        .setTitle("نتيجة الترجمة")
+        .addFields(
+          { name: "النص الأصلي", value: text.substring(0, 1000) },
+          { name: "الترجمة", value: translatedText }
+        );
 
       await ctx.reply({ embeds: [embed] });
       return;
     }
 
     try {
-      // استخدام MyMemory API المجانية
-      const apiUrl = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
-      const response = await fetch(apiUrl);
-      const data = await response.json() as { responseData: { translatedText: string } };
+      // إرسال إشعار مؤقت بأن الترجمة جارية
+      const loadingMsg = await ctx.reply("جاري الترجمة...");
 
-      if (!data.responseData?.translatedText) {
-        await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
-        return;
-      }
+      // تنفيذ عملية الترجمة باستخدام المكتبة
+      const result = await translate(text, { to: targetLang });
 
       // التأكد من أن النص المترجم لا يتجاوز حد Discord
-      const translatedText = data.responseData.translatedText.length > 4096 
-        ? data.responseData.translatedText.substring(0, 4093) + "..." 
-        : data.responseData.translatedText;
+      const translatedText = result.text.length > 4096 
+        ? result.text.substring(0, 4093) + "..." 
+        : result.text;
 
       // حفظ في الذاكرة المؤقتة
-      translationCache.set(cacheKey, { text: data.responseData.translatedText, timestamp: now });
+      translationCache.set(cacheKey, { text: result.text, timestamp: now });
 
+      // إنشاء الـ Embed
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
-        .setDescription(translatedText);
+        .setTitle("نتيجة الترجمة")
+        .addFields(
+          { name: "النص الأصلي", value: text.substring(0, 1000) },
+          { name: "الترجمة", value: translatedText },
+          { name: "التفاصيل", value: `إلى ${targetLang.toUpperCase()}`, inline: true }
+        )
+        .setFooter({ text: `طلب بواسطة ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
+        .setTimestamp();
 
-      await ctx.reply({ embeds: [embed] });
+      // تعديل رسالة الانتظار بالنتيجة النهائية
+      if (loadingMsg) {
+        await loadingMsg.edit({ content: null, embeds: [embed] });
+      } else {
+        await ctx.reply({ embeds: [embed] });
+      }
     } catch (error: any) {
       console.error("Translation error:", error);
-      await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
+      
+      if (error.message?.includes('Too Many Requests')) {
+        await ctx.reply("ترجمة كثيرة جداً، يرجى الانتظار قليلاً قبل المحاولة مرة أخرى");
+      } else {
+        await ctx.reply("حدث خطأ أثناء محاولة الترجمة، تأكد من صحة رمز اللغة والنص.");
+      }
     }
   }
 };
