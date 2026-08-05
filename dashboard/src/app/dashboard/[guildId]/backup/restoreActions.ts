@@ -34,18 +34,30 @@ export async function restoreBackup(guildId: string, backup: ServerBackup, optio
 
       // Delete existing roles if requested
       if (options.deleteExistingRoles) {
+        console.log("Starting to delete existing roles...");
         for (const role of existingRoles) {
-          if (role.name !== "@everyone" && !role.managed) {
+          if (role.name !== "@everyone") {
             try {
-              await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles/${role.id}`, {
+              console.log(`Deleting role: ${role.name} (${role.id})`);
+              const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles/${role.id}`, {
                 method: "DELETE",
                 headers: botHeaders()
               });
+              
+              if (!response.ok) {
+                console.error(`Failed to delete role ${role.name}:`, response.status, await response.text());
+              } else {
+                console.log(`Successfully deleted role: ${role.name}`);
+              }
+              
+              // Add delay to avoid rate limits
+              await new Promise(resolve => setTimeout(resolve, 200));
             } catch (e) {
               console.error("Failed to delete role:", role.name, e);
             }
           }
         }
+        console.log("Finished deleting existing roles");
       }
 
       // Create roles from backup
