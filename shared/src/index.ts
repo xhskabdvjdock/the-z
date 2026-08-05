@@ -10,3 +10,4 @@ export * from "./models/JailUser";
 export * from "./utils/variables";
 export * from "./utils/leveling";
 export * from "./constants/commands";
+export * from "./types/backup";

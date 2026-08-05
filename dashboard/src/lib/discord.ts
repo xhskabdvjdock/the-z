@@ -22,6 +22,15 @@ export interface DiscordChannel {
   type: number;
   parent_id: string | null;
   position: number;
+  topic: string | null;
+  nsfw: boolean;
+  rate_limit_per_user: number;
+  permission_overwrites?: Array<{
+    id: string;
+    type: number;
+    allow: bigint;
+    deny: bigint;
+  }>;
 }
 
 export interface DiscordRole {
@@ -30,6 +39,9 @@ export interface DiscordRole {
   color: number;
   position: number;
   managed: boolean;
+  hoist: boolean;
+  mentionable: boolean;
+  permissions: string;
 }
 
 function botHeaders() {
@@ -121,5 +133,5 @@ export async function getGuildRoles(guildId: string): Promise<DiscordRole[]> {
   });
   if (!res.ok) return [];
   const roles: DiscordRole[] = await res.json();
-  return roles.filter((r) => !r.managed && r.name !== "@everyone").sort((a, b) => b.position - a.position);
+  return roles.sort((a, b) => b.position - a.position);
 }
