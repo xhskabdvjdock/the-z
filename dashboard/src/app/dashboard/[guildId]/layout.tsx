@@ -1,6 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { requireGuildAdmin } from "@/lib/guildAccess";
-import { getGuildInfo } from "@/lib/discord";
+import { getGuildInfo, guildIconUrl } from "@/lib/discord";
 import Sidebar from "@/components/Sidebar";
 
 export default async function GuildLayout({
@@ -21,9 +22,21 @@ export default async function GuildLayout({
         </Link>
         {guild && (
           <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-[#121318] border border-[#2A2D37]">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#5865F2] text-xs font-bold text-white">
-              {guild.name.charAt(0)}
-            </div>
+            {guild.icon ? (
+              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg">
+                <Image
+                  src={guildIconUrl(guild.id, guild.icon)!}
+                  alt={guild.name}
+                  fill
+                  className="object-cover"
+                  sizes="32px"
+                />
+              </div>
+            ) : (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#5865F2] text-xs font-bold text-white">
+                {guild.name.charAt(0)}
+              </div>
+            )}
             <h1 className="text-base font-semibold text-[#F0F0F0]">{guild.name}</h1>
           </div>
         )}
