@@ -1,6 +1,10 @@
 const API_BASE = "https://discord.com/api/v10";
 const ADMINISTRATOR = 0x8n;
 
+export function botHeaders() {
+  return { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` };
+}
+
 export interface DiscordGuildSummary {
   id: string;
   name: string;
@@ -42,10 +46,6 @@ export interface DiscordRole {
   hoist: boolean;
   mentionable: boolean;
   permissions: string;
-}
-
-function botHeaders() {
-  return { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` };
 }
 
 export function guildIconUrl(id: string, icon: string | null) {

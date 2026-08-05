@@ -10,6 +10,7 @@ import {
   Bot, 
   Shield, 
   User, 
+  Users, 
   Zap, 
   ShieldAlert, 
   Lock, 
@@ -19,6 +20,7 @@ import {
 
 const NAV_ITEMS = [
   { href: "", label: "نظرة عامة", icon: LayoutDashboard },
+  { href: "/members", label: "إدارة الأعضاء", icon: Users },
   { href: "/tickets", label: "نظام التذاكر", icon: Ticket },
   { href: "/voice", label: "الرومات الصوتية", icon: Mic },
   { href: "/welcome", label: "الترحيب والمغادرة", icon: MessageSquare },

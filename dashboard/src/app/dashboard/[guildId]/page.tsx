@@ -6,7 +6,10 @@ import {
   Users, 
   Hash, 
   CheckCircle, 
-  Terminal 
+  Terminal,
+  Activity,
+  MessageSquare,
+  TrendingUp
 } from "lucide-react";
 
 export default async function GuildOverviewPage({ params }: { params: { guildId: string } }) {
@@ -56,6 +59,50 @@ export default async function GuildOverviewPage({ params }: { params: { guildId:
         />
       </div>
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ActivityCard 
+          title="النشاط الحي"
+          icon={Activity}
+          description="نشاط السيرفر في الوقت الحالي"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#9CA3AF]">الأعضاء النشطين</span>
+              <span className="text-sm font-medium text-[#F0F0F0]">{guild?.approximate_presence_count ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#9CA3AF]">إجمالي الأعضاء</span>
+              <span className="text-sm font-medium text-[#F0F0F0]">{guild?.approximate_member_count ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#9CA3AF]">النشاط</span>
+              <span className="text-sm font-medium text-[#10B981]">عالي</span>
+            </div>
+          </div>
+        </ActivityCard>
+
+        <ActivityCard 
+          title="إحصائيات سريعة"
+          icon={TrendingUp}
+          description="إحصائيات السيرفر الأساسية"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#9CA3AF]">نسبة التفعيل</span>
+              <span className="text-sm font-medium text-[#F0F0F0]">{Math.round((enabledCount / features.length) * 100)}%</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#9CA3AF]">الميزات الكلية</span>
+              <span className="text-sm font-medium text-[#F0F0F0]">{features.length}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-[#9CA3AF]">الحالة</span>
+              <span className="text-sm font-medium text-[#10B981]">نشط</span>
+            </div>
+          </div>
+        </ActivityCard>
+      </div>
+
       <div>
         <h2 className="mb-4 text-lg font-semibold text-[#F0F0F0]">الميزات</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -86,6 +133,23 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string |
         <span className="text-xl font-bold text-[#F0F0F0]">{value}</span>
       </div>
       <p className="text-xs text-[#9CA3AF]">{label}</p>
+    </div>
+  );
+}
+
+function ActivityCard({ title, icon: Icon, description, children }: { title: string; icon: any; description: string; children: React.ReactNode }) {
+  return (
+    <div className="card">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#5865F2]">
+          <Icon className="h-5 w-5 text-white" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-[#F0F0F0]">{title}</h3>
+          <p className="text-xs text-[#9CA3AF]">{description}</p>
+        </div>
+      </div>
+      {children}
     </div>
   );
 }

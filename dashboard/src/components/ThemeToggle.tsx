@@ -1,22 +1,36 @@
 "use client";
 
 import { useTheme } from "next-themes";
+import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="h-9 w-9" />;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <button className="p-2 rounded-lg bg-[#1A1C23] border border-[#2A2D37]">
+        <div className="h-5 w-5" />
+      </button>
+    );
+  }
 
   return (
     <button
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
-      title="تبديل الوضع الليلي"
+      className="p-2 rounded-lg bg-[#1A1C23] border border-[#2A2D37] hover:border-[#5865F2] transition-colors"
+      title={theme === "dark" ? "تبديل للوضع الفاتح" : "تبديل للوضع الداكن"}
     >
-      {theme === "dark" ? "☀️" : "🌙"}
+      {theme === "dark" ? (
+        <Sun className="h-5 w-5 text-[#F0F0F0]" />
+      ) : (
+        <Moon className="h-5 w-5 text-[#F0F0F0]" />
+      )}
     </button>
   );
 }
