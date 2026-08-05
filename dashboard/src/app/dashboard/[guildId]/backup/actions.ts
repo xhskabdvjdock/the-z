@@ -3,9 +3,14 @@
 import { requireGuildAdmin } from "@/lib/guildAccess";
 import { ensureDb } from "@/lib/db";
 import { getGuildInfo, getGuildRoles, getGuildChannels } from "@/lib/discord";
-import { GuildConfig, ServerBackup } from "@thez/shared";
+import { GuildConfig, ServerBackup, BackupOptions } from "@thez/shared";
 
-export async function createBackup(guildId: string) {
+export async function createBackup(guildId: string, options: BackupOptions = {
+  includeRoles: true,
+  includeChannels: true,
+  includeBotConfig: true,
+  includeGuildInfo: true
+}) {
   try {
     await requireGuildAdmin(guildId);
     await ensureDb();
@@ -21,21 +26,26 @@ export async function createBackup(guildId: string) {
       throw new Error("Guild not found");
     }
 
-    // Create backup data
+    // Create backup data based on options
     const backup: ServerBackup = {
       version: "1.0.0",
       timestamp: new Date().toISOString(),
       guildId,
       guildName: guild.name,
       
-      guildInfo: {
+      guildInfo: options.includeGuildInfo ? {
         name: guild.name,
         description: guild.description,
         icon: guild.icon,
         banner: guild.banner
+      } : {
+        name: guild.name,
+        description: null,
+        icon: null,
+        banner: null
       },
       
-      roles: roles.map(role => ({
+      roles: options.includeRoles ? roles.map(role => ({
         id: role.id,
         name: role.name,
         color: role.color || 0,
@@ -43,9 +53,9 @@ export async function createBackup(guildId: string) {
         mentionable: role.mentionable,
         permissions: role.permissions,
         position: role.position
-      })),
+      })) : [],
       
-      channels: channels.map(channel => ({
+      channels: options.includeChannels ? channels.map(channel => ({
         id: channel.id,
         type: channel.type === 0 ? "text" : 
               channel.type === 2 ? "voice" : 
@@ -65,9 +75,9 @@ export async function createBackup(guildId: string) {
           allow: overwrite.allow.toString(),
           deny: overwrite.deny.toString()
         })) || []
-      })),
+      })) : [],
       
-      config: {
+      config: options.includeBotConfig ? {
         prefix: config?.prefix || "!",
         automod: config?.automod,
         tickets: config?.tickets,
@@ -81,6 +91,20 @@ export async function createBackup(guildId: string) {
         autoResponse: config?.autoResponse,
         selfRoles: config?.selfRoles,
         colorRoles: config?.colorRoles
+      } : {
+        prefix: "!",
+        automod: null,
+        tickets: null,
+        tempVoice: null,
+        welcome: null,
+        captcha: null,
+        leveling: null,
+        jail: null,
+        logging: null,
+        antiNuke: null,
+        autoResponse: null,
+        selfRoles: null,
+        colorRoles: null
       }
     };
 

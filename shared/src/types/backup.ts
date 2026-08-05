@@ -1,3 +1,18 @@
+export interface BackupOptions {
+  includeRoles: boolean;
+  includeChannels: boolean;
+  includeBotConfig: boolean;
+  includeGuildInfo: boolean;
+}
+
+export interface RestoreOptions {
+  deleteExistingRoles: boolean;
+  deleteExistingChannels: boolean;
+  restoreRoles: boolean;
+  restoreChannels: boolean;
+  restoreBotConfig: boolean;
+}
+
 export interface ServerBackup {
   version: string;
   timestamp: string;
