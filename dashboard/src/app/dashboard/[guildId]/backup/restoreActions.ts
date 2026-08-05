@@ -37,24 +37,39 @@ export async function restoreBackup(guildId: string, backup: ServerBackup, optio
         console.log("Starting to delete existing roles...");
         for (const role of existingRoles) {
           if (role.name !== "@everyone") {
-            try {
-              console.log(`Deleting role: ${role.name} (${role.id})`);
-              const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles/${role.id}`, {
-                method: "DELETE",
-                headers: botHeaders()
-              });
-              
-              if (!response.ok) {
-                console.error(`Failed to delete role ${role.name}:`, response.status, await response.text());
-              } else {
-                console.log(`Successfully deleted role: ${role.name}`);
+            let shouldRetry = true;
+            let retryCount = 0;
+            const maxRetries = 5;
+            
+            while (shouldRetry && retryCount < maxRetries) {
+              try {
+                console.log(`Deleting role: ${role.name} (${role.id})`);
+                const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles/${role.id}`, {
+                  method: "DELETE",
+                  headers: botHeaders()
+                });
+                
+                if (response.ok) {
+                  console.log(`Successfully deleted role: ${role.name}`);
+                  shouldRetry = false;
+                } else if (response.status === 429) {
+                  const rateLimitData = await response.json();
+                  const retryAfter = (rateLimitData.retry_after || 1) * 1000;
+                  console.log(`Rate limited for ${role.name}, waiting ${retryAfter}ms...`);
+                  await new Promise(resolve => setTimeout(resolve, retryAfter));
+                  retryCount++;
+                } else {
+                  console.error(`Failed to delete role ${role.name}:`, response.status, await response.text());
+                  shouldRetry = false; // Don't retry on other errors
+                }
+              } catch (e) {
+                console.error("Failed to delete role:", role.name, e);
+                shouldRetry = false;
               }
-              
-              // Add delay to avoid rate limits
-              await new Promise(resolve => setTimeout(resolve, 200));
-            } catch (e) {
-              console.error("Failed to delete role:", role.name, e);
             }
+            
+            // Add small delay between successful deletions
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
         console.log("Finished deleting existing roles");
@@ -68,27 +83,50 @@ export async function restoreBackup(guildId: string, backup: ServerBackup, optio
           continue;
         }
 
-        const newRole = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...botHeaders()
-          },
-          body: JSON.stringify({
-            name: role.name,
-            color: role.color,
-            hoist: role.hoist,
-            mentionable: role.mentionable,
-            permissions: role.permissions
-          })
-        }).then(r => r.json());
-
-        if (newRole.id) {
-          roleIdMap.set(role.id, newRole.id);
+        let shouldRetry = true;
+        let retryCount = 0;
+        const maxRetries = 5;
+        
+        while (shouldRetry && retryCount < maxRetries) {
+          try {
+            const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/roles`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...botHeaders()
+              },
+              body: JSON.stringify({
+                name: role.name,
+                color: role.color,
+                hoist: role.hoist,
+                mentionable: role.mentionable,
+                permissions: role.permissions
+              })
+            });
+            
+            if (response.ok) {
+              const newRole = await response.json();
+              if (newRole.id) {
+                roleIdMap.set(role.id, newRole.id);
+              }
+              shouldRetry = false;
+            } else if (response.status === 429) {
+              const rateLimitData = await response.json();
+              const retryAfter = (rateLimitData.retry_after || 1) * 1000;
+              await new Promise(resolve => setTimeout(resolve, retryAfter));
+              retryCount++;
+            } else {
+              console.error("Failed to create role:", role.name, response.status);
+              shouldRetry = false;
+            }
+          } catch (e) {
+            console.error("Failed to create role:", role.name, e);
+            shouldRetry = false;
+          }
         }
 
         // Add small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
 
@@ -103,14 +141,36 @@ export async function restoreBackup(guildId: string, backup: ServerBackup, optio
         }).then(r => r.json());
 
         for (const channel of existingChannels) {
-          try {
-            await fetch(`https://discord.com/api/v10/channels/${channel.id}`, {
-              method: "DELETE",
-              headers: botHeaders()
-            });
-          } catch (e) {
-            console.error("Failed to delete channel:", channel.name, e);
+          let shouldRetry = true;
+          let retryCount = 0;
+          const maxRetries = 5;
+          
+          while (shouldRetry && retryCount < maxRetries) {
+            try {
+              const response = await fetch(`https://discord.com/api/v10/channels/${channel.id}`, {
+                method: "DELETE",
+                headers: botHeaders()
+              });
+              
+              if (response.ok) {
+                shouldRetry = false;
+              } else if (response.status === 429) {
+                const rateLimitData = await response.json();
+                const retryAfter = (rateLimitData.retry_after || 1) * 1000;
+                await new Promise(resolve => setTimeout(resolve, retryAfter));
+                retryCount++;
+              } else {
+                console.error("Failed to delete channel:", channel.name, response.status);
+                shouldRetry = false;
+              }
+            } catch (e) {
+              console.error("Failed to delete channel:", channel.name, e);
+              shouldRetry = false;
+            }
           }
+          
+          // Add delay between deletions
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       }
 
@@ -119,31 +179,56 @@ export async function restoreBackup(guildId: string, backup: ServerBackup, optio
       const otherChannels = backup.channels.filter(c => c.type !== "category");
 
       for (const category of categories) {
-        const newChannel = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...botHeaders()
-          },
-          body: JSON.stringify({
-            type: 4, // category
-            name: category.name,
-            position: category.position,
-            permission_overwrites: category.permissionOverwrites.map(ow => ({
-              id: ow.id,
-              type: ow.type === "role" ? 0 : 1,
-              allow: ow.allow,
-              deny: ow.deny
-            }))
-          })
-        }).then(r => r.json());
+        let shouldRetry = true;
+        let retryCount = 0;
+        const maxRetries = 5;
+        let newChannel;
+        
+        while (shouldRetry && retryCount < maxRetries) {
+          try {
+            const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...botHeaders()
+              },
+              body: JSON.stringify({
+                type: 4, // category
+                name: category.name,
+                position: category.position,
+                permission_overwrites: category.permissionOverwrites.map(ow => ({
+                  id: ow.id,
+                  type: ow.type === "role" ? 0 : 1,
+                  allow: ow.allow,
+                  deny: ow.deny
+                }))
+              })
+            });
+            
+            if (response.ok) {
+              newChannel = await response.json();
+              shouldRetry = false;
+            } else if (response.status === 429) {
+              const rateLimitData = await response.json();
+              const retryAfter = (rateLimitData.retry_after || 1) * 1000;
+              await new Promise(resolve => setTimeout(resolve, retryAfter));
+              retryCount++;
+            } else {
+              console.error("Failed to create category:", category.name, response.status);
+              shouldRetry = false;
+            }
+          } catch (e) {
+            console.error("Failed to create category:", category.name, e);
+            shouldRetry = false;
+          }
+        }
 
-        if (newChannel.id) {
+        if (newChannel?.id) {
           channelIdMap.set(category.id, newChannel.id);
         }
 
         // Add small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
 
       for (const channel of otherChannels) {
@@ -153,35 +238,60 @@ export async function restoreBackup(guildId: string, backup: ServerBackup, optio
                             channel.type === "stage" ? 13 : 
                             channel.type === "forum" ? 15 : 0;
 
-        const newChannel = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...botHeaders()
-          },
-          body: JSON.stringify({
-            type: channelType,
-            name: channel.name,
-            parent_id: channel.parentId ? channelIdMap.get(channel.parentId) : null,
-            position: channel.position,
-            topic: channel.topic,
-            nsfw: channel.nsfw,
-            rate_limit_per_user: channel.rateLimitPerUser,
-            permission_overwrites: channel.permissionOverwrites.map(ow => ({
-              id: ow.id,
-              type: ow.type === "role" ? 0 : 1,
-              allow: ow.allow,
-              deny: ow.deny
-            }))
-          })
-        }).then(r => r.json());
+        let shouldRetry = true;
+        let retryCount = 0;
+        const maxRetries = 5;
+        let newChannel;
+        
+        while (shouldRetry && retryCount < maxRetries) {
+          try {
+            const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...botHeaders()
+              },
+              body: JSON.stringify({
+                type: channelType,
+                name: channel.name,
+                parent_id: channel.parentId ? channelIdMap.get(channel.parentId) : null,
+                position: channel.position,
+                topic: channel.topic,
+                nsfw: channel.nsfw,
+                rate_limit_per_user: channel.rateLimitPerUser,
+                permission_overwrites: channel.permissionOverwrites.map(ow => ({
+                  id: ow.id,
+                  type: ow.type === "role" ? 0 : 1,
+                  allow: ow.allow,
+                  deny: ow.deny
+                }))
+              })
+            });
+            
+            if (response.ok) {
+              newChannel = await response.json();
+              shouldRetry = false;
+            } else if (response.status === 429) {
+              const rateLimitData = await response.json();
+              const retryAfter = (rateLimitData.retry_after || 1) * 1000;
+              await new Promise(resolve => setTimeout(resolve, retryAfter));
+              retryCount++;
+            } else {
+              console.error("Failed to create channel:", channel.name, response.status);
+              shouldRetry = false;
+            }
+          } catch (e) {
+            console.error("Failed to create channel:", channel.name, e);
+            shouldRetry = false;
+          }
+        }
 
-        if (newChannel.id) {
+        if (newChannel?.id) {
           channelIdMap.set(channel.id, newChannel.id);
         }
 
         // Add small delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
     }
 
