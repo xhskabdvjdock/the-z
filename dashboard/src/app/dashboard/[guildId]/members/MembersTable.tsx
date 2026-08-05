@@ -1,10 +1,39 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getGuildMembers, kickMember, banMember, timeoutMember, DiscordMember } from "@/lib/discordMembers";
-import { getGuildRoles } from "@/lib/discord";
-import { Search, MoreHorizontal, ShieldAlert, Clock, Ban, LogOut } from "lucide-react";
+import { Search, Clock, Ban, LogOut } from "lucide-react";
 import LoadingSpinner from "@/components/LoadingSpinner";
+
+interface DiscordMember {
+  user: {
+    id: string;
+    username: string;
+    discriminator: string;
+    avatar: string | null;
+    global_name: string | null;
+  };
+  nick: string | null;
+  avatar: string | null;
+  roles: string[];
+  joined_at: string | null;
+  premium_since: string | null;
+  deaf: boolean;
+  mute: boolean;
+  flags: number;
+  pending: boolean;
+  communication_disabled_until: string | null;
+}
+
+interface DiscordRole {
+  id: string;
+  name: string;
+  color: number;
+  position: number;
+  managed: boolean;
+  hoist: boolean;
+  mentionable: boolean;
+  permissions: string;
+}
 
 interface MembersTableProps {
   guildId: string;
@@ -12,8 +41,9 @@ interface MembersTableProps {
 
 export default function MembersTable({ guildId }: MembersTableProps) {
   const [members, setMembers] = useState<DiscordMember[]>([]);
-  const [roles, setRoles] = useState<any[]>([]);
+  const [roles, setRoles] = useState<DiscordRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
 
@@ -25,6 +55,7 @@ export default function MembersTable({ guildId }: MembersTableProps) {
   const loadMembers = async () => {
     try {
       setLoading(true);
+      setError(null);
       const allMembers: DiscordMember[] = [];
       let lastMemberId: string | undefined;
       let batchCount = 0;
@@ -32,12 +63,13 @@ export default function MembersTable({ guildId }: MembersTableProps) {
       const maxEmptyBatches = 3;
       
       // Load all members in batches
-      while (consecutiveEmptyBatches < maxEmptyBatches && batchCount < 50) { // Safety limit
+      while (consecutiveEmptyBatches < maxEmptyBatches && batchCount < 50) {
         console.log(`Loading batch ${batchCount + 1}...`);
-        const batch = await getGuildMembers(guildId, 100, lastMemberId);
-        console.log(`Batch ${batchCount + 1} returned ${batch.length} members`);
+        const batch = await fetch(`/api/guild/${guildId}/members?limit=100${lastMemberId ? `&after=${lastMemberId}` : ""}`);
+        const batchData = await batch.json();
+        console.log(`Batch ${batchCount + 1} returned ${batchData.length} members`);
         
-        if (batch.length === 0) {
+        if (batchData.length === 0) {
           consecutiveEmptyBatches++;
           if (consecutiveEmptyBatches >= maxEmptyBatches) {
             console.log("Reached max empty batches, stopping");
@@ -48,16 +80,15 @@ export default function MembersTable({ guildId }: MembersTableProps) {
         }
         
         consecutiveEmptyBatches = 0;
-        allMembers.push(...batch);
-        lastMemberId = batch[batch.length - 1].user.id;
+        allMembers.push(...batchData);
+        lastMemberId = batchData[batchData.length - 1].user.id;
         batchCount++;
         
-        if (batch.length < 100) {
+        if (batchData.length < 100) {
           console.log("Batch less than 100, loaded all members");
           break;
         }
         
-        // Add small delay between batches to avoid rate limits
         await new Promise(resolve => setTimeout(resolve, 200));
       }
       
@@ -65,7 +96,7 @@ export default function MembersTable({ guildId }: MembersTableProps) {
       setMembers(allMembers);
     } catch (error) {
       console.error("Failed to load members:", error);
-      alert("حدث خطأ أثناء تحميل الأعضاء. تحقق من console للمزيد من التفاصيل.");
+      setError("حدث خطأ أثناء تحميل الأعضاء. قد يكون البوت غير متصل أو الـ token غير صحيح.");
     } finally {
       setLoading(false);
     }
@@ -73,7 +104,8 @@ export default function MembersTable({ guildId }: MembersTableProps) {
 
   const loadRoles = async () => {
     try {
-      const guildRoles = await getGuildRoles(guildId);
+      const res = await fetch(`/api/guild/${guildId}/roles`);
+      const guildRoles = await res.json();
       setRoles(guildRoles);
     } catch (error) {
       console.error("Failed to load roles:", error);
@@ -105,8 +137,14 @@ export default function MembersTable({ guildId }: MembersTableProps) {
     if (!confirm("هل أنت متأكد من طرد هذا العضو؟")) return;
     
     try {
-      const success = await kickMember(guildId, userId);
-      if (success) {
+      const res = await fetch(`/api/guild/${guildId}/members/${userId}/kick`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Kick from dashboard" })
+      });
+      const result = await res.json();
+      
+      if (result.success) {
         setMembers(members.filter(m => m.user.id !== userId));
         alert("تم طرد العضو بنجاح");
       } else {
@@ -122,8 +160,14 @@ export default function MembersTable({ guildId }: MembersTableProps) {
     if (!confirm("هل أنت متأكد من حظر هذا العضو؟")) return;
     
     try {
-      const success = await banMember(guildId, userId);
-      if (success) {
+      const res = await fetch(`/api/guild/${guildId}/members/${userId}/ban`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "Ban from dashboard" })
+      });
+      const result = await res.json();
+      
+      if (result.success) {
         setMembers(members.filter(m => m.user.id !== userId));
         alert("تم حظر العضو بنجاح");
       } else {
@@ -137,8 +181,14 @@ export default function MembersTable({ guildId }: MembersTableProps) {
 
   const handleTimeout = async (userId: string, duration: number) => {
     try {
-      const success = await timeoutMember(guildId, userId, duration);
-      if (success) {
+      const res = await fetch(`/api/guild/${guildId}/members/${userId}/timeout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ duration, reason: "Timeout from dashboard" })
+      });
+      const result = await res.json();
+      
+      if (result.success) {
         alert("تم إعطاء Timeout للعضو بنجاح");
       } else {
         alert("فشل في إعطاء Timeout");
@@ -162,6 +212,17 @@ export default function MembersTable({ guildId }: MembersTableProps) {
     return (
       <div className="flex items-center justify-center py-12">
         <LoadingSpinner size="lg" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12">
+        <div className="text-red-500 text-center">
+          <p className="text-lg font-medium">حدث خطأ</p>
+          <p className="text-sm mt-2">{error}</p>
+        </div>
       </div>
     );
   }
