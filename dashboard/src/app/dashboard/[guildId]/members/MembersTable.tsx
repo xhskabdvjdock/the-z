@@ -27,21 +27,45 @@ export default function MembersTable({ guildId }: MembersTableProps) {
       setLoading(true);
       const allMembers: DiscordMember[] = [];
       let lastMemberId: string | undefined;
+      let batchCount = 0;
+      let consecutiveEmptyBatches = 0;
+      const maxEmptyBatches = 3;
       
       // Load all members in batches
-      while (true) {
+      while (consecutiveEmptyBatches < maxEmptyBatches && batchCount < 50) { // Safety limit
+        console.log(`Loading batch ${batchCount + 1}...`);
         const batch = await getGuildMembers(guildId, 100, lastMemberId);
-        if (batch.length === 0) break;
+        console.log(`Batch ${batchCount + 1} returned ${batch.length} members`);
         
+        if (batch.length === 0) {
+          consecutiveEmptyBatches++;
+          if (consecutiveEmptyBatches >= maxEmptyBatches) {
+            console.log("Reached max empty batches, stopping");
+            break;
+          }
+          await new Promise(resolve => setTimeout(resolve, 500));
+          continue;
+        }
+        
+        consecutiveEmptyBatches = 0;
         allMembers.push(...batch);
         lastMemberId = batch[batch.length - 1].user.id;
+        batchCount++;
         
-        if (batch.length < 100) break;
+        if (batch.length < 100) {
+          console.log("Batch less than 100, loaded all members");
+          break;
+        }
+        
+        // Add small delay between batches to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
       
+      console.log(`Total members loaded: ${allMembers.length} in ${batchCount} batches`);
       setMembers(allMembers);
     } catch (error) {
       console.error("Failed to load members:", error);
+      alert("حدث خطأ أثناء تحميل الأعضاء. تحقق من console للمزيد من التفاصيل.");
     } finally {
       setLoading(false);
     }

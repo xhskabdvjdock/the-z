@@ -32,8 +32,16 @@ export async function getGuildMembers(guildId: string, limit: number = 100, afte
     cache: "no-store"
   });
 
-  if (!res.ok) return [];
-  return res.json() as Promise<DiscordMember[]>;
+  if (!res.ok) {
+    console.error(`Failed to fetch members for guild ${guildId}:`, res.status, res.statusText);
+    const errorText = await res.text();
+    console.error("Error response:", errorText);
+    return [];
+  }
+  
+  const data = await res.json();
+  console.log(`Fetched ${data.length} members for guild ${guildId}`);
+  return data as Promise<DiscordMember[]>;
 }
 
 export async function kickMember(guildId: string, userId: string, reason?: string) {
