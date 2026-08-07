@@ -16,7 +16,9 @@ async function bootstrap() {
   loadEvents(client);
   registerAllModules(client);
 
+  console.log(`🔑 DISCORD_TOKEN: ${config.token ? "موجود ✅" : "غير موجود ❌"}`);
   await client.login(config.token);
+
 }
 
 // Global error handlers
