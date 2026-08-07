@@ -15,7 +15,11 @@
     "deploy:commands": "npm run deploy -w bot",
     "clear:commands": "npm run clear -w bot",
     "dev:dashboard": "npm run dev -w dashboard",
-    "build:dashboard": "npm run build -w dashboard"
+    "build:dashboard": "npm run build -w dashboard",
+    "start": "concurrently --kill-others-on-fail --names BOT,WEB --prefix-colors blue,green \"node bot/dist/index.js\" \"npm run start --workspace=dashboard\""
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
   },
   "license": "MIT"
 }

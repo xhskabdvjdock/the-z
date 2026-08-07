@@ -1,49 +1,33 @@
 services:
-  # Dashboard Web Service
+  # Single Web Service: runs both Bot + Dashboard together (free plan compatible)
   - type: web
-    name: the-z-dashboard
+    name: the-z
     env: docker
-    dockerfilePath: ./dashboard/Dockerfile
+    dockerfilePath: ./Dockerfile
     dockerContext: .
     envVars:
-      - key: DISCORD_CLIENT_ID
-        sync: false
-      - key: DISCORD_CLIENT_SECRET
-        sync: false
-      - key: DISCORD_BOT_TOKEN
-        sync: false
-      - key: NEXTAUTH_SECRET
-        generateValue: true
-      - key: NEXTAUTH_URL
-        value: https://the-z-whib.onrender.com
-      - key: DATABASE_URL
-        sync: false
-      - key: DB_SSL_CA_PATH
-        value: /app/certs/root.crt
-    healthCheckPath: /health
-    disk:
-      name: certs-dashboard
-      mountPath: /app/certs
-      sizeGB: 1
-
-  # Bot Background Worker
-  - type: worker
-    name: the-z-bot
-    env: docker
-    dockerfilePath: ./bot/Dockerfile
-    dockerContext: .
-    envVars:
+      # Discord Bot
       - key: DISCORD_TOKEN
         sync: false
       - key: DISCORD_CLIENT_ID
         sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      # Dashboard Auth
+      - key: NEXTAUTH_SECRET
+        generateValue: true
+      - key: NEXTAUTH_URL
+        value: https://the-z-whib.onrender.com
+      # Database
       - key: DATABASE_URL
         sync: false
       - key: DB_SSL_CA_PATH
         value: /app/certs/root.crt
+      # Bot extras
       - key: DASHBOARD_URL
         value: https://the-z-whib.onrender.com
+    healthCheckPath: /health
     disk:
-      name: certs-bot
+      name: certs
       mountPath: /app/certs
       sizeGB: 1
