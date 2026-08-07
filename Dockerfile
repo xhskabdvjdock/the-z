@@ -32,10 +32,16 @@ RUN npm run build --workspace=dashboard
 # Create certs directory
 RUN mkdir -p /app/certs
 
-# Start dashboard only (port detection) and bot via a separate mechanism
-# For now, just run dashboard to ensure port detection works
+# Create a Node.js script to run both processes
+RUN echo 'const { spawn } = require("child_process");' > /app/run.js && \
+    echo 'const bot = spawn("node", ["/app/bot/dist/index.js"], { stdio: "inherit", detached: true });' >> /app/run.js && \
+    echo 'console.log("Bot started with PID:", bot.pid);' >> /app/run.js && \
+    echo 'const dashboard = spawn("npm", ["run", "start"], { cwd: "/app/dashboard", stdio: "inherit" });' >> /app/run.js && \
+    echo 'console.log("Dashboard starting...");' >> /app/run.js && \
+    echo 'dashboard.on("exit", (code) => { console.log("Dashboard exited:", code); process.exit(code); });' >> /app/run.js && \
+    echo 'bot.on("exit", (code) => { console.log("Bot exited:", code); });' >> /app/run.js
+
 ENV NODE_ENV=production
 ENV PORT=3000
 
-WORKDIR /app/dashboard
-CMD ["npm", "run", "start"]
+CMD ["node", "/app/run.js"]
