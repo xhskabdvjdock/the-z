@@ -4,7 +4,7 @@ services:
     name: the-z-dashboard
     env: docker
     dockerfilePath: ./dashboard/Dockerfile
-    dockerContext: ./dashboard
+    dockerContext: .
     envVars:
       - key: DISCORD_CLIENT_ID
         sync: false
@@ -22,7 +22,7 @@ services:
         value: /app/certs/root.crt
     healthCheckPath: /health
     disk:
-      name: certs
+      name: certs-dashboard
       mountPath: /app/certs
       sizeGB: 1
 
@@ -31,15 +31,19 @@ services:
     name: the-z-bot
     env: docker
     dockerfilePath: ./bot/Dockerfile
-    dockerContext: ./bot
+    dockerContext: .
     envVars:
       - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_ID
         sync: false
       - key: DATABASE_URL
         sync: false
       - key: DB_SSL_CA_PATH
         value: /app/certs/root.crt
+      - key: DASHBOARD_URL
+        value: https://the-z-whib.onrender.com
     disk:
-      name: certs
+      name: certs-bot
       mountPath: /app/certs
       sizeGB: 1

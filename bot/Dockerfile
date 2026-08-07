@@ -2,19 +2,25 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy from parent directory structure
-COPY package.json ./
+# Copy root package files (workspace config)
+COPY package.json package-lock.json ./
+
+# Copy shared package
 COPY shared/package.json shared/tsconfig.json ./shared/
 COPY shared/src ./shared/src
+
+# Copy bot package
 COPY bot/package.json bot/tsconfig.json ./bot/
 COPY bot/src ./bot/src
+
+# Copy dashboard package (needed for workspace resolution)
 COPY dashboard/package.json dashboard/tsconfig.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
 COPY dashboard/src ./dashboard/src
 
-# Install dependencies
+# Install all dependencies
 RUN npm install
 
-# Build shared
+# Build shared first
 RUN npm run build --workspace=@thez/shared
 
 # Build bot
