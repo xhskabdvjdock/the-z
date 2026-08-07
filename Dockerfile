@@ -2,10 +2,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install concurrently to run both services at once
-RUN npm install -g concurrently
-
-# Copy root package files (workspace config)
+# Copy root package files
 COPY package.json package-lock.json ./
 
 # Copy shared package
@@ -19,6 +16,9 @@ COPY bot/src ./bot/src
 # Copy dashboard package
 COPY dashboard/package.json dashboard/tsconfig.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
 COPY dashboard/src ./dashboard/src
+
+# Copy startup script
+COPY start.js ./
 
 # Install all dependencies
 RUN npm install
@@ -36,9 +36,8 @@ RUN npm run build --workspace=dashboard
 RUN mkdir -p /app/certs
 
 ENV NODE_ENV=production
-ENV PORT=3000
 
 WORKDIR /app
 
-# Run both bot and dashboard at the same time
-CMD ["concurrently", "--kill-others-on-fail", "--names", "BOT,WEB", "--prefix-colors", "blue,green", "node bot/dist/index.js", "npm run start --workspace=dashboard"]
+# Bot starts first → when online → dashboard starts
+CMD ["node", "start.js"]
