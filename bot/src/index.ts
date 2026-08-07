@@ -17,57 +17,53 @@ async function bootstrap() {
   registerAllModules(client);
 
   console.log(`🔑 DISCORD_TOKEN: ${config.token ? "موجود ✅" : "غير موجود ❌"}`);
-  await client.login(config.token);
 
+  if (!config.token) {
+    throw new Error("DISCORD_TOKEN غير موجود في متغيرات البيئة!");
+  }
+
+  console.log("🔌 جاري الاتصال بـ Discord...");
+  try {
+    await client.login(config.token);
+    console.log("✅ تم الاتصال بـ Discord — في انتظار ready event...");
+  } catch (loginError: any) {
+    console.error("❌ فشل الاتصال بـ Discord:", loginError?.message || loginError);
+    throw loginError;
+  }
 }
 
-// Global error handlers
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  // Don't exit immediately, log and continue
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit immediately, log and continue
-});
-
-process.on('SIGINT', () => {
-  console.log('⚠️  Received SIGINT, shutting down gracefully...');
+process.on("SIGINT", () => {
+  console.log("⚠️  Received SIGINT, shutting down gracefully...");
   process.exit(0);
 });
 
-process.on('SIGTERM', () => {
-  console.log('⚠️  Received SIGTERM, shutting down gracefully...');
+process.on("SIGTERM", () => {
+  console.log("⚠️  Received SIGTERM, shutting down gracefully...");
   process.exit(0);
 });
 
-// Keep the process alive
+// Keep process alive with heartbeat
 setInterval(() => {
-  const now = new Date();
-  console.log(`💓 Bot heartbeat: ${now.toISOString()}`);
-}, 5 * 60 * 1000); // Every 5 minutes
+  console.log(`💓 Bot heartbeat: ${new Date().toISOString()}`);
+}, 5 * 60 * 1000);
 
-// Auto-restart on crash with delay
 async function startWithRetry() {
-  let retryCount = 0;
   const maxRetries = 5;
-  const retryDelay = 5000; // 5 seconds
+  const retryDelay = 5000;
 
-  while (retryCount < maxRetries) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       await bootstrap();
-      break; // If successful, exit the retry loop
-    } catch (error) {
-      retryCount++;
-      console.error(`❌ فشل تشغيل البوت (محاولة ${retryCount}/${maxRetries}):`, error);
-      
-      if (retryCount < maxRetries) {
+      return;
+    } catch (error: any) {
+      console.error(`❌ فشل تشغيل البوت (محاولة ${attempt}/${maxRetries}): ${error?.message || error}`);
+
+      if (attempt < maxRetries) {
         console.log(`⏳ إعادة المحاولة بعد ${retryDelay / 1000} ثواني...`);
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       } else {
-        console.error('❌ تم الوصول للحد الأقصى من المحاولات. توقف البوت.');
-        process.exit(1);
+        console.error("❌ تم الوصول للحد الأقصى من المحاولات. البوت متوقف.");
+        // لا نُوقف العملية لأن الداشبورد لا يزال يعمل
       }
     }
   }
