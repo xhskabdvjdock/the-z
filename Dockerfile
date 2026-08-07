@@ -32,10 +32,13 @@ RUN npm run build --workspace=dashboard
 # Create certs directory
 RUN mkdir -p /app/certs
 
+# Install curl for health checks
+RUN apk add --no-cache curl
+
 # Create startup script that runs both processes
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'cd /app/bot && npm run deploy' >> /app/start.sh && \
-    echo 'cd /app/bot && node dist/index.js > /dev/null 2>&1 &' >> /app/start.sh && \
+    echo 'cd /app/bot && node dist/index.js > /tmp/bot.log 2>&1 &' >> /app/start.sh && \
     echo 'echo "Bot started in background"' >> /app/start.sh && \
     echo 'cd /app/dashboard && npm run start' >> /app/start.sh && \
     chmod +x /app/start.sh

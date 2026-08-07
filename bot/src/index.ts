@@ -40,6 +40,12 @@ process.on('SIGTERM', () => {
   process.exit(0);
 });
 
+// Keep the process alive
+setInterval(() => {
+  const now = new Date();
+  console.log(`💓 Bot heartbeat: ${now.toISOString()}`);
+}, 5 * 60 * 1000); // Every 5 minutes
+
 // Auto-restart on crash with delay
 async function startWithRetry() {
   let retryCount = 0;

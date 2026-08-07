@@ -22,6 +22,7 @@ services:
         sync: false
       - key: DB_SSL_CA_PATH
         value: /app/certs/root.crt
+    healthCheckPath: /health
     disk:
       name: certs
       mountPath: /app/certs
