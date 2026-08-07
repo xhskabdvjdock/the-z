@@ -32,15 +32,20 @@ RUN npm run build --workspace=dashboard
 # Create certs directory
 RUN mkdir -p /app/certs
 
-# Install curl for health checks
-RUN apk add --no-cache curl
-
-# Create startup script that runs both processes
+# Create startup script that starts dashboard first (for port detection), then bot
 RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'echo "Starting deployment..."' >> /app/start.sh && \
     echo 'cd /app/bot && npm run deploy' >> /app/start.sh && \
+    echo 'echo "Starting dashboard (for port detection)..."' >> /app/start.sh && \
+    echo 'cd /app/dashboard && npm run start &' >> /app/start.sh && \
+    echo 'DASHBOARD_PID=$!' >> /app/start.sh && \
+    echo 'echo "Dashboard started with PID: $DASHBOARD_PID"' >> /app/start.sh && \
+    echo 'sleep 5' >> /app/start.sh && \
+    echo 'echo "Starting bot in background..."' >> /app/start.sh && \
     echo 'cd /app/bot && node dist/index.js > /tmp/bot.log 2>&1 &' >> /app/start.sh && \
-    echo 'echo "Bot started in background"' >> /app/start.sh && \
-    echo 'cd /app/dashboard && npm run start' >> /app/start.sh && \
+    echo 'BOT_PID=$!' >> /app/start.sh && \
+    echo 'echo "Bot started with PID: $BOT_PID"' >> /app/start.sh && \
+    echo 'wait $DASHBOARD_PID' >> /app/start.sh && \
     chmod +x /app/start.sh
 
 ENV NODE_ENV=production
