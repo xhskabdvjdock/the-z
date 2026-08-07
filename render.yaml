@@ -1,13 +1,11 @@
 services:
-  # Combined Bot + Dashboard Service
+  # Dashboard Service
   - type: web
-    name: the-z
+    name: the-z-dashboard
     env: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    dockerfilePath: ./dashboard/Dockerfile
+    dockerContext: ./dashboard
     envVars:
-      - key: DISCORD_TOKEN
-        sync: false
       - key: DISCORD_CLIENT_ID
         sync: false
       - key: DISCORD_CLIENT_SECRET
@@ -23,6 +21,24 @@ services:
       - key: DB_SSL_CA_PATH
         value: /app/certs/root.crt
     healthCheckPath: /health
+    disk:
+      name: certs
+      mountPath: /app/certs
+      sizeGB: 1
+
+  # Bot Service
+  - type: worker
+    name: the-z-bot
+    env: docker
+    dockerfilePath: ./bot/Dockerfile
+    dockerContext: ./bot
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DB_SSL_CA_PATH
+        value: /app/certs/root.crt
     disk:
       name: certs
       mountPath: /app/certs
