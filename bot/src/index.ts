@@ -30,7 +30,9 @@ async function bootstrap() {
   loadEvents(client);
   registerAllModules(client);
 
-  console.log(`🔑 DISCORD_BOT_TOKEN: ${config.token ? `موجود ✅ (${config.token.length} حرف)` : "غير موجود ❌"}`);
+  const tokenSource = process.env.DISCORD_BOT_TOKEN ? "DISCORD_BOT_TOKEN" : process.env.DISCORD_TOKEN ? "DISCORD_TOKEN" : "غير موجود";
+  console.log(`🔑 Token source: ${tokenSource} (${config.token ? `${config.token.length} حرف` : "فارغ ❌"})`);
+
 
   if (!config.token) {
     throw new Error("DISCORD_BOT_TOKEN غير موجود في متغيرات البيئة!");
