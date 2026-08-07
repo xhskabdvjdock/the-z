@@ -1,32 +1,27 @@
 services:
-  # Single Web Service: runs both Bot + Dashboard together (free plan compatible)
+  # Combined Bot + Dashboard Service
   - type: web
     name: the-z
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
     envVars:
-      # Discord Bot
       - key: DISCORD_TOKEN
         sync: false
       - key: DISCORD_CLIENT_ID
         sync: false
       - key: DISCORD_CLIENT_SECRET
         sync: false
-      # Dashboard Auth
+      - key: DISCORD_BOT_TOKEN
+        sync: false
       - key: NEXTAUTH_SECRET
         generateValue: true
       - key: NEXTAUTH_URL
         value: https://the-z-whib.onrender.com
-      # Database
       - key: DATABASE_URL
         sync: false
       - key: DB_SSL_CA_PATH
         value: /app/certs/root.crt
-      # Bot extras
-      - key: DASHBOARD_URL
-        value: https://the-z-whib.onrender.com
-    healthCheckPath: /health
     disk:
       name: certs
       mountPath: /app/certs

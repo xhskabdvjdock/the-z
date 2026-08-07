@@ -11,12 +11,13 @@ export class ExtendedClient extends Client {
     super({
       intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers,        // Privileged — enable in Dev Portal
+        GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.MessageContent,      // Privileged — enable in Dev Portal
+        GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildVoiceStates,
-        // GatewayIntentBits.GuildPresences   // Privileged — removed to prevent connection hang
+        GatewayIntentBits.GuildModeration,
+        GatewayIntentBits.GuildPresences
       ],
       partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.GuildMember]
     });
