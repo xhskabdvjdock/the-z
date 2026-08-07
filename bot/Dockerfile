@@ -2,19 +2,17 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy shared package
-COPY ../shared/package.json ../shared/tsconfig.json ./shared/
-COPY ../shared/src ./shared/src
+# Copy everything from root for workspaces
+COPY . ../
 
-# Copy bot
-COPY package.json tsconfig.json ./
-COPY src ./src
+# Move to bot directory
+WORKDIR /app/bot
 
-# Install dependencies
-RUN npm install
+# Install dependencies from root
+RUN cd /app && npm install
 
 # Build shared
-RUN npm run build --workspace=@thez/shared
+RUN cd /app && npm run build --workspace=@thez/shared
 
 # Build bot
 RUN npm run build
