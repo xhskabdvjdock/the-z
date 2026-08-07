@@ -24,7 +24,13 @@ async function bootstrap() {
 
   console.log("🔌 جاري الاتصال بـ Discord...");
   try {
-    await client.login(config.token);
+    // Timeout بعد 30 ثانية إذا علق الاتصال
+    await Promise.race([
+      client.login(config.token),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Discord login timeout — تجاوز 30 ثانية")), 30_000)
+      )
+    ]);
     console.log("✅ تم الاتصال بـ Discord — في انتظار ready event...");
   } catch (loginError: any) {
     console.error("❌ فشل الاتصال بـ Discord:", loginError?.message || loginError);
