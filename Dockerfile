@@ -32,16 +32,22 @@ RUN npm run build --workspace=dashboard
 # Create certs directory
 RUN mkdir -p /app/certs
 
-# Create a Node.js script to run both processes
-RUN echo 'const { spawn } = require("child_process");' > /app/run.js && \
-    echo 'const bot = spawn("node", ["/app/bot/dist/index.js"], { stdio: "inherit", detached: true });' >> /app/run.js && \
-    echo 'console.log("Bot started with PID:", bot.pid);' >> /app/run.js && \
-    echo 'const dashboard = spawn("npm", ["run", "start"], { cwd: "/app/dashboard", stdio: "inherit" });' >> /app/run.js && \
-    echo 'console.log("Dashboard starting...");' >> /app/run.js && \
-    echo 'dashboard.on("exit", (code) => { console.log("Dashboard exited:", code); process.exit(code); });' >> /app/run.js && \
-    echo 'bot.on("exit", (code) => { console.log("Bot exited:", code); });' >> /app/run.js
+# Simple shell script: deploy bot, start bot in background, then start dashboard
+RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'set -e' >> /app/start.sh && \
+    echo 'echo "=== Starting deployment ==="' >> /app/start.sh && \
+    echo 'cd /app/bot && npm run deploy' >> /app/start.sh && \
+    echo 'echo "=== Starting bot in background ==="' >> /app/start.sh && \
+    echo 'cd /app/bot && node dist/index.js > /tmp/bot.log 2>&1 &' >> /app/start.sh && \
+    echo 'BOT_PID=$!' >> /app/start.sh && \
+    echo 'echo "Bot PID: $BOT_PID"' >> /app/start.sh && \
+    echo 'echo "=== Waiting 10 seconds for bot to start ==="' >> /app/start.sh && \
+    echo 'sleep 10' >> /app/start.sh && \
+    echo 'echo "=== Starting dashboard ==="' >> /app/start.sh && \
+    echo 'cd /app/dashboard && npm run start' >> /app/start.sh && \
+    chmod +x /app/start.sh
 
 ENV NODE_ENV=production
 ENV PORT=3000
 
-CMD ["node", "/app/run.js"]
+CMD ["/bin/sh", "/app/start.sh"]
