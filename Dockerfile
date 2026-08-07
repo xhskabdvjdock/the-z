@@ -32,10 +32,12 @@ RUN npm run build --workspace=dashboard
 # Create certs directory
 RUN mkdir -p /app/certs
 
-# Create startup script
+# Create startup script that runs both processes
 RUN echo '#!/bin/sh' > /app/start.sh && \
+    echo 'set -e' >> /app/start.sh && \
     echo 'cd /app/bot && npm run deploy' >> /app/start.sh && \
-    echo 'cd /app/bot && node dist/index.js &' >> /app/start.sh && \
+    echo 'cd /app/bot && node dist/index.js & BOT_PID=$!' >> /app/start.sh && \
+    echo 'echo "Bot started with PID: $BOT_PID"' >> /app/start.sh && \
     echo 'cd /app/dashboard && npm run start' >> /app/start.sh && \
     chmod +x /app/start.sh
 
