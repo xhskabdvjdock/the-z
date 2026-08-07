@@ -2,7 +2,7 @@ import { ActivityType } from "discord.js";
 import { BotEvent } from "../types/event";
 
 const event: BotEvent = {
-  name: "ready",
+  name: "clientReady",
   once: true,
   async execute(client) {
     console.log(`✅ تم تسجيل الدخول باسم ${client.user?.tag}`);
