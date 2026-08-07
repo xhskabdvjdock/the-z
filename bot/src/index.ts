@@ -16,7 +16,7 @@ async function bootstrap() {
   loadEvents(client);
   registerAllModules(client);
 
-  console.log(`🔑 DISCORD_TOKEN: ${config.token ? "موجود ✅" : "غير موجود ❌"}`);
+  console.log(`🔑 DISCORD_BOT_TOKEN: ${config.token ? "موجود ✅" : "غير موجود ❌"}`);
 
   if (!config.token) {
     throw new Error("DISCORD_TOKEN غير موجود في متغيرات البيئة!");
