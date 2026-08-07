@@ -1,5 +1,5 @@
 services:
-  # Dashboard Service
+  # Dashboard Web Service
   - type: web
     name: the-z-dashboard
     env: docker
@@ -26,7 +26,7 @@ services:
       mountPath: /app/certs
       sizeGB: 1
 
-  # Bot Service
+  # Bot Background Worker
   - type: worker
     name: the-z-bot
     env: docker

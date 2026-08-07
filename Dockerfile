@@ -32,22 +32,9 @@ RUN npm run build --workspace=dashboard
 # Create certs directory
 RUN mkdir -p /app/certs
 
-# Simple shell script: deploy bot, start bot in background, then start dashboard
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'set -e' >> /app/start.sh && \
-    echo 'echo "=== Starting deployment ==="' >> /app/start.sh && \
-    echo 'cd /app/bot && npm run deploy' >> /app/start.sh && \
-    echo 'echo "=== Starting bot in background ==="' >> /app/start.sh && \
-    echo 'cd /app/bot && node dist/index.js > /tmp/bot.log 2>&1 &' >> /app/start.sh && \
-    echo 'BOT_PID=$!' >> /app/start.sh && \
-    echo 'echo "Bot PID: $BOT_PID"' >> /app/start.sh && \
-    echo 'echo "=== Waiting 10 seconds for bot to start ==="' >> /app/start.sh && \
-    echo 'sleep 10' >> /app/start.sh && \
-    echo 'echo "=== Starting dashboard ==="' >> /app/start.sh && \
-    echo 'cd /app/dashboard && npm run start' >> /app/start.sh && \
-    chmod +x /app/start.sh
-
+# Run dashboard only (port detection for web service)
 ENV NODE_ENV=production
 ENV PORT=3000
 
-CMD ["/bin/sh", "/app/start.sh"]
+WORKDIR /app/dashboard
+CMD ["npm", "run", "start"]
