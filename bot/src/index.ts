@@ -1,9 +1,23 @@
+import { REST, Routes } from "discord.js";
 import { connectDatabase } from "@thez/shared";
 import { ExtendedClient } from "./client";
 import { config } from "./config";
 import { loadCommands } from "./handlers/commandHandler";
 import { loadEvents } from "./handlers/eventHandler";
 import { registerAllModules } from "./modules";
+
+async function validateToken(token: string): Promise<void> {
+  console.log("🔍 التحقق من صحة التوكن عبر REST API...");
+  const rest = new REST({ version: "10" }).setToken(token);
+  try {
+    const user = await rest.get(Routes.user("@me")) as any;
+    console.log(`✅ التوكن صالح — البوت: ${user.username}#${user.discriminator} (${user.id})`);
+  } catch (err: any) {
+    const status = err?.status ?? err?.rawError?.code ?? "unknown";
+    console.error(`❌ التوكن غير صالح! Status: ${status} — ${err?.message}`);
+    throw new Error(`Invalid Discord token (HTTP ${status})`);
+  }
+}
 
 async function bootstrap() {
   console.log("⏳ جاري الاتصال بقاعدة البيانات...");
@@ -16,24 +30,26 @@ async function bootstrap() {
   loadEvents(client);
   registerAllModules(client);
 
-  console.log(`🔑 DISCORD_BOT_TOKEN: ${config.token ? "موجود ✅" : "غير موجود ❌"}`);
+  console.log(`🔑 DISCORD_BOT_TOKEN: ${config.token ? `موجود ✅ (${config.token.length} حرف)` : "غير موجود ❌"}`);
 
   if (!config.token) {
-    throw new Error("DISCORD_TOKEN غير موجود في متغيرات البيئة!");
+    throw new Error("DISCORD_BOT_TOKEN غير موجود في متغيرات البيئة!");
   }
 
-  console.log("🔌 جاري الاتصال بـ Discord...");
+  // التحقق من التوكن عبر REST أولاً (HTTP — أسرع وأوضح من WebSocket)
+  await validateToken(config.token);
+
+  console.log("🔌 جاري الاتصال بـ Discord Gateway (WebSocket)...");
   try {
-    // Timeout بعد 30 ثانية إذا علق الاتصال
     await Promise.race([
       client.login(config.token),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Discord login timeout — تجاوز 30 ثانية")), 30_000)
+        setTimeout(() => reject(new Error("Discord WebSocket timeout — تجاوز 30 ثانية")), 30_000)
       )
     ]);
-    console.log("✅ تم الاتصال بـ Discord — في انتظار ready event...");
+    console.log("✅ تم الاتصال بـ Discord Gateway بنجاح!");
   } catch (loginError: any) {
-    console.error("❌ فشل الاتصال بـ Discord:", loginError?.message || loginError);
+    console.error("❌ فشل الاتصال بـ Discord Gateway:", loginError?.message || loginError);
     throw loginError;
   }
 }
@@ -69,7 +85,6 @@ async function startWithRetry() {
         await new Promise(resolve => setTimeout(resolve, retryDelay));
       } else {
         console.error("❌ تم الوصول للحد الأقصى من المحاولات. البوت متوقف.");
-        // لا نُوقف العملية لأن الداشبورد لا يزال يعمل
       }
     }
   }
