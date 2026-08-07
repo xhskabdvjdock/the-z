@@ -27,7 +27,10 @@ export function buildSlashContext(
     interaction,
     args: [],
     reply: async (options) => {
-      if (interaction.replied || interaction.deferred) {
+      if (interaction.deferred) {
+        return interaction.editReply(options as any) as any;
+      }
+      if (interaction.replied) {
         return interaction.followUp(options as any) as any;
       }
       return interaction.reply(options as any) as any;

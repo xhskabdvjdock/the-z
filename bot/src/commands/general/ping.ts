@@ -7,23 +7,19 @@ const command: BotCommand = {
   description: "عرض زمن استجابة البوت",
   category: "عام",
   async run(ctx) {
-    const sent = await ctx.reply({ content: "🏓 جاري القياس..." });
-    const latency = sent
-      ? sent.createdTimestamp - (ctx.interaction?.createdTimestamp ?? ctx.message!.createdTimestamp)
-      : 0;
+    const latency = ctx.client.ws.ping;
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
       .setTitle("🏓 Pong!")
       .addFields(
-        { name: "زمن استجابة البوت", value: `${latency}ms`, inline: true },
-        { name: "زمن استجابة الويب سوكيت", value: `${ctx.client.ws.ping}ms`, inline: true }
+        { name: "زمن استجابة الويب سوكيت", value: `${latency}ms`, inline: true }
       );
 
     if (ctx.isSlash) {
-      await ctx.interaction!.editReply({ content: "", embeds: [embed] });
+      await ctx.reply({ embeds: [embed] });
     } else {
-      await sent?.edit({ content: "", embeds: [embed] });
+      await ctx.reply({ embeds: [embed] });
     }
   }
 };

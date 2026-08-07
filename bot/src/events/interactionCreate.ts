@@ -18,22 +18,23 @@ const event: BotEvent = {
           return;
         }
 
+        // Defer immediately to avoid timeout
+        await interaction.deferReply({ ephemeral: false }).catch(() => null);
+
         const gConfig = await getGuildConfig(client, interaction.guild.id);
         const override = gConfig.commandOverrides?.find((c) => c.name === command.name);
 
         if (override && !override.enabled) {
-          await interaction.reply({
-            content: "This command is disabled in this server.",
-            ephemeral: true
-          });
+          await interaction.editReply({
+            content: "This command is disabled in this server."
+          }).catch(() => null);
           return;
         }
 
         if (override && !override.slashEnabled) {
-          await interaction.reply({
-            content: "This command is disabled as a Slash Command in this server.",
-            ephemeral: true
-          });
+          await interaction.editReply({
+            content: "This command is disabled as a Slash Command in this server."
+          }).catch(() => null);
           return;
         }
 
@@ -43,7 +44,7 @@ const event: BotEvent = {
           interaction.channelId
         );
         if (!permCheck.allowed) {
-          await interaction.reply({ content: permCheck.reason, ephemeral: true });
+          await interaction.editReply({ content: permCheck.reason }).catch(() => null);
           return;
         }
 
@@ -63,7 +64,7 @@ const event: BotEvent = {
               iconURL: interaction.guild.iconURL() ?? undefined
             }
           });
-          await interaction.reply(payload as any);
+          await interaction.editReply(payload as any).catch(() => null);
           return;
         }
 
