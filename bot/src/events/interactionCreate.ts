@@ -1,4 +1,4 @@
-import { EmbedBuilder, Interaction } from "discord.js";
+import { EmbedBuilder, GuildMember, Interaction, InteractionReplyOptions } from "discord.js";
 import { BotEvent } from "../types/event";
 import { componentRouter } from "../handlers/componentRouter";
 import { buildSlashContext } from "../utils/context";
@@ -18,33 +18,32 @@ const event: BotEvent = {
           return;
         }
 
-        // Defer immediately to avoid timeout
-        await interaction.deferReply({ ephemeral: false }).catch(() => null);
-
         const gConfig = await getGuildConfig(client, interaction.guild.id);
         const override = gConfig.commandOverrides?.find((c) => c.name === command.name);
 
         if (override && !override.enabled) {
-          await interaction.editReply({
-            content: "This command is disabled in this server."
-          }).catch(() => null);
+          await interaction.reply({
+            content: "This command is disabled in this server.",
+            ephemeral: true
+          });
           return;
         }
 
         if (override && !override.slashEnabled) {
-          await interaction.editReply({
-            content: "This command is disabled as a Slash Command in this server."
-          }).catch(() => null);
+          await interaction.reply({
+            content: "This command is disabled as a Slash Command in this server.",
+            ephemeral: true
+          });
           return;
         }
 
         const permCheck = checkCommandPermission(
           override,
-          interaction.member as any,
+          interaction.member as GuildMember,
           interaction.channelId
         );
         if (!permCheck.allowed) {
-          await interaction.editReply({ content: permCheck.reason }).catch(() => null);
+          await interaction.reply({ content: permCheck.reason, ephemeral: true });
           return;
         }
 
@@ -64,7 +63,7 @@ const event: BotEvent = {
               iconURL: interaction.guild.iconURL() ?? undefined
             }
           });
-          await interaction.editReply(payload as any).catch(() => null);
+          await interaction.reply(payload as InteractionReplyOptions);
           return;
         }
 

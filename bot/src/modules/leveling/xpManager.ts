@@ -156,18 +156,39 @@ export function startVoiceXpInterval(client: ExtendedClient): void {
           (c): c is VoiceChannel => c.type === ChannelType.GuildVoice
         );
 
+        // ── جمع الأعضاء النشطين عبر كل الرومات الصوتية ──────────────────
+        type ActiveMember = { member: GuildMember; channelId: string };
+        const activeMembers: ActiveMember[] = [];
+
         for (const channel of voiceChannels.values()) {
           if (gConfig.leveling.ignoredChannelIds?.includes(channel.id)) continue;
-
           for (const member of channel.members.values()) {
             if (member.user.bot) continue;
             if (isIgnored(gConfig, channel.id, member)) continue;
-
-            const doc = await getOrCreateLevelUser(guild.id, member.id);
-            doc.voiceMinutes = (doc.voiceMinutes ?? 0) + 1;
-
-            await awardXp(member, doc, gConfig.leveling.xpPerVoiceMinute, gConfig, null);
+            activeMembers.push({ member, channelId: channel.id });
           }
+        }
+
+        if (!activeMembers.length) continue;
+
+        // ── جلب مستندات الخبرة دفعة واحدة (batch) بدلاً من N+1 ────────────
+        const memberIds = activeMembers.map(({ member }) => member.id);
+        const existingDocs = await LevelUser.find({ guildId: guild.id, userId: { $in: memberIds } });
+        const docMap = new Map(existingDocs.map((d) => [d.userId, d]));
+
+        // إنشاء المستندات المفقودة لمن لم يُسجَّل بعد
+        const missingIds = memberIds.filter((id) => !docMap.has(id));
+        for (const userId of missingIds) {
+          const newDoc = await LevelUser.create({ guildId: guild.id, userId }).catch(() => null);
+          if (newDoc) docMap.set(userId, newDoc);
+        }
+
+        // ── منح الخبرة لكل عضو ───────────────────────────────────────────
+        for (const { member } of activeMembers) {
+          const doc = docMap.get(member.id);
+          if (!doc) continue;
+          doc.voiceMinutes = (doc.voiceMinutes ?? 0) + 1;
+          await awardXp(member, doc, gConfig.leveling.xpPerVoiceMinute, gConfig, null);
         }
       } catch (err) {
         console.error(`❌ خطأ أثناء منح خبرة الصوت لسيرفر ${guild.id}:`, err);
@@ -175,3 +196,4 @@ export function startVoiceXpInterval(client: ExtendedClient): void {
     }
   }, 60_000);
 }
+

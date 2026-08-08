@@ -6,47 +6,30 @@ import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 
 export async function saveCommandOverrides(guildId: string, overrides: ICommandOverride[]) {
-  try {
-    await requireGuildAdmin(guildId);
-    await ensureDb();
+  await requireGuildAdmin(guildId);
+  await ensureDb();
 
-    console.log("Saving command overrides for guild:", guildId);
-    console.log("Data:", JSON.stringify(overrides, null, 2));
+  await GuildConfig.findOneAndUpdate(
+    { guildId },
+    { $set: { commandOverrides: overrides } },
+    { upsert: true }
+  );
 
-    await GuildConfig.findOneAndUpdate(
-      { guildId },
-      { $set: { commandOverrides: overrides } },
-      { upsert: true }
-    );
-
-    console.log("Command overrides saved successfully");
-
-    revalidatePath(`/dashboard/${guildId}/commands`);
-  } catch (error) {
-    console.error("Error saving command overrides:", error);
-    throw error;
-  }
+  revalidatePath(`/dashboard/${guildId}/commands`);
 }
 
-export async function saveModerationSettings(guildId: string, settings: { autoDeleteConfirmation: number }) {
-  try {
-    await requireGuildAdmin(guildId);
-    await ensureDb();
+export async function saveModerationSettings(
+  guildId: string,
+  settings: { autoDeleteConfirmation: number }
+) {
+  await requireGuildAdmin(guildId);
+  await ensureDb();
 
-    console.log("Saving moderation settings for guild:", guildId);
-    console.log("Data:", JSON.stringify(settings, null, 2));
+  await GuildConfig.findOneAndUpdate(
+    { guildId },
+    { $set: { "moderation.autoDeleteConfirmation": settings.autoDeleteConfirmation } },
+    { upsert: true }
+  );
 
-    await GuildConfig.findOneAndUpdate(
-      { guildId },
-      { $set: { "moderation.autoDeleteConfirmation": settings.autoDeleteConfirmation } },
-      { upsert: true }
-    );
-
-    console.log("Moderation settings saved successfully");
-
-    revalidatePath(`/dashboard/${guildId}/commands`);
-  } catch (error) {
-    console.error("Error saving moderation settings:", error);
-    throw error;
-  }
+  revalidatePath(`/dashboard/${guildId}/commands`);
 }

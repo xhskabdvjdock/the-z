@@ -3,7 +3,9 @@ import {
   ChatInputCommandInteraction,
   GuildBasedChannel,
   GuildMember,
+  InteractionReplyOptions,
   Message,
+  MessageReplyOptions,
   Role,
   User
 } from "discord.js";
@@ -27,13 +29,11 @@ export function buildSlashContext(
     interaction,
     args: [],
     reply: async (options) => {
-      if (interaction.deferred) {
-        return interaction.editReply(options as any) as any;
+      const payload = options as InteractionReplyOptions | string;
+      if (interaction.replied || interaction.deferred) {
+        return interaction.followUp(payload) as unknown as Message;
       }
-      if (interaction.replied) {
-        return interaction.followUp(options as any) as any;
-      }
-      return interaction.reply(options as any) as any;
+      return interaction.reply(payload) as unknown as Message;
     },
     getString: (name) => interaction.options.getString(name),
     getInteger: (name) => interaction.options.getInteger(name),
@@ -74,7 +74,8 @@ export function buildPrefixContext(
     message,
     args,
     reply: async (options) => {
-      return message.reply(options as any) as any;
+      // BaseMessageOptions ⊆ MessageReplyOptions — الإرسال آمن
+      return message.reply(options as MessageReplyOptions);
     },
     getString: (name) => {
       const index = specs.findIndex((s) => s.name === name);

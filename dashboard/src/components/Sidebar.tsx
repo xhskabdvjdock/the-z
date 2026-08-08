@@ -15,7 +15,9 @@ import {
   ShieldAlert, 
   Lock, 
   FileText, 
-  Settings 
+  Settings,
+  UserX,
+  Database
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -29,8 +31,10 @@ const NAV_ITEMS = [
   { href: "/leveling", label: "المستويات والخبرة", icon: Zap },
   { href: "/automod", label: "الرقابة التلقائية", icon: Shield },
   { href: "/antinuke", label: "مكافحة الغزو", icon: ShieldAlert },
+  { href: "/jail", label: "نظام السجن", icon: UserX },
   { href: "/captcha", label: "نظام التحقق", icon: Lock },
   { href: "/logging", label: "السجلات", icon: FileText },
+  { href: "/backup", label: "النسخ الاحتياطي", icon: Database },
   { href: "/commands", label: "إدارة الأوامر", icon: Settings }
 ];
 

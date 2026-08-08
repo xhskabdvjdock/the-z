@@ -129,6 +129,26 @@ export default function CommandsForm({
                       />
                     </div>
 
+                    <div>
+                      <label className="label">بادئة مخصصة للأمر</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          className="input w-28 font-mono text-center"
+                          placeholder={initialConfig.prefix}
+                          maxLength={5}
+                          value={cmd.customPrefix ?? ""}
+                          onChange={(e) => updateCommand(cmd.name, { customPrefix: e.target.value || undefined })}
+                        />
+                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                          اتركها فارغة لاستخدام البادئة العامة للسيرفر{" "}
+                          <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">
+                            {initialConfig.prefix}
+                          </code>
+                        </p>
+                      </div>
+                    </div>
+
+
                     <div className="flex flex-wrap items-center gap-6">
                       <Toggle
                         checked={cmd.slashEnabled}

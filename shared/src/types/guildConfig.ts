@@ -49,6 +49,8 @@ export interface ICommandOverride {
   name: string;
   enabled: boolean;
   alias?: string;
+  /** بادئة مخصصة لهذا الأمر (مثل `,` أو `.`) — تتجاوز البادئة العامة للسيرفر */
+  customPrefix?: string;
   slashEnabled: boolean;
   prefixEnabled: boolean;
   allowedRoleIds: string[];
