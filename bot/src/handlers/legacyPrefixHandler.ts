@@ -118,7 +118,7 @@ export async function handleLegacyPrefixCommands(
     const args = content.slice(7).trim().split(/\s+/);
     const useServerAvatar = args.includes("server");
 
-    let targetMember = null as Awaited<ReturnType<typeof message.guild.members.fetch>> | null;
+    let targetMember: GuildMember | null = null;
 
     if (message.mentions.users.size > 0) {
       const mentioned = message.mentions.users.first();
@@ -305,9 +305,11 @@ export async function handleLegacyPrefixCommands(
     await targetMember.roles.remove(jailRole).catch(() => null);
 
     // استعادة الرولات القديمة دفعة واحدة بدلاً من حلقة
-    const rolesToRestore = jailRecord.originalRoles
-      .map((id: string) => message.guild!.roles.cache.get(id))
-      .filter(Boolean) as NonNullable<ReturnType<typeof message.guild.roles.cache.get>>[];
+    const guild = message.guild!;
+    const rolesToRestore = (jailRecord.originalRoles as string[]).flatMap((id) => {
+      const role = guild.roles.cache.get(id);
+      return role ? [role] : [];
+    });
 
     if (rolesToRestore.length > 0) {
       await targetMember.roles.add(rolesToRestore).catch(() => null);

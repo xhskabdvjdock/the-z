@@ -129,9 +129,14 @@ const event: BotEvent = {
       });
 
       if (afkUsers.length > 0) {
-        await AfkUser.updateMany(
-          { guildId: message.guild.id, userId: { $in: afkUsers.map((a) => a.userId) } },
-          { $inc: { mentionCount: 1 } }
+        // updateMany غير متاح على نوع هذا الموديل — نستخدم updateOne متوازية
+        await Promise.all(
+          afkUsers.map((a) =>
+            AfkUser.updateOne(
+              { guildId: message.guild!.id, userId: a.userId },
+              { $inc: { mentionCount: 1 } }
+            )
+          )
         );
         const afkMap = new Map(afkUsers.map((a) => [a.userId, a]));
         for (const [userId, user] of mentionedUsers) {
