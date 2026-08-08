@@ -1,13 +1,11 @@
-import { EmbedBuilder } from "discord.js";
+import { AttachmentBuilder } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { LevelUser } from "@thez/shared";
-import { config } from "../../config";
-
-const MEDALS = ["🥇", "🥈", "🥉"];
+import { generateLeaderboardCard, LeaderboardEntry } from "../../modules/leveling/rankCard";
 
 const command: BotCommand = {
   name: "leaderboard",
-  description: "عرض قائمة أفضل 10 أعضاء من حيث الخبرة",
+  description: "عرض صورة قائمة أفضل 10 أعضاء من حيث الخبرة",
   category: "مستويات",
   guildOnly: true,
   async run(ctx) {
@@ -20,22 +18,22 @@ const command: BotCommand = {
       return;
     }
 
-    const lines = await Promise.all(
+    const entries: LeaderboardEntry[] = await Promise.all(
       topUsers.map(async (u, index) => {
         const member = await ctx.guild.members.fetch(u.userId).catch(() => null);
-        const name = member ? member.user.tag : `<@${u.userId}>`;
-        const prefix = MEDALS[index] ?? `**${index + 1}.**`;
-        return `${prefix} ${name} — المستوى **${u.level}** (${u.totalXp} XP)`;
+        return {
+          rank: index + 1,
+          username: member?.displayName ?? member?.user?.tag ?? `Unknown (${u.userId})`,
+          avatarUrl: member?.displayAvatarURL({ extension: "png", size: 128 }) ?? null,
+          level: u.level,
+          totalXp: u.totalXp
+        };
       })
     );
 
-    const embed = new EmbedBuilder()
-      .setColor(config.defaultColor)
-      .setTitle("🏆 قائمة المتصدرين")
-      .setDescription(lines.join("\n"))
-      .setFooter({ text: `${ctx.guild.name}` });
-
-    await ctx.reply({ embeds: [embed] });
+    const buffer = await generateLeaderboardCard(entries, ctx.guild.name);
+    const attachment = new AttachmentBuilder(buffer, { name: "leaderboard.png" });
+    await ctx.reply({ files: [attachment] });
   }
 };
 

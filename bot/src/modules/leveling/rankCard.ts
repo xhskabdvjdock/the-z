@@ -295,3 +295,201 @@ export async function generateSimpleRankCard(data: NewRankCardData): Promise<Buf
 
   return canvas.toBuffer("image/png");
 }
+
+// ─── Leaderboard Card ────────────────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  username: string;
+  avatarUrl: string | null;
+  level: number;
+  totalXp: number;
+  rank: number;
+}
+
+const MEDAL_COLORS: Record<number, string> = {
+  1: "#FFD700",
+  2: "#C0C0C0",
+  3: "#CD7F32"
+};
+
+export async function generateLeaderboardCard(
+  entries: LeaderboardEntry[],
+  guildName: string
+): Promise<Buffer> {
+  await ensureFontLoaded();
+
+  const fontName = isFontRegistered ? "CairoFont" : "sans-serif";
+
+  const CARD_WIDTH = 900;
+  const ROW_HEIGHT = 72;
+  const HEADER_HEIGHT = 90;
+  const FOOTER_HEIGHT = 44;
+  const CARD_HEIGHT = HEADER_HEIGHT + ROW_HEIGHT * entries.length + FOOTER_HEIGHT;
+  const RADIUS = 16;
+  const AVATAR_SIZE = 44;
+  const AVATAR_MARGIN = 20;
+
+  const canvas = createCanvas(CARD_WIDTH, CARD_HEIGHT);
+  const ctx = canvas.getContext("2d");
+
+  // ── خلفية الكارد ──────────────────────────────────────────────────────────
+  ctx.fillStyle = "#0E1015";
+  drawRoundedRect(ctx, 0, 0, CARD_WIDTH, CARD_HEIGHT, RADIUS);
+  ctx.fill();
+
+  // إطار خارجي
+  ctx.strokeStyle = "#2A2D37";
+  ctx.lineWidth = 1.5;
+  drawRoundedRect(ctx, 0.75, 0.75, CARD_WIDTH - 1.5, CARD_HEIGHT - 1.5, RADIUS);
+  ctx.stroke();
+
+  // ── ترويسة (Header) ───────────────────────────────────────────────────────
+  const headerGrad = ctx.createLinearGradient(0, 0, CARD_WIDTH, HEADER_HEIGHT);
+  headerGrad.addColorStop(0, "#1A1D27");
+  headerGrad.addColorStop(1, "#121318");
+  ctx.fillStyle = headerGrad;
+  drawRoundedRect(ctx, 0, 0, CARD_WIDTH, HEADER_HEIGHT, RADIUS);
+  ctx.fill();
+
+  // مستطيل ذهبي جانبي
+  ctx.fillStyle = "#F1E0C5";
+  ctx.fillRect(0, 0, 4, HEADER_HEIGHT);
+
+  // خط فاصل أسفل الهيدر
+  ctx.strokeStyle = "#2A2D37";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, HEADER_HEIGHT);
+  ctx.lineTo(CARD_WIDTH, HEADER_HEIGHT);
+  ctx.stroke();
+
+  // عنوان
+  ctx.font = `bold 26px "${fontName}"`;
+  ctx.fillStyle = "#FFFFFF";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText("قائمة المتصدرين", 28, HEADER_HEIGHT / 2);
+
+  ctx.font = `14px "${fontName}"`;
+  ctx.fillStyle = "#8E9297";
+  ctx.textAlign = "right";
+  ctx.textBaseline = "middle";
+  ctx.fillText(`أفضل ${entries.length} أعضاء`, CARD_WIDTH - 28, HEADER_HEIGHT / 2);
+
+  // ── صفوف الأعضاء ──────────────────────────────────────────────────────────
+  for (let i = 0; i < entries.length; i++) {
+    const entry = entries[i];
+    const rowY = HEADER_HEIGHT + i * ROW_HEIGHT;
+    const isEven = i % 2 === 0;
+
+    // خلفية الصف (متناوبة)
+    ctx.fillStyle = isEven ? "#121318" : "#0E1015";
+    ctx.fillRect(1, rowY, CARD_WIDTH - 2, ROW_HEIGHT);
+
+    // فاصل بين الصفوف
+    if (i > 0) {
+      ctx.strokeStyle = "#1E2029";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(20, rowY);
+      ctx.lineTo(CARD_WIDTH - 20, rowY);
+      ctx.stroke();
+    }
+
+    const centerY = rowY + ROW_HEIGHT / 2;
+    const rankColor = MEDAL_COLORS[entry.rank] ?? "#8E9297";
+
+    // ── رقم / ميدالية الترتيب ──────────────────────────────────────────────
+    const RANK_COL_X = 44;
+    if (entry.rank <= 3) {
+      const medals = ["🥇", "🥈", "🥉"];
+      ctx.font = `22px "${fontName}"`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = rankColor;
+      ctx.fillText(medals[entry.rank - 1], RANK_COL_X, centerY);
+    } else {
+      ctx.font = `bold 16px "${fontName}"`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = rankColor;
+      ctx.fillText(`#${entry.rank}`, RANK_COL_X, centerY);
+    }
+
+    // ── أفاتار المستخدم ────────────────────────────────────────────────────
+    const avatarX = 76;
+    const avatarY = centerY - AVATAR_SIZE / 2;
+
+    // دائرة حول الأفاتار
+    ctx.strokeStyle = rankColor;
+    ctx.lineWidth = entry.rank <= 3 ? 2.5 : 1.5;
+    ctx.beginPath();
+    ctx.arc(avatarX + AVATAR_SIZE / 2, avatarY + AVATAR_SIZE / 2, AVATAR_SIZE / 2 + 2, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX + AVATAR_SIZE / 2, avatarY + AVATAR_SIZE / 2, AVATAR_SIZE / 2, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+
+    if (entry.avatarUrl) {
+      try {
+        const avatar = await loadImage(entry.avatarUrl);
+        ctx.drawImage(avatar, avatarX, avatarY, AVATAR_SIZE, AVATAR_SIZE);
+      } catch {
+        ctx.fillStyle = "#1A1C23";
+        ctx.fillRect(avatarX, avatarY, AVATAR_SIZE, AVATAR_SIZE);
+      }
+    } else {
+      ctx.fillStyle = "#1A1C23";
+      ctx.fillRect(avatarX, avatarY, AVATAR_SIZE, AVATAR_SIZE);
+    }
+    ctx.restore();
+
+    // ── اسم المستخدم والمستوى ─────────────────────────────────────────────
+    const nameX = avatarX + AVATAR_SIZE + AVATAR_MARGIN;
+    ctx.font = `bold 19px "${fontName}"`;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(truncate(ctx, entry.username, 360), nameX, centerY - 10);
+
+    ctx.font = `13px "${fontName}"`;
+    ctx.fillStyle = "#8E9297";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`المستوى ${entry.level}`, nameX, centerY + 12);
+
+    // ── قيمة XP (يمين) ────────────────────────────────────────────────────
+    ctx.font = `bold 16px "${fontName}"`;
+    ctx.fillStyle = "#F1E0C5";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${entry.totalXp.toLocaleString()} XP`, CARD_WIDTH - 28, centerY - 10);
+
+    // نص "المجموع"
+    ctx.font = `12px "${fontName}"`;
+    ctx.fillStyle = "#8E9297";
+    ctx.textAlign = "right";
+    ctx.textBaseline = "middle";
+    ctx.fillText("المجموع", CARD_WIDTH - 28, centerY + 12);
+  }
+
+  // ── فوتر ──────────────────────────────────────────────────────────────────
+  const footerY = HEADER_HEIGHT + ROW_HEIGHT * entries.length;
+
+  ctx.strokeStyle = "#2A2D37";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(0, footerY);
+  ctx.lineTo(CARD_WIDTH, footerY);
+  ctx.stroke();
+
+  ctx.font = `13px "${fontName}"`;
+  ctx.fillStyle = "#8E9297";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(guildName, CARD_WIDTH / 2, footerY + FOOTER_HEIGHT / 2);
+
+  return canvas.toBuffer("image/png");
+}
