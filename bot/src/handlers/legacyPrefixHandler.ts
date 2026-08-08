@@ -1,4 +1,4 @@
-import { Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember } from "discord.js";
 import { ExtendedClient } from "../client";
 import { AfkUser, JailUser } from "@thez/shared";
 import { getGuildConfig } from "../utils/guildConfig";
