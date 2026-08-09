@@ -42,6 +42,8 @@ export const authOptions: NextAuthOptions = {
         token.refreshToken = account.refresh_token;
         token.expiresAt = account.expires_at;
         token.error = undefined;
+        // معرّف مستخدم Discord — يصل كـ sub في توكن JWT لاستراتيجية jwt
+        token.userId = token.sub ?? account.providerAccountId;
         return token;
       }
 
@@ -70,6 +72,9 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       (session as any).accessToken = token.accessToken;
       (session as any).error = token.error;
+      if (session.user && (token as any).userId) {
+        (session.user as any).id = (token as any).userId;
+      }
       return session;
     }
   },
