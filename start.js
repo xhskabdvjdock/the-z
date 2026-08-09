@@ -35,7 +35,7 @@ function startDashboard() {
   dashboardProc = spawn("npm", ["run", "start", "--workspace=dashboard"], {
     cwd: "/app",
     stdio: ["inherit", "pipe", "pipe"],
-    env: { ...process.env, PORT: String(PORT) }
+    env: { ...process.env, PORT: String(PORT), NODE_OPTIONS: "--max-old-space-size=384" }
   });
 
   dashboardProc.stdout.on("data", (d) => print("DASH", d));
@@ -56,7 +56,7 @@ function startBot() {
   const bot = spawn("node", ["bot/dist/index.js"], {
     cwd: "/app",
     stdio: ["inherit", "pipe", "pipe"],
-    env: process.env
+    env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=384" }
   });
 
   bot.stdout.on("data", (d) => {
@@ -108,7 +108,7 @@ async function main() {
     const deploy = spawn("npm", ["run", "deploy", "--workspace=bot"], {
       cwd: "/app",
       stdio: ["inherit", "pipe", "pipe"],
-      env: process.env
+      env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=384" }
     });
     deploy.stdout.on("data", (d) => print("DEPLOY", d));
     deploy.stderr.on("data", (d) => print("DEPLOY", d));
