@@ -18,7 +18,7 @@ function walk(dir: string): string[] {
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) files = files.concat(walk(full));
-    else if (entry.name.endsWith(".ts")) files.push(full);
+    else if (entry.name.endsWith(".ts") || entry.name.endsWith(".js")) files.push(full);
   }
   return files;
 }
@@ -38,10 +38,9 @@ async function buildShared() {
   }
 }
 
-/** موقع مجلد الأوامر: يعمل من ts-node (src) ومن dist المجمّعة */
+/** موقع مجلد الأوامر: مجاور لملف التشغيل — يطابق src في ts-node وdist عند المجمّع */
 function commandsDir(): string {
-  const srcPath = path.join(__dirname, "..", "src", "commands");
-  return fs.existsSync(srcPath) ? srcPath : path.join(__dirname, "commands");
+  return path.join(__dirname, "commands");
 }
 
 async function main() {

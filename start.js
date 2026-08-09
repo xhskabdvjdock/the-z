@@ -32,6 +32,8 @@ function startDashboard() {
   dashboardSpawned = true;
   console.log("[SYSTEM] 🚀 البوت اشتغل! جاري تشغيل الداشبورد...");
 
+  // نسحب خادم الصحة أولًا لأن الداشبورد هو من يجب أن يملك المنفذ الآن
+  healthServer.close();
   dashboardProc = spawn("npm", ["run", "start", "--workspace=dashboard"], {
     cwd: "/app",
     stdio: ["inherit", "pipe", "pipe"],
