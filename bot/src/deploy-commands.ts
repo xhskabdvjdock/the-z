@@ -55,17 +55,19 @@ async function main() {
 
   console.log(`📤 Deploying ${payload.length} commands...`);
   const startTime = Date.now();
-  const rest = new REST().setToken(config.token);
-  const signal = AbortSignal.timeout(60_000);
+  const rest = new REST({
+    retries: 1,
+    timeout: 15_000,
+    makeRequest: (url: string, init: RequestInit) => fetch(url, init)
+  }).setToken(config.token);
 
   if (config.devGuildId) {
     await rest.put(Routes.applicationGuildCommands(config.clientId, config.devGuildId), {
-      body: payload,
-      signal
+      body: payload
     });
     console.log(`✅ تم تسجيل ${payload.length} أمر على سيرفر التطوير.`);
   } else {
-    await rest.put(Routes.applicationCommands(config.clientId), { body: payload, signal });
+    await rest.put(Routes.applicationCommands(config.clientId), { body: payload });
     console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
   }
   console.log(`⏱️ استغرق نشر الأوامر ${((Date.now() - startTime) / 1000).toFixed(1)} ثانية`);

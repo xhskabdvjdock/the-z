@@ -27,7 +27,13 @@ export class ExtendedClient extends Client {
         GatewayIntentBits.GuildModeration,
         GatewayIntentBits.GuildPresences
       ],
-      partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.GuildMember]
+      partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.GuildMember],
+      // تجمع undici الافتراضي في @discordjs/rest يعلّق الطلبات على Render —
+      // استخدام fetch الأصلي لكل طلب (بدون keep-alive) يجعل الفشل مرئيًا وفوريًا
+      rest: {
+        makeRequest: (url: string, init: RequestInit) => fetch(url, init),
+        retries: 1
+      }
     });
   }
 }
