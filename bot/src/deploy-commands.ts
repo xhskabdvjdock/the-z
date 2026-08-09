@@ -1,13 +1,13 @@
-import { REST, Routes } from "discord.js";
-import fs from "fs";
-import path from "path";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { config } from "./config";
 import { BotCommand } from "./types/command";
 import { buildSlashCommandJSON } from "./utils/slashBuilder";
+import fs from "fs";
+import path from "path";
 
 const execAsync = promisify(exec);
+const API_BASE = "https://discord.com/api/v10";
 
 function walk(dir: string): string[] {
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -32,8 +32,61 @@ async function buildShared() {
   }
 }
 
+async function postCommands(body: string) {
+  const route = config.devGuildId
+    ? `/applications/${config.clientId}/guilds/${config.devGuildId}/commands`
+    : `/applications/${config.clientId}/commands`;
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}${route}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bot ${config.token}`,
+          "Content-Type": "application/json"
+        },
+        body,
+        signal: AbortSignal.timeout(45_000)
+      });
+
+      const text = await res.text();
+
+      if (res.ok) {
+        console.log(`✅ تم تسجيل ${JSON.parse(text).length} أمر (حالة HTTP ${res.status}).`);
+        return;
+      }
+
+      if (res.status === 429) {
+        let retryAfter = 5;
+        try {
+          retryAfter = JSON.parse(text).retry_after ?? 5;
+        } catch {
+          /* ignore */
+        }
+        console.log(`⏳ Discord 429 — الانتظار ${retryAfter} ثانية ثم إعادة المحاولة (${attempt}/3)`);
+        await new Promise((r) => setTimeout(r, retryAfter * 1000));
+        continue;
+      }
+
+      console.error(`❌ Discord رد بكود ${res.status}: ${text.slice(0, 400)}`);
+      process.exit(1);
+    } catch (error) {
+      const name = (error as Error)?.name;
+      if (name === "AbortError" || name === "TimeoutError") {
+        console.error(`❌ مهلة الطلب انتهت (محاولة ${attempt}/3) — الشبكة من Render إلى Discord غير مستقرة؟`);
+        if (attempt === 3) {
+          console.error("❌ فشل نشر الأوامر نهائيًا بعد 3 محاولات.");
+          process.exit(1);
+        }
+      } else {
+        console.error("❌ خطأ غير متوقع أثناء النشر:", error);
+        process.exit(1);
+      }
+    }
+  }
+}
+
 async function main() {
-  // Build shared package first
   await buildShared();
 
   const commandsDir = path.join(__dirname, "commands");
@@ -50,20 +103,9 @@ async function main() {
     payload.push(buildSlashCommandJSON(command));
   }
 
-  console.log(`📤 Deploying ${payload.length} commands...`);
-  const rest = new REST().setToken(config.token);
-  const signal = AbortSignal.timeout(60_000);
-
-  if (config.devGuildId) {
-    await rest.put(Routes.applicationGuildCommands(config.clientId, config.devGuildId), {
-      body: payload,
-      signal
-    });
-    console.log(`✅ تم تسجيل ${payload.length} أمر على سيرفر التطوير.`);
-  } else {
-    await rest.put(Routes.applicationCommands(config.clientId), { body: payload, signal });
-    console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
-  }
+  console.log(`📤 Deploying ${payload.length} commands (${JSON.stringify(payload).length} bytes)...`);
+  await postCommands(JSON.stringify(payload));
+  console.log(`✅ ${config.devGuildId ? "سيرفر التطوير" : "عالمياً"} — تم النشر بنجاح.`);
 }
 
 main()
