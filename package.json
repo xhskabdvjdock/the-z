@@ -9,6 +9,7 @@
     "dashboard"
   ],
   "scripts": {
+    "start": "node start.js",
     "build:shared": "npm run build -w shared",
     "dev:bot": "npm run dev -w bot",
     "build:bot": "npm run build -w bot",

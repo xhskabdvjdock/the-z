@@ -5,6 +5,7 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    healthCheckPath: /health
     envVars:
       - key: DISCORD_TOKEN
         sync: false

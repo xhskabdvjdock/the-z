@@ -5,6 +5,9 @@ WORKDIR /app
 # Copy root package.json for workspaces
 COPY package.json ./
 
+# Copy orchestrator entrypoint
+COPY start.js ./
+
 # Copy shared package
 COPY shared/package.json shared/tsconfig.json ./shared/
 COPY shared/src ./shared/src
@@ -32,14 +35,8 @@ RUN npm run build --workspace=dashboard
 # Create certs directory
 RUN mkdir -p /app/certs
 
-# Create startup script
-RUN echo '#!/bin/sh' > /app/start.sh && \
-    echo 'cd /app/bot && npm run deploy' >> /app/start.sh && \
-    echo 'cd /app/bot && node dist/index.js &' >> /app/start.sh && \
-    echo 'cd /app/dashboard && npm run start' >> /app/start.sh && \
-    chmod +x /app/start.sh
-
 ENV NODE_ENV=production
 ENV PORT=3000
 
-CMD ["/bin/sh", "/app/start.sh"]
+# Orchestrator: health on PORT منذ الثانية 0 ثم deploy → bot → dashboard
+CMD ["node", "/app/start.js"]
