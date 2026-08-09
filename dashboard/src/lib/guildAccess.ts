@@ -29,23 +29,41 @@ import {
  */
 export async function requireGuildAdmin(guildId: string) {
   const session = await getServerSession(authOptions);
-  if (!session?.accessToken) redirect("/");
+  if (!session?.accessToken) {
+    console.error("[guildAccess] لا جلسة ولا accessToken");
+    redirect("/");
+  }
   // فشل تجديد توكن ديسكورد → إجبار جلسة نظيفة جديدة بدل استمرار التدفق بصلاحية زائفة
-  if ((session as any)?.error === "RefreshFailed") redirect("/login");
+  if ((session as any)?.error === "RefreshFailed") {
+    console.error("[guildAccess] RefreshFailed — إعادة توجيه للدخول");
+    redirect("/login");
+  }
   const userId = (session.user as any)?.id;
-  if (!userId || !isSnowflakeId(userId)) redirect("/");
+  if (!userId || !isSnowflakeId(userId)) {
+    console.error("[guildAccess] معرّف المستخدم غير صالح:", userId);
+    redirect("/");
+  }
 
-  if (!isSnowflakeId(guildId)) redirect("/dashboard");
+  if (!isSnowflakeId(guildId)) {
+    console.error("[guildAccess] معرّف السيرفر غير صالح:", guildId);
+    redirect("/dashboard");
+  }
 
   try {
     // البوت داخل السيرفر
     const botGuildIds = await getBotGuildIds();
-    if (!botGuildIds.has(guildId)) redirect("/dashboard");
+    if (!botGuildIds.has(guildId)) {
+      console.error(`[guildAccess] البوت غير داخل السيرفر ${guildId} (البوت في ${botGuildIds.size} سيرفر)`);
+      redirect("/dashboard");
+    }
 
     // عضوية المستخدم (بدون كاش)
     const guilds = await getUserGuilds(session.accessToken, true);
     const target = guilds.find((g) => g.id === guildId);
-    if (!target) redirect("/dashboard");
+    if (!target) {
+      console.error(`[guildAccess] المستخدم غير عضو في السيرفر ${guildId}`);
+      redirect("/dashboard");
+    }
 
     await ensureDb();
     const config = await GuildConfig.findOne({ guildId });
@@ -64,8 +82,14 @@ export async function requireGuildAdmin(guildId: string) {
       dashboardRoles: settings.roles
     });
 
-    if (level === "none") redirect("/dashboard");
-  } catch {
+    if (level === "none") {
+      console.error(
+        `[guildAccess] لا صلاحية للوحة: owner=${target.owner} admin=${hasAdminPermission(target.permissions)} roles=${memberRoleIds.join(",")}`
+      );
+      redirect("/dashboard");
+    }
+  } catch (err) {
+    console.error("[guildAccess] خطأ أثناء الفحص:", err);
     redirect("/dashboard");
   }
 
