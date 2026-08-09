@@ -81,22 +81,35 @@ function startBot() {
 // تسلسل الإقلاع: deploy → bot → dashboard
 // ============================================================
 async function main() {
-  console.log("[SYSTEM] ⏳ جاري نشر أوامر الـ Slash Commands (بالتوازي)...");
+  console.log("[SYSTEM] 🔍 فحص الوصول إلى Discord (IPv4)...");
+  try {
+    const t0 = Date.now();
+    const res = await fetch("https://discord.com/api/v10/gateway", {
+      signal: AbortSignal.timeout(15_000)
+    });
+    console.log(`[SYSTEM] ✅ Discord قابل للوصول (HTTP ${res.status}) خلال ${Date.now() - t0}ms`);
+  } catch (err) {
+    console.log(`[SYSTEM] ⚠️ Discord غير قابل للوصول: ${err?.message ?? err}`);
+  }
 
-  const deploy = spawn("npm", ["run", "deploy", "--workspace=bot"], {
-    cwd: "/app",
-    stdio: ["inherit", "pipe", "pipe"],
-    env: process.env
-  });
-  deploy.stdout.on("data", (d) => print("DEPLOY", d));
-  deploy.stderr.on("data", (d) => print("DEPLOY", d));
-  const deployTimeout = setTimeout(() => {
-    console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها والمتابعة بالبوت فقط");
-    deploy.kill("SIGKILL");
-  }, 180_000);
-  deploy.on("exit", (code) => {
-    clearTimeout(deployTimeout);
-    console.log(`[SYSTEM] ${code === 0 ? "✅ نُشرت الأوامر" : "⚠️ فشل نشر الأوامر (" + code + ")"}`);
+  console.log("[SYSTEM] ⏳ جاري نشر أوامر الـ Slash Commands...");
+  await new Promise((resolve) => {
+    const deploy = spawn("npm", ["run", "deploy", "--workspace=bot"], {
+      cwd: "/app",
+      stdio: ["inherit", "pipe", "pipe"],
+      env: process.env
+    });
+    deploy.stdout.on("data", (d) => print("DEPLOY", d));
+    deploy.stderr.on("data", (d) => print("DEPLOY", d));
+    const deployTimeout = setTimeout(() => {
+      console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها ومواصلة تشغيل البوت");
+      deploy.kill("SIGKILL");
+    }, 180_000);
+    deploy.on("exit", (code) => {
+      clearTimeout(deployTimeout);
+      console.log(`[SYSTEM] ${code === 0 ? "✅ نُشرت الأوامر" : "⚠️ فشل نشر الأوامر (" + code + ")"}`);
+      resolve();
+    });
   });
 
   startBot();

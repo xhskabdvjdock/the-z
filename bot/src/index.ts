@@ -5,6 +5,10 @@ import { loadCommands } from "./handlers/commandHandler";
 import { loadEvents } from "./handlers/eventHandler";
 import { registerAllModules } from "./modules";
 import { logError, logInfo, sanitizeError } from "./utils/logger";
+import dns from "node:dns";
+
+// Render قد يعيد DNS بترتيب IPv6 أولًا مع عدم توفر IPv6 فعلي — اجبار IPv4
+dns.setDefaultResultOrder("ipv4first");
 
 let client: ExtendedClient | null = null;
 let shuttingDown = false;
@@ -48,7 +52,12 @@ async function bootstrap() {
   loadEvents(client);
   registerAllModules(client);
 
-  await client.login(config.token);
+  await Promise.race([
+    client.login(config.token),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord عبر 60 ثانية")), 60_000)
+    )
+  ]);
   logInfo("startup", "✅ تم تسجيل دخول البوت بنجاح.");
 }
 
