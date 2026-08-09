@@ -84,12 +84,23 @@ async function main() {
   console.log("[SYSTEM] 🔍 فحص الوصول إلى Discord (IPv4)...");
   try {
     const t0 = Date.now();
-    const res = await fetch("https://discord.com/api/v10/gateway", {
+    const res = await fetch("https://discord.com/api/v9/gateway", {
       signal: AbortSignal.timeout(15_000)
     });
     console.log(`[SYSTEM] ✅ Discord قابل للوصول (HTTP ${res.status}) خلال ${Date.now() - t0}ms`);
   } catch (err) {
     console.log(`[SYSTEM] ⚠️ Discord غير قابل للوصول: ${err?.message ?? err}`);
+  }
+  try {
+    const t0 = Date.now();
+    const authed = await fetch("https://discord.com/api/v9/users/@me", {
+      headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+      signal: AbortSignal.timeout(15_000)
+    });
+    const detail = authed.status === 200 ? "✅ التوكن صحيح" : `الرد: ${authed.status}`;
+    console.log(`[SYSTEM] مسبار التوثيق: HTTP ${authed.status} (${detail}) خلال ${Date.now() - t0}ms`);
+  } catch (err) {
+    console.log(`[SYSTEM] ⚠️ مسبار التوثيق فشل بالتأكيد: ${err?.message ?? err}`);
   }
 
   console.log("[SYSTEM] ⏳ جاري نشر أوامر الـ Slash Commands...");
@@ -104,7 +115,7 @@ async function main() {
     const deployTimeout = setTimeout(() => {
       console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها ومواصلة تشغيل البوت");
       deploy.kill("SIGKILL");
-    }, 180_000);
+    }, 240_000);
     deploy.on("exit", (code) => {
       clearTimeout(deployTimeout);
       console.log(`[SYSTEM] ${code === 0 ? "✅ نُشرت الأوامر" : "⚠️ فشل نشر الأوامر (" + code + ")"}`);

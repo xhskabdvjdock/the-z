@@ -54,6 +54,7 @@ async function main() {
   }
 
   console.log(`📤 Deploying ${payload.length} commands...`);
+  const startTime = Date.now();
   const rest = new REST().setToken(config.token);
   const signal = AbortSignal.timeout(60_000);
 
@@ -67,6 +68,7 @@ async function main() {
     await rest.put(Routes.applicationCommands(config.clientId), { body: payload, signal });
     console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
   }
+  console.log(`⏱️ استغرق نشر الأوامر ${((Date.now() - startTime) / 1000).toFixed(1)} ثانية`);
 }
 
 main()

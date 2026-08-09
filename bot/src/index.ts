@@ -52,12 +52,30 @@ async function bootstrap() {
   loadEvents(client);
   registerAllModules(client);
 
-  await Promise.race([
-    client.login(config.token),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord عبر 60 ثانية")), 60_000)
-    )
-  ]);
+  // تسجيل الدخول: غير فتّاك — محاولات تباعدية بدل إسقاط العملية (كان يسبب
+  // حلقة إعادة تشغيل تضغط على Discord بـ 429 مرارًا)
+  let loginAttempt = 0;
+  while (true) {
+    loginAttempt++;
+    try {
+      logInfo("startup", `🔑 محاولة تسجيل الدخول #${loginAttempt}...`);
+      await Promise.race([
+        client.login(config.token),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (60 ثانية)")), 60_000)
+        )
+      ]);
+      break;
+    } catch (err) {
+      logError("startup/login", err instanceof Error ? err : new Error(String(err)));
+      logInfo(
+        "startup",
+        `⚠️ المحاولة #${loginAttempt} فشلت — تنظيف وإعادة المحاولة بعد 60 ثانية...`
+      );
+      await Promise.race([client.destroy().catch(() => undefined), new Promise((r) => setTimeout(r, 10_000))]);
+      await new Promise((r) => setTimeout(r, 60_000));
+    }
+  }
   logInfo("startup", "✅ تم تسجيل دخول البوت بنجاح.");
 }
 
