@@ -25,8 +25,11 @@ function walk(dir: string): string[] {
 
 async function buildShared() {
   try {
-    console.log("🔨 Building @thez/shared package...");
     const sharedPath = path.join(__dirname, "../../shared");
+    const sharedDist = path.join(sharedPath, "dist");
+    // مدمج مسبقًا في الصورة — لا نعيد البناء كل إقلاع
+    if (fs.existsSync(path.join(sharedDist, "index.js"))) return;
+    console.log("🔨 Building @thez/shared package...");
     await execAsync("npm run build", { cwd: sharedPath });
     console.log("✅ @thez/shared built successfully");
   } catch (error) {
@@ -35,13 +38,19 @@ async function buildShared() {
   }
 }
 
+/** موقع مجلد الأوامر: يعمل من ts-node (src) ومن dist المجمّعة */
+function commandsDir(): string {
+  const srcPath = path.join(__dirname, "..", "src", "commands");
+  return fs.existsSync(srcPath) ? srcPath : path.join(__dirname, "commands");
+}
+
 async function main() {
   // Build shared package first
   await buildShared();
 
-  const commandsDir = path.join(__dirname, "commands");
-  console.log("📁 Looking for commands in:", commandsDir);
-  const files = walk(commandsDir);
+  const dir = commandsDir();
+  console.log("📁 Looking for commands in:", dir);
+  const files = walk(dir);
   console.log("📄 Found files:", files);
   const payload: unknown[] = [];
 
@@ -56,8 +65,9 @@ async function main() {
   console.log(`📤 Deploying ${payload.length} commands...`);
   const startTime = Date.now();
   const rest = new REST({
-    retries: 1,
+    retries: 0,
     timeout: 15_000,
+    rejectOnRateLimit: () => true,
     makeRequest: (url: string, init: RequestInit) => fetch(url, init)
   }).setToken(config.token);
 

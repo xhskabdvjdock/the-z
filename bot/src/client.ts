@@ -32,7 +32,9 @@ export class ExtendedClient extends Client {
       // استخدام fetch الأصلي لكل طلب (بدون keep-alive) يجعل الفشل مرئيًا وفوريًا
       rest: {
         makeRequest: (url: string, init: RequestInit) => fetch(url, init),
-        retries: 1
+        retries: 0,
+        timeout: 15_000,
+        rejectOnRateLimit: () => true
       }
     });
   }
