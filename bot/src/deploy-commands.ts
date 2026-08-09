@@ -52,16 +52,23 @@ async function main() {
 
   console.log(`📤 Deploying ${payload.length} commands...`);
   const rest = new REST().setToken(config.token);
+  const signal = AbortSignal.timeout(60_000);
 
   if (config.devGuildId) {
     await rest.put(Routes.applicationGuildCommands(config.clientId, config.devGuildId), {
-      body: payload
+      body: payload,
+      signal
     });
     console.log(`✅ تم تسجيل ${payload.length} أمر على سيرفر التطوير.`);
   } else {
-    await rest.put(Routes.applicationCommands(config.clientId), { body: payload });
+    await rest.put(Routes.applicationCommands(config.clientId), { body: payload, signal });
     console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
   }
 }
 
-main().catch(console.error);
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("❌ فشل نشر الأوامر:", error);
+    process.exit(1);
+  });

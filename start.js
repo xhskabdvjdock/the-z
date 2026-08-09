@@ -90,7 +90,12 @@ async function main() {
     });
     deploy.stdout.on("data", (d) => print("DEPLOY", d));
     deploy.stderr.on("data", (d) => print("DEPLOY", d));
+    const deployTimeout = setTimeout(() => {
+      console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها ومواصلة تشغيل البوت");
+      deploy.kill("SIGKILL");
+    }, 180_000);
     deploy.on("exit", (code) => {
+      clearTimeout(deployTimeout);
       console.log(`[SYSTEM] ${code === 0 ? "✅ نُشرت الأوامر" : "⚠️ فشل نشر الأوامر (" + code + ")"}`);
       resolve();
     });
