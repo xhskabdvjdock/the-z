@@ -64,17 +64,10 @@ export async function handleAutoResponse(
     
     // Handle both old response field and new responses array for backward compatibility
     const responseMessages = response.responses || (response.response ? [response.response] : []);
-    
-    console.log(`AutoResponse matched trigger: ${response.trigger}`);
-    console.log(`Available responses: ${responseMessages.length}`);
-    console.log(`Response data:`, JSON.stringify(responseMessages, null, 2));
-    
+
     if (responseMessages.length > 0) {
-      // Pick a random response
       const randomIndex = Math.floor(Math.random() * responseMessages.length);
-      console.log(`Selected response index: ${randomIndex}`);
       const randomResponse = responseMessages[randomIndex];
-      console.log(`Selected response:`, JSON.stringify(randomResponse, null, 2));
       const payload = buildMessageFromCustom(randomResponse, ctx);
       if (message.inGuild()) {
         await message.channel.send(payload).catch(() => null);

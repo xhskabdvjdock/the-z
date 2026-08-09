@@ -9,4 +9,6 @@
 export * from "./types/guildConfig";
 export * from "./utils/variables";
 export * from "./utils/leveling";
+export * from "./utils/cooldown";
+export * from "./utils/validate";
 export * from "./constants/commands";

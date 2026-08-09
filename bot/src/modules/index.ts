@@ -6,6 +6,7 @@ import { registerColorComponents } from "./roles/colorRoles";
 import { registerSelfRoleComponents } from "./roles/selfRoles";
 import { registerCaptchaComponents } from "./captcha/captcha";
 import { startVoiceXpInterval } from "./leveling/xpManager";
+import { startJailExpiryInterval } from "./jail/expiry";
 
 /** نقطة تجميع مركزية: تسجّل كل معالجات الأزرار/القوائم الخاصة بكل موديول، وتشغّل المهام الدورية */
 export function registerAllModules(client: ExtendedClient) {
@@ -17,5 +18,6 @@ export function registerAllModules(client: ExtendedClient) {
 
   client.once("ready", () => {
     startVoiceXpInterval(client);
+    startJailExpiryInterval(client);
   });
 }

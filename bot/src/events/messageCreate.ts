@@ -2,12 +2,13 @@ import { Message } from "discord.js";
 import { BotEvent } from "../types/event";
 import { getGuildConfig } from "../utils/guildConfig";
 import { buildPrefixContext } from "../utils/context";
-import { checkCommandPermission } from "../utils/permissions";
+import { checkCommandPermission, verifyCommandPermission } from "../utils/permissions";
 import { buildMessageFromCustom } from "../utils/embed";
 import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
 import { handleLegacyPrefixCommands } from "../handlers/legacyPrefixHandler";
+import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
 import { AfkUser } from "@thez/shared";
 
 const event: BotEvent = {
@@ -80,11 +81,36 @@ const event: BotEvent = {
           const effectivePrefix = override?.customPrefix || globalPrefix;
 
           if (effectivePrefix === matchedPrefix && (!override || override.prefixEnabled)) {
+            // 4.1) صلاحيات Discord الأساسية (defaultMemberPermissions) — نفس التطبيق الذي
+            // يفرض Discord على الـSlash، مطبّق يدويًا هنا للبادئة (لا يفرضه Discord تلقائيًا)
+            const discordPerm = verifyCommandPermission(command, message.member!, message.channel);
+            if (!discordPerm.allowed) {
+              await message.reply(discordPerm.reason ?? "❌ لا تملك الصلاحيات الكافية.");
+              return;
+            }
+
+            // 4.2) تخصيصات لوحة التحكم (Command Overrides) — نظام موجود لا يتغير
             const permCheck = checkCommandPermission(override, message.member!, message.channelId);
             if (!permCheck.allowed) {
               await message.reply(permCheck.reason ?? "❌ غير مسموح.");
               return;
             }
+
+            // 4.3) البرودة (Cooldown) — مدة الأمر نفسه أو override أو صفر (بدون برودة)
+            const cdCheck = checkCommandCooldown(
+              client,
+              command,
+              message.guild.id,
+              message.author.id,
+              override
+            );
+            if (!cdCheck.allowed) {
+              await message.reply(
+                `⏳ هذا الأمر قيد البرودة — انتظر ${cdCheck.remainingSeconds} ثانية تقريبًا.`
+              );
+              return;
+            }
+            applyCommandCooldown(client, command, message.guild.id, message.author.id, override);
 
             if (override?.customResponse?.enabled) {
               const payload = buildMessageFromCustom(override.customResponse, {

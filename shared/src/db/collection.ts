@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getPool } from "./pool";
+import { buildSqlWhere } from "./sql";
 
 export type Filter = Record<string, any>;
 export type SortSpec = Record<string, 1 | -1>;
@@ -70,6 +71,10 @@ function valueMatchesCondition(actual: any, condition: any): boolean {
           return actual !== val;
         case "$eq":
           return actual === val;
+        case "$in":
+          return Array.isArray(val) && val.some((v) => v === actual);
+        case "$nin":
+          return !Array.isArray(val) || !val.some((v) => v === actual);
         default:
           return true;
       }
@@ -78,7 +83,11 @@ function valueMatchesCondition(actual: any, condition: any): boolean {
   return actual === condition;
 }
 
-function matchesFilter(data: any, filter: Filter): boolean {
+/**
+ * مطابقة رحلة JS الكاملة لمستند مقابل فلتر (تُصدَّر للاختبار فقط — السلوك داخليًا
+ * يبقى مماثلاً تمامًا قبل وبعد هذه الطبقة).
+ */
+export function matchesFilter(data: any, filter: Filter): boolean {
   return Object.entries(filter).every(([path, condition]) => {
     const candidates = resolveForMatch(data, path);
     if (candidates.length === 0) return valueMatchesCondition(undefined, condition);
@@ -203,13 +212,9 @@ class FindQuery<T> implements PromiseLike<T> {
   private async exec(): Promise<any> {
     await this.ensureTableFn();
     const pool = getPool();
-    const indexValue = this.filter[this.indexField];
-
-    const rows =
-      typeof indexValue === "string"
-        ? (await pool.query(`SELECT id, data FROM ${this.tableName} WHERE key_id = $1`, [indexValue]))
-            .rows
-        : (await pool.query(`SELECT id, data FROM ${this.tableName}`)).rows;
+    const { where, params } = buildSqlWhere(this.filter, this.indexField);
+    const sql = where ? `SELECT id, data FROM ${this.tableName} WHERE ${where}` : `SELECT id, data FROM ${this.tableName}`;
+    const rows = (await pool.query(sql, params as any[])).rows;
 
     let filtered = rows.filter((r: any) => matchesFilter(r.data, this.filter));
 
@@ -277,6 +282,10 @@ export class Collection<T extends Record<string, any>> {
     await pool.query(
       `CREATE INDEX IF NOT EXISTS ${this.tableName}_key_id_idx ON ${this.tableName} (key_id);`
     );
+    // فهرس GIN على JSONB — يسرّع أي بحث على حقول داخل المستند (userId/totalXp/...) بأمان
+    await pool.query(
+      `CREATE INDEX IF NOT EXISTS ${this.tableName}_data_gin_idx ON ${this.tableName} USING GIN (data jsonb_path_ops);`
+    );
     this.ensured = true;
   }
 
@@ -315,13 +324,9 @@ export class Collection<T extends Record<string, any>> {
   ): Promise<LiveDoc<T> | null> {
     await this.ensureTable();
     const pool = getPool();
-    const indexValue = filter[this.indexField];
-
-    const rows =
-      typeof indexValue === "string"
-        ? (await pool.query(`SELECT id, data FROM ${this.tableName} WHERE key_id = $1`, [indexValue]))
-            .rows
-        : (await pool.query(`SELECT id, data FROM ${this.tableName}`)).rows;
+    const { where, params } = buildSqlWhere(filter, this.indexField);
+    const sql = where ? `SELECT id, data FROM ${this.tableName} WHERE ${where}` : `SELECT id, data FROM ${this.tableName}`;
+    const rows = (await pool.query(sql, params as any[])).rows;
 
     const match = rows.find((r: any) => matchesFilter(r.data, filter));
 
@@ -349,12 +354,9 @@ export class Collection<T extends Record<string, any>> {
   async countDocuments(filter: Filter = {}): Promise<number> {
     await this.ensureTable();
     const pool = getPool();
-    const indexValue = filter[this.indexField];
-
-    const rows =
-      typeof indexValue === "string"
-        ? (await pool.query(`SELECT data FROM ${this.tableName} WHERE key_id = $1`, [indexValue])).rows
-        : (await pool.query(`SELECT data FROM ${this.tableName}`)).rows;
+    const { where, params } = buildSqlWhere(filter, this.indexField);
+    const sql = where ? `SELECT data FROM ${this.tableName} WHERE ${where}` : `SELECT data FROM ${this.tableName}`;
+    const rows = (await pool.query(sql, params as any[])).rows;
 
     return rows.filter((r: any) => matchesFilter(r.data, filter)).length;
   }
@@ -362,13 +364,9 @@ export class Collection<T extends Record<string, any>> {
   async deleteOne(filter: Filter): Promise<void> {
     await this.ensureTable();
     const pool = getPool();
-    const indexValue = filter[this.indexField];
-
-    const rows =
-      typeof indexValue === "string"
-        ? (await pool.query(`SELECT id, data FROM ${this.tableName} WHERE key_id = $1`, [indexValue]))
-            .rows
-        : (await pool.query(`SELECT id, data FROM ${this.tableName}`)).rows;
+    const { where, params } = buildSqlWhere(filter, this.indexField);
+    const sql = where ? `SELECT id, data FROM ${this.tableName} WHERE ${where}` : `SELECT id, data FROM ${this.tableName}`;
+    const rows = (await pool.query(sql, params as any[])).rows;
 
     const match = rows.find((r: any) => matchesFilter(r.data, filter));
     if (match) await pool.query(`DELETE FROM ${this.tableName} WHERE id = $1`, [match.id]);
@@ -377,13 +375,9 @@ export class Collection<T extends Record<string, any>> {
   async updateOne(filter: Filter, update: Record<string, any>): Promise<void> {
     await this.ensureTable();
     const pool = getPool();
-    const indexValue = filter[this.indexField];
-
-    const rows =
-      typeof indexValue === "string"
-        ? (await pool.query(`SELECT id, data FROM ${this.tableName} WHERE key_id = $1`, [indexValue]))
-            .rows
-        : (await pool.query(`SELECT id, data FROM ${this.tableName}`)).rows;
+    const { where, params } = buildSqlWhere(filter, this.indexField);
+    const sql = where ? `SELECT id, data FROM ${this.tableName} WHERE ${where}` : `SELECT id, data FROM ${this.tableName}`;
+    const rows = (await pool.query(sql, params as any[])).rows;
 
     const match = rows.find((r: any) => matchesFilter(r.data, filter));
     if (!match) return;

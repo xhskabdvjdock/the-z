@@ -4,6 +4,7 @@ import { requireGuildAdmin } from "@/lib/guildAccess";
 import { ensureDb } from "@/lib/db";
 import { GuildConfig } from "@thez/shared";
 import { revalidatePath } from "next/cache";
+import { logError } from "@/lib/logger";
 
 export async function saveJailConfig(guildId: string, data: {
   enabled: boolean;
@@ -23,7 +24,7 @@ export async function saveJailConfig(guildId: string, data: {
 
     revalidatePath(`/dashboard/${guildId}/jail`);
   } catch (error) {
-    console.error("Error saving jail config:", error);
+    logError("jail/save", error);
     throw error;
   }
 }

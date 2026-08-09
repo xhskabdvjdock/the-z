@@ -2,12 +2,40 @@ import { EmbedBuilder, GuildMember, Message, PermissionsBitField } from "discord
 import { IGuildConfig, Warning } from "@thez/shared";
 import { ExtendedClient } from "../../client";
 import { sendLog } from "../logging/logger";
+import { logError } from "../../utils/logger";
+import { recordModerationLog } from "../moderation/auditLog";
+
+/** يسجل عقوبة الرقابة التلقائية في سجل الإشراف (لا يكسر التطبيق عند فشل الكتابة) */
+async function recordAutoPunishment(
+  client: ExtendedClient,
+  member: GuildMember,
+  punishment: string,
+  reason: string,
+  timeoutDuration?: number
+): Promise<void> {
+  await recordModerationLog({
+    guildId: member.guild.id,
+    userId: member.id,
+    moderatorId: client.user?.id ?? "AutoMod",
+    action: punishment === "delete" ? "auto" : `auto:${punishment}`,
+    reason,
+    ...(timeoutDuration ? { durationMinutes: timeoutDuration } : {})
+  });
+}
 
 const INVITE_REGEX = /(discord\.gg\/|discord(?:app)?\.com\/invite\/)[a-z0-9-]+/i;
 const LINK_REGEX = /https?:\/\/\S+/i;
 
 /** يتتبّع طوابع زمن رسائل كل عضو في كل سيرفر لغرض كشف السبام (مفتاح: guildId:userId) */
 const spamTracker = new Map<string, number[]>();
+
+/** يحذف مفاتيح spam التي لم تعد أي رسالة فيها ضمن النافذة (منع نمو غير محدود) */
+function pruneStaleSpamKeys(cutoff: number): void {
+  for (const [key, timestamps] of spamTracker) {
+    const last = timestamps[timestamps.length - 1];
+    if (last === undefined || last < cutoff) spamTracker.delete(key);
+  }
+}
 
 type ViolationType =
   | "antiInvite"
@@ -121,7 +149,8 @@ export async function handleAutoMod(
     const timestamps = (spamTracker.get(key) ?? []).filter((t) => now - t < windowMs);
     timestamps.push(now);
     spamTracker.set(key, timestamps);
-
+    // تنظيف دوري: منع نمو مفاتيح المستخدمين غير النشطين بلا حدود
+    if (spamTracker.size % 64 === 0) pruneStaleSpamKeys(now - windowMs * 2);
     if (timestamps.length > automod.antiSpam.maxMessages) {
       violation = "antiSpam";
     }
@@ -240,7 +269,9 @@ async function applyPunishment(
         await member.ban({ reason }).catch(() => null);
         break;
     }
+
+    await recordAutoPunishment(client, member, punishment, reason, timeoutDuration);
   } catch (err) {
-    console.error("خطأ أثناء تطبيق عقوبة الرقابة التلقائية:", err);
+    logError("automod-punishment", err);
   }
 }

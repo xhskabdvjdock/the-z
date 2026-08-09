@@ -1,7 +1,8 @@
 import { EmbedBuilder, PermissionFlagsBits, TextChannel } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
-import { GuildConfig } from "@thez/shared";
+import { scheduleAutoDelete } from "../../utils/autoDeleteReply";
+import { recordModerationLog } from "../../modules/moderation/auditLog";
 
 const command: BotCommand = {
   name: "clear",
@@ -49,21 +50,16 @@ const command: BotCommand = {
       );
 
     const reply = await ctx.reply({ embeds: [embed] });
+    await recordModerationLog({
+      guildId: ctx.guild.id,
+      userId: ctx.user.id,
+      moderatorId: ctx.user.id,
+      action: "clear",
+      reason: `حذف ${deletedCount} رسالة في <#${ctx.channel.id}>`
+    });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
 
-    // حذف رسالة التأكيد تلقائياً إذا كان الإعداد مفعل
-    const config = await GuildConfig.findOne({ guildId: ctx.guild.id });
-    const autoDeleteSeconds = config?.moderation?.autoDeleteConfirmation ?? 0;
-    
-    if (autoDeleteSeconds > 0 && reply) {
-      setTimeout(async () => {
-        try {
-          await reply.delete();
-        } catch {
-          // تجاهل إذا تم حذف الرسالة بالفعل
-        }
-      }, autoDeleteSeconds * 1000);
-    }
+    await scheduleAutoDelete(reply, ctx.guild.id);
   }
 };
 

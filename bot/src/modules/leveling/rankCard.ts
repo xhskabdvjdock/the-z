@@ -2,6 +2,7 @@ import { createCanvas, loadImage, GlobalFonts, SKRSContext2D } from "@napi-rs/ca
 import { GuildMember } from "discord.js";
 import fs from "fs";
 import path from "path";
+import { logError } from "../../utils/logger";
 
 let isFontRegistered = false;
 
@@ -27,7 +28,7 @@ async function ensureFontLoaded(): Promise<void> {
         console.log(`[RankCard] ✅ تم تحميل الخط بنجاح محلياً من: ${fontPath}`);
         return;
       } catch (err) {
-        console.error(`[RankCard] ❌ فشل قراءة الخط محلياً من ${fontPath}:`, err);
+        logError("rankcard-font-local", err);
       }
     }
   }
@@ -47,7 +48,7 @@ async function ensureFontLoaded(): Promise<void> {
       console.error(`[RankCard] ❌ فشل جلب الخط من GitHub RAW: HTTP ${res.status}`);
     }
   } catch (err) {
-    console.error("[RankCard] ❌ خطأ في جلب الخط عبر الشبكة:", err);
+    logError("rankcard-font-network", err);
   }
 }
 

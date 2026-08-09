@@ -2,13 +2,28 @@ import { EmbedBuilder, Message } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
 import translate from "translate";
+import { logError } from "../../utils/logger";
 
 // ضبط المحرك مجاناً
 translate.engine = "google";
 
-// بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
+// بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة — محدود الحجم + TTL تنظيف عند الإضافة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+const CACHE_MAX_ENTRIES = 500;
+
+function cacheSet(key: string, value: { text: string; timestamp: number }): void {
+  if (translationCache.size >= CACHE_MAX_ENTRIES) {
+    const oldest = translationCache.keys().next().value;
+    if (oldest !== undefined) translationCache.delete(oldest);
+    // تنظيف المنتهية أيضًا عند الامتلاء — يمنع أي نمو بلا حدود
+    const now = Date.now();
+    for (const [k, v] of translationCache) {
+      if (now - v.timestamp >= CACHE_DURATION) translationCache.delete(k);
+    }
+  }
+  translationCache.set(key, value);
+}
 
 const command: BotCommand = {
   name: "translate",
@@ -76,8 +91,8 @@ const command: BotCommand = {
         ? translatedText.substring(0, 4093) + "..." 
         : translatedText;
 
-      // حفظ في الذاكرة المؤقتة
-      translationCache.set(cacheKey, { text: translatedText, timestamp: now });
+      // حفظ في الذاكرة المؤقتة (مع حد الحجم)
+      cacheSet(cacheKey, { text: translatedText, timestamp: now });
 
       const embed = new EmbedBuilder()
         .setColor(config.defaultColor)
@@ -85,7 +100,7 @@ const command: BotCommand = {
 
       await ctx.reply({ embeds: [embed] });
     } catch (error: any) {
-      console.error("Translation error:", error);
+      logError("translate", error);
       await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
     }
   }

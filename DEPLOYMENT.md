@@ -97,7 +97,23 @@
 3. ارفع ملف `root.crt` إلى هذا الـ disk
 4. تأكد من أن `DB_SSL_CA_PATH` مضبوط على `/app/certs/root.crt`
 
-## الخطوة 6: تحديث رابط الـ Dashboard في Discord
+## الخطوة 6: (اختياري) إعداد Redis
+
+Redis يُستخدم للبيانات المؤقتة عالية التردد فقط (cooldowns / rate limits / عدّادات / كاشات). **بدون Redis يشتغل البوت طبيعيًا** على ذاكرة العملية مع تحذير واحد — الإعداد مطلوب فقط عند الحاجة للتوزيع الأفقي.
+
+1. يمكنك استخدام **Render Redis** أو أي Redis مُدار (Upstash...) يوفّر URL
+2. أضف متغير البيئة `REDIS_URL` (مثال: `redis://user:pass@host:6379`)
+3. اختياري: `REDIS_CONNECT_TIMEOUT_MS=3000` (الافتراضي 3000)
+4. `REDIS_URL` لا تُسجَّل في أي log تلقائيًا — لا تضعها في ملفات عامة
+
+### Docker Compose محليًا
+
+```bash
+docker compose up -d redis   # يرفع Redis داخل الشبكة (غير مكشوف للعامة)
+REDIS_URL=redis://redis:6379/0 npm run dev:bot
+```
+
+## الخطوة 7: تحديث رابط الـ Dashboard في Discord
 
 بعد إنشاء الـ Dashboard:
 

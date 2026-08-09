@@ -51,6 +51,8 @@ export interface ICommandOverride {
   alias?: string;
   /** بادئة مخصصة لهذا الأمر (مثل `,` أو `.`) — تتجاوز البادئة العامة للسيرفر */
   customPrefix?: string;
+  /** مدة البرودة الخاصة بهذا الأمر بالثواني (تتجاوز cooldownSeconds العام للأمر إن وُجد) */
+  cooldownSeconds?: number;
   slashEnabled: boolean;
   prefixEnabled: boolean;
   allowedRoleIds: string[];
@@ -60,6 +62,29 @@ export interface ICommandOverride {
   allowedChannelIds: string[];
   deniedChannelIds: string[];
   customResponse?: ICustomMessage;
+}
+
+/**
+ * إعدادات صلاحيات لوحة التحكم الخاصة بالسيرفر (قابلة للتوسع لاحقًا بالأقسام/المراحل).
+ * ملاحظة أمنية: هذه الصلاحيات لا تتجاوز أبدًا صلاحيات Discord الأساسية — فالعضو
+ * يجب أن يكون فعليًا في السيرفر ويحمل إحدى الرتب المعينة أو مدرجًا في userIds.
+ */
+export interface IGuildDashboardRole {
+  id: string;
+  name: string;
+  /** رتب Discord التي تمنح الوصول للوحة التحكم */
+  roleIds: string[];
+  /** مستخدمون محددون يُمنحون الوصول مباشرة */
+  userIds: string[];
+  /** الأقسام المتاحة لهذه الصلاحية (فارغ = كل الأقسام) — للاستخدام لاحقًا */
+  sections?: string[];
+}
+
+export interface IGuildDashboardSettings {
+  /** هل يُسمح لأعضاء رتبة Administrator (عبر Discord) بصلاحيات اللوحة؟ الافتراضي: نعم */
+  allowAdministrators: boolean;
+  /** رتب الداشبورد المخصصة */
+  roles: IGuildDashboardRole[];
 }
 
 export interface IAutoResponse {
@@ -276,8 +301,25 @@ export interface IGuildConfig {
 
   commandOverrides: ICommandOverride[];
 
+  /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
+  dashboard?: IGuildDashboardSettings;
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * قراءة الإعدادات مع القيم الافتراضية الآمنة — تُستدعى بدل الوصول المباشر
+ * لقابلية التوافق مع المستندات القديمة التي لا تحتوي على الحقل.
+ */
+export function resolveDashboardSettings(
+  config?: Pick<IGuildConfig, "dashboard"> | null
+): IGuildDashboardSettings {
+  const dashboard = config?.dashboard;
+  return {
+    allowAdministrators: dashboard?.allowAdministrators ?? true,
+    roles: Array.isArray(dashboard?.roles) ? dashboard.roles : []
+  };
 }
 
 function defaultCustomMessage(): ICustomMessage {
@@ -413,6 +455,11 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     },
 
     commandOverrides: [],
+
+    dashboard: {
+      allowAdministrators: true,
+      roles: []
+    },
 
     createdAt: now,
     updatedAt: now

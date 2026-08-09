@@ -1,25 +1,76 @@
-import { connectDatabase } from "@thez/shared";
+import { connectDatabase, closeDatabase } from "@thez/shared";
 import { ExtendedClient } from "./client";
 import { config } from "./config";
 import { loadCommands } from "./handlers/commandHandler";
 import { loadEvents } from "./handlers/eventHandler";
 import { registerAllModules } from "./modules";
+import { logError, logInfo, sanitizeError } from "./utils/logger";
+
+let client: ExtendedClient | null = null;
+let shuttingDown = false;
+
+/** إيقاف آمن: إغلاق اتصال Discord + قاعدة البيانات ثم الخروج بالكود المعطى */
+async function gracefulShutdown(code: number): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logInfo("shutdown", "بدء إيقاف التشغيل الآمن...");
+  try {
+    if (client) {
+      await client.destroy();
+      client = null;
+    }
+  } catch (err) {
+    logError("shutdown/destroy", err);
+  }
+  try {
+    await closeDatabase();
+  } catch (err) {
+    logError("shutdown/db", err);
+  }
+  process.exit(code);
+}
 
 async function bootstrap() {
-  console.log("⏳ جاري الاتصال بقاعدة البيانات...");
-  await connectDatabase(config.databaseUrl, { sslRootCertPath: config.dbSslRootCertPath || undefined });
-  console.log("✅ تم الاتصال بقاعدة البيانات بنجاح.");
+  logInfo("startup", "⏳ جاري الاتصال بقاعدة البيانات...");
+  await connectDatabase(config.databaseUrl, {
+    sslRootCertPath: config.dbSslRootCertPath || undefined
+  });
+  logInfo("startup", "✅ تم الاتصال بقاعدة البيانات بنجاح.");
 
-  const client = new ExtendedClient();
+  client = new ExtendedClient();
+
+  // أخطاء عميل Discord العابرة (فقدان اتصال، راتينج...) — لا تُسقط العملية
+  client.on("error", (err) => {
+    logError("client/error", err);
+  });
 
   loadCommands(client);
   loadEvents(client);
   registerAllModules(client);
 
   await client.login(config.token);
+  logInfo("startup", "✅ تم تسجيل دخول البوت بنجاح.");
 }
 
+// -------- معالجات الأخطاء العامة --------
+
+// وعد مرفوض بدون معالج: سجّل ولا تُسقط العملية (قد تكون خطأ غير حرج)
+process.on("unhandledRejection", (reason) => {
+  logError("unhandledRejection", reason instanceof Error ? reason : new Error(String(reason)));
+});
+
+// خطأ فادح غير ملتقط: لا نستمر بطريقة غير آمنة — نسجّل ونختم فورًا
+process.on("uncaughtException", (err) => {
+  logError("uncaughtException", err);
+  // لا يمكن الاعتماد على حالة العملية بعد هذا — إيقاف فوري دون انتظار
+  gracefulShutdown(1);
+});
+
+// إيقاف إداري مطلوب (Ctrl+C / kill) — إغلاق نظيف
+process.on("SIGINT", () => gracefulShutdown(0));
+process.on("SIGTERM", () => gracefulShutdown(0));
+
 bootstrap().catch((err) => {
-  console.error("❌ فشل تشغيل البوت:", err);
+  logError("fatal/startup", err instanceof Error ? err : new Error(sanitizeError(err)));
   process.exit(1);
 });

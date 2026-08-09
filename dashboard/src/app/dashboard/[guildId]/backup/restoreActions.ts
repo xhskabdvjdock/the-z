@@ -4,6 +4,7 @@ import { requireGuildAdmin } from "@/lib/guildAccess";
 import { ensureDb } from "@/lib/db";
 import { getGuildInfo } from "@/lib/discord";
 import { GuildConfig, ServerBackup, RestoreOptions } from "@thez/shared";
+import { logError } from "@/lib/logger";
 
 function botHeaders() {
   return { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` };
@@ -323,7 +324,7 @@ export async function restoreBackup(guildId: string, backup: ServerBackup, optio
 
     return { success: true, message: "Backup restored successfully" };
   } catch (error) {
-    console.error("Error restoring backup:", error);
+    logError("backup/restore", error);
     throw error;
   }
 }

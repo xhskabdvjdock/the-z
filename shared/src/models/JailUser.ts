@@ -7,6 +7,7 @@ export interface IJailUser {
   originalRoles: string[];
   jailedBy: string;
   jailedAt: Date;
+  jailedUntil?: Date | null;
 }
 
 export const JailUser = new Collection<IJailUser>("jail_users", "guildId", () => ({

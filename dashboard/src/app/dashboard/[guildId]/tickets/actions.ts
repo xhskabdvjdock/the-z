@@ -10,24 +10,14 @@ export async function saveTicketsConfig(guildId: string, data: IGuildConfig["tic
     await requireGuildAdmin(guildId);
     await ensureDb();
 
-    console.log("=== Saving tickets config ===");
-    console.log("Guild ID:", guildId);
-    console.log("Full data to save:", JSON.stringify(data, null, 2));
-
-    const result = await GuildConfig.findOneAndUpdate(
+    await GuildConfig.findOneAndUpdate(
       { guildId },
       { $set: { tickets: data } },
       { upsert: true }
     );
 
-    console.log("MongoDB result:", result);
-    console.log("Save completed successfully");
-
     revalidatePath(`/dashboard/${guildId}/tickets`);
   } catch (error) {
-    console.error("=== Error saving tickets config ===");
-    console.error("Error:", error);
-    console.error("Error message:", error instanceof Error ? error.message : String(error));
     throw error;
   }
 }

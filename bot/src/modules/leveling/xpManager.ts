@@ -3,6 +3,7 @@ import { ExtendedClient } from "../../client";
 import { ILevelUser, IGuildConfig, LevelUser, levelFromTotalXp, LiveDoc } from "@thez/shared";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { buildMessageFromCustom } from "../../utils/embed";
+import { logError } from "../../utils/logger";
 
 /** يجلب مستند مستخدم الخبرة أو ينشئه إن لم يكن موجوداً */
 async function getOrCreateLevelUser(guildId: string, userId: string): Promise<LiveDoc<ILevelUser>> {
@@ -191,7 +192,7 @@ export function startVoiceXpInterval(client: ExtendedClient): void {
           await awardXp(member, doc, gConfig.leveling.xpPerVoiceMinute, gConfig, null);
         }
       } catch (err) {
-        console.error(`❌ خطأ أثناء منح خبرة الصوت لسيرفر ${guild.id}:`, err);
+        logError("xp-voice", err);
       }
     }
   }, 60_000);

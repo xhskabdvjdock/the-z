@@ -1,6 +1,7 @@
 "use server";
 
 import { requireGuildAdmin } from "@/lib/guildAccess";
+import { logError } from "@/lib/logger";
 import { ensureDb } from "@/lib/db";
 import { getGuildInfo, getGuildRoles, getGuildChannels } from "@/lib/discord";
 import { GuildConfig, ServerBackup, BackupOptions } from "@thez/shared";
@@ -110,7 +111,7 @@ export async function createBackup(guildId: string, options: BackupOptions = {
 
     return backup;
   } catch (error) {
-    console.error("Error creating backup:", error);
+    logError("backup/create", error);
     throw error;
   }
 }

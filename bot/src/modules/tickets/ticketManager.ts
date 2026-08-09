@@ -25,6 +25,7 @@ import { config } from "../../config";
 import { ComponentRouter } from "../../handlers/componentRouter";
 import { buildMessageFromCustom } from "../../utils/embed";
 import { getGuildConfig } from "../../utils/guildConfig";
+import { logError } from "../../utils/logger";
 
 type TicketAnswer = { question: string; answer: string };
 
@@ -544,7 +545,7 @@ export async function closeTicket(
       }
     }
   } catch (err) {
-    console.error("❌ فشل إنشاء أو إرسال سجل محادثة التذكرة:", err);
+    logError("ticket-transcript", err);
   }
 
   setTimeout(() => {

@@ -5,6 +5,8 @@ import { buildSlashContext } from "../utils/context";
 import { getGuildConfig } from "../utils/guildConfig";
 import { checkCommandPermission } from "../utils/permissions";
 import { buildMessageFromCustom } from "../utils/embed";
+import { applyCommandCooldown, checkCommandCooldown } from "../utils/cooldown";
+import { logError } from "../utils/logger";
 
 const event: BotEvent = {
   name: "interactionCreate",
@@ -47,6 +49,22 @@ const event: BotEvent = {
           return;
         }
 
+        const cdCheck = checkCommandCooldown(
+          client,
+          command,
+          interaction.guild.id,
+          interaction.user.id,
+          override
+        );
+        if (!cdCheck.allowed) {
+          await interaction.reply({
+            content: `⏳ هذا الأمر قيد البرودة — انتظر ${cdCheck.remainingSeconds} ثانية تقريبًا.`,
+            ephemeral: true
+          });
+          return;
+        }
+        applyCommandCooldown(client, command, interaction.guild.id, interaction.user.id, override);
+
         if (override?.customResponse?.enabled) {
           const payload = buildMessageFromCustom(override.customResponse, {
             user: {
@@ -87,7 +105,7 @@ const event: BotEvent = {
         return;
       }
     } catch (err) {
-      console.error("خطأ أثناء معالجة التفاعل:", err);
+      logError("interaction", err);
       const errorEmbed = new EmbedBuilder()
         .setColor(0xed4245)
         .setDescription("❌ حدث خطأ غير متوقع أثناء تنفيذ هذا الإجراء.");

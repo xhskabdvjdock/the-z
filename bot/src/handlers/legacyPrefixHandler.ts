@@ -4,13 +4,28 @@ import { AfkUser, JailUser } from "@thez/shared";
 import { getGuildConfig } from "../utils/guildConfig";
 import { config } from "../config";
 import translate from "translate";
+import { releaseJailedMember } from "../modules/jail/expiry";
+import { recordModerationLog } from "../modules/moderation/auditLog";
 
 // ضبط محرك الترجمة
 translate.engine = "google";
 
-// ذاكرة مؤقتة للترجمات
+// ذاكرة مؤقتة للترجمات — محدودة الحجم لمنع نمو غير محدود
 const translationCache = new Map<string, { text: string; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+const CACHE_MAX_ENTRIES = 500;
+
+function cacheSet(key: string, value: { text: string; timestamp: number }): void {
+  if (translationCache.size >= CACHE_MAX_ENTRIES) {
+    const oldest = translationCache.keys().next().value;
+    if (oldest !== undefined) translationCache.delete(oldest);
+    const now = Date.now();
+    for (const [k, v] of translationCache) {
+      if (now - v.timestamp >= CACHE_DURATION) translationCache.delete(k);
+    }
+  }
+  translationCache.set(key, value);
+}
 
 /**
  * يعالج الأوامر ذات البادئة الثابتة (`,tr | ,afk | ,avatar | ,banner | ,jail | ,unjail`).
@@ -65,7 +80,7 @@ export async function handleLegacyPrefixCommands(
       }
 
       const finalText = translated.length > 4096 ? translated.substring(0, 4093) + "..." : translated;
-      translationCache.set(cacheKey, { text: translated, timestamp: now });
+      cacheSet(cacheKey, { text: translated, timestamp: now });
 
       await message.reply({
         embeds: [new EmbedBuilder().setColor(config.defaultColor).setDescription(finalText)]
@@ -202,6 +217,12 @@ export async function handleLegacyPrefixCommands(
   if (content.startsWith(",jail") && !content.startsWith(",unjail")) {
     const args = content.slice(5).trim().split(/\s+/);
     const targetId = args[0]?.replace(/[<@!>]/g, "");
+    const durationMinutes = Number.parseInt(args[1] ?? "", 10);
+
+    if (durationMinutes && (isNaN(durationMinutes) || durationMinutes < 1)) {
+      await message.reply("Duration must be a positive number of minutes.");
+      return true;
+    }
 
     if (!targetId) {
       await message.reply("Please specify a user to jail.");
@@ -214,8 +235,28 @@ export async function handleLegacyPrefixCommands(
       return true;
     }
 
+    const gConfig = await getGuildConfig(client, message.guild!.id);
+
     if (!message.member?.permissions.has("Administrator")) {
       await message.reply("Only administrators can use this command.");
+      return true;
+    }
+
+    if (targetMember.id === message.author.id) {
+      await message.reply("You cannot jail yourself.");
+      return true;
+    }
+
+    if (targetMember.id === message.guild!.ownerId) {
+      await message.reply("You cannot jail the server owner.");
+      return true;
+    }
+
+    if (
+      message.guild!.ownerId !== message.author.id &&
+      targetMember.roles.highest.position >= message.member!.roles.highest.position
+    ) {
+      await message.reply("You cannot jail a member with an equal or higher role than yours.");
       return true;
     }
 
@@ -224,7 +265,12 @@ export async function handleLegacyPrefixCommands(
       return true;
     }
 
-    const gConfig = await getGuildConfig(client, message.guild!.id);
+    if (!targetMember.roles.cache.hasAny(...(gConfig.jail?.removeRoles ?? [])) && !targetMember.manageable) {
+      // لا أستطيع تعديل رتب هذا العضو (رتبته أعلى من رتب البوت) — صدّ بشكل واضح وغير صامت
+      await message.reply("I do not have permission to jail this member (role hierarchy).");
+      return true;
+    }
+
     if (!gConfig.jail?.enabled || !gConfig.jail.roleId) {
       await message.reply("Jail system is not configured.");
       return true;
@@ -256,10 +302,21 @@ export async function handleLegacyPrefixCommands(
       guildId: message.guild!.id,
       originalRoles: currentRoles,
       jailedBy: message.author.id,
-      jailedAt: new Date()
+      jailedAt: new Date(),
+      ...(durationMinutes > 0 ? { jailedUntil: new Date(Date.now() + durationMinutes * 60_000) } : {})
     });
 
-    await message.reply(`Successfully jailed ${targetMember.user.tag}.`);
+    const durationText = durationMinutes > 0 ? ` for ${durationMinutes} minute(s)` : "";
+    await message.reply(`Successfully jailed ${targetMember.user.tag}${durationText}.`);
+
+    await recordModerationLog({
+      guildId: message.guild!.id,
+      userId: targetId,
+      moderatorId: message.author.id,
+      action: "jail",
+      reason: "prefix jail",
+      ...(durationMinutes > 0 ? { durationMinutes } : {})
+    });
     return true;
   }
 
@@ -284,6 +341,34 @@ export async function handleLegacyPrefixCommands(
       return true;
     }
 
+    if (targetMember.id === message.author.id) {
+      await message.reply("You cannot unjail yourself.");
+      return true;
+    }
+
+    if (targetMember.id === message.guild!.ownerId) {
+      await message.reply("You cannot unjail the server owner.");
+      return true;
+    }
+
+    if (
+      message.guild!.ownerId !== message.author.id &&
+      targetMember.roles.highest.position >= message.member!.roles.highest.position
+    ) {
+      await message.reply("You cannot unjail a member with an equal or higher role than yours.");
+      return true;
+    }
+
+    if (targetMember.permissions.has("Administrator")) {
+      await message.reply("Cannot unjail administrators.");
+      return true;
+    }
+
+    if (!targetMember.manageable) {
+      await message.reply("I do not have permission to unjail this member (role hierarchy).");
+      return true;
+    }
+
     const gConfig = await getGuildConfig(client, message.guild!.id);
     if (!gConfig.jail?.enabled || !gConfig.jail.roleId) {
       await message.reply("Jail system is not configured.");
@@ -302,21 +387,18 @@ export async function handleLegacyPrefixCommands(
       return true;
     }
 
-    await targetMember.roles.remove(jailRole).catch(() => null);
-
-    // استعادة الرولات القديمة دفعة واحدة بدلاً من حلقة
-    const guild = message.guild!;
-    const rolesToRestore = (jailRecord.originalRoles as string[]).flatMap((id) => {
-      const role = guild.roles.cache.get(id);
-      return role ? [role] : [];
-    });
-
-    if (rolesToRestore.length > 0) {
-      await targetMember.roles.add(rolesToRestore).catch(() => null);
-    }
+    await releaseJailedMember(message.guild!, gConfig, jailRecord, targetMember);
 
     await JailUser.deleteOne({ userId: targetId, guildId: message.guild!.id });
     await message.reply(`Successfully unjailed ${targetMember.user.tag}.`);
+
+    await recordModerationLog({
+      guildId: message.guild!.id,
+      userId: targetId,
+      moderatorId: message.author.id,
+      action: "unjail",
+      reason: "prefix unjail"
+    });
     return true;
   }
 

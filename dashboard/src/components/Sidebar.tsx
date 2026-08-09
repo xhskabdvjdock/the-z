@@ -17,7 +17,8 @@ import {
   FileText, 
   Settings,
   UserX,
-  Database
+  Database,
+  ScrollText
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -32,6 +33,7 @@ const NAV_ITEMS = [
   { href: "/automod", label: "الرقابة التلقائية", icon: Shield },
   { href: "/antinuke", label: "مكافحة الغزو", icon: ShieldAlert },
   { href: "/jail", label: "نظام السجن", icon: UserX },
+  { href: "/moderation", label: "سجل الإشراف", icon: ScrollText },
   { href: "/captcha", label: "نظام التحقق", icon: Lock },
   { href: "/logging", label: "السجلات", icon: FileText },
   { href: "/backup", label: "النسخ الاحتياطي", icon: Database },

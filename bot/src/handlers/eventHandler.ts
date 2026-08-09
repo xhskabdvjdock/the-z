@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { ExtendedClient } from "../client";
 import { BotEvent } from "../types/event";
+import { logError } from "../utils/logger";
 
 export function loadEvents(client: ExtendedClient) {
   const eventsDir = path.join(__dirname, "..", "events");
@@ -14,10 +15,17 @@ export function loadEvents(client: ExtendedClient) {
     const event: BotEvent = imported.default ?? imported;
     if (!event?.name) continue;
 
+    /** تنفيذ آمن بحيث لا يسقط خطأ أي حدث العملية كاملة (ويسجل ذكيًا دون كشف الأسرار) */
+    const safeExecute = (...args: unknown[]) => {
+      Promise.resolve()
+        .then(() => event.execute(client, ...args))
+        .catch((err) => logError(`event:${event.name}`, err));
+    };
+
     if (event.once) {
-      client.once(event.name, (...args) => event.execute(client, ...args));
+      client.once(event.name, safeExecute as any);
     } else {
-      client.on(event.name, (...args) => event.execute(client, ...args));
+      client.on(event.name, safeExecute as any);
     }
   }
 

@@ -2,6 +2,7 @@ import { BaseMessageOptions, EmbedBuilder } from "discord.js";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { config as botConfig } from "../../config";
+import { logError } from "../../utils/logger";
 
 export type LogChannelKey =
   | "moderation"
@@ -39,6 +40,6 @@ export async function sendLog(
 
     await (channel as any).send({ embeds: [embed], ...extra });
   } catch (err) {
-    console.error("خطأ أثناء إرسال سجل:", err);
+    logError("send-log", err);
   }
 }
