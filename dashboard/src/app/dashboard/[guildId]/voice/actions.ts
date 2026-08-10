@@ -23,3 +23,21 @@ export async function saveVoiceConfig(guildId: string, data: IGuildConfig["tempV
     throw error;
   }
 }
+
+export async function saveAlwaysVoiceConfig(guildId: string, data: IGuildConfig["alwaysVoice"]) {
+  try {
+    await requireGuildAdmin(guildId);
+    await ensureDb();
+
+    await GuildConfig.findOneAndUpdate(
+      { guildId },
+      { $set: { alwaysVoice: data } },
+      { upsert: true }
+    );
+
+    revalidatePath(`/dashboard/${guildId}/voice`);
+  } catch (error) {
+    logError("voice/always-save", error);
+    throw error;
+  }
+}

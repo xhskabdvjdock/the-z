@@ -160,6 +160,12 @@ export interface IGuildConfig {
     controlPanelMessageId?: string;
   };
 
+  /** البوت مقيم دائمًا في روم صوتي محدد — يُضبط من الداشبورد */
+  alwaysVoice: {
+    enabled: boolean;
+    channelId?: string;
+  };
+
   colors: {
     enabled: boolean;
     panelChannelId?: string;
@@ -360,6 +366,10 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       enabled: false,
       defaultUserLimit: 0,
       nameTemplate: "روم {user}"
+    },
+
+    alwaysVoice: {
+      enabled: false
     },
 
     colors: {
