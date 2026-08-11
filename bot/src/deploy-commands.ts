@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { config } from "./config";
 import { BotCommand } from "./types/command";
 import { buildSlashCommandJSON } from "./utils/slashBuilder";
+import { buildContextMenuJSON } from "./utils/contextMenuBuilder";
 import dns from "node:dns";
 
 dns.setDefaultResultOrder("ipv4first");
@@ -59,6 +60,18 @@ async function main() {
     if (!command?.name) continue;
     console.log(`➕ Adding command: ${command.name}`);
     payload.push(buildSlashCommandJSON(command));
+  }
+
+  // أوامر قائمة السياق (زر الفأرة الأيمن) من مجلد contextMenus/
+  const contextDir = path.join(__dirname, "contextMenus");
+  if (fs.existsSync(contextDir)) {
+    for (const file of walk(contextDir)) {
+      const imported = require(file);
+      const contextMenu = imported.default ?? imported;
+      if (!contextMenu?.name) continue;
+      console.log(`➕ Adding context menu: ${contextMenu.name}`);
+      payload.push(buildContextMenuJSON(contextMenu));
+    }
   }
 
   console.log(`📤 Deploying ${payload.length} commands...`);

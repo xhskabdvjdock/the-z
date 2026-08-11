@@ -90,6 +90,17 @@ const event: BotEvent = {
         return;
       }
 
+      if (interaction.isMessageContextMenuCommand()) {
+        const contextMenu = client.contextMenus.get(interaction.commandName);
+        if (!contextMenu) return;
+        if (!interaction.guild || !interaction.member) {
+          await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+          return;
+        }
+        await contextMenu.run(client, interaction);
+        return;
+      }
+
       if (interaction.isButton()) {
         await componentRouter.dispatchButton(interaction, client);
         return;

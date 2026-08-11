@@ -1,9 +1,13 @@
 import { Client, Collection, GatewayIntentBits, Partials } from "discord.js";
 import { createCooldownStore, CooldownStore } from "@thez/shared";
 import { BotCommand } from "./types/command";
+import { BotContextMenu } from "./types/contextMenu";
 
 export class ExtendedClient extends Client {
   commands: Collection<string, BotCommand> = new Collection();
+
+  /** أوامر قائمة السياق (زر الفأرة الأيمن) — رسائل حاليًا */
+  contextMenus: Collection<string, BotContextMenu> = new Collection();
 
   /**
    * مخزن البرودة الموحّد. التنفيذ Hybrid: كتابة محلية فورية + تمرير إلى Redis

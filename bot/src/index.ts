@@ -2,6 +2,7 @@ import { connectDatabase, closeDatabase } from "@thez/shared";
 import { ExtendedClient } from "./client";
 import { config } from "./config";
 import { loadCommands } from "./handlers/commandHandler";
+import { loadContextMenus } from "./handlers/contextMenuHandler";
 import { loadEvents } from "./handlers/eventHandler";
 import { registerAllModules } from "./modules";
 import { logError, logInfo, sanitizeError } from "./utils/logger";
@@ -49,6 +50,7 @@ async function bootstrap() {
   });
 
   loadCommands(client);
+  loadContextMenus(client);
   loadEvents(client);
   registerAllModules(client);
 
