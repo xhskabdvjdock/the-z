@@ -142,27 +142,33 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   // الكتلة النصية في منتصف العمود الأيمن عموديًا
   const textStartY = Math.max(90, (height - textBlockHeight) / 2 - 10);
 
-  ctx.textAlign = "left";
+  // توسيط أفقي لكل سطر داخل الثلثين الأيمنين
+  const rightArea = WIDTH - AVATAR_COLUMN;
+  const centerX = (line: string, measure: SKRSContext2D) =>
+    AVATAR_COLUMN + (rightArea - measure.measureText(line).width) / 2;
+
   ctx.textBaseline = "top";
 
   // النص الرئيسي — أبيض كبير
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `bold ${MAIN_FONT_SIZE}px "${fontName}"`;
   lines.forEach((line, i) => {
-    ctx.fillText(line, TEXT_X, textStartY + i * MAIN_LINE_HEIGHT);
+    ctx.fillText(line, centerX(line, ctx), textStartY + i * MAIN_LINE_HEIGHT);
   });
 
   // اسم الشخص — تحت النص مباشرة
   const nameY = textStartY + lines.length * MAIN_LINE_HEIGHT + 24;
+  const displayText = truncateOneLine(ctx, options.displayName || options.username, TEXT_MAX_WIDTH);
   ctx.fillStyle = "#E8EAED";
   ctx.font = `bold ${NAME_FONT_SIZE}px "${fontName}"`;
-  ctx.fillText(truncateOneLine(ctx, options.displayName || options.username, TEXT_MAX_WIDTH), TEXT_X, nameY);
+  ctx.fillText(displayText, centerX(displayText, ctx), nameY);
 
   // @اليوزر — رمادي صغير تحت الاسم
   const usernameY = nameY + NAME_FONT_SIZE + 18;
+  const usernameText = `@${truncateOneLine(ctx, options.username, TEXT_MAX_WIDTH)}`;
   ctx.fillStyle = "#8E9297";
   ctx.font = `${USERNAME_FONT_SIZE}px "${fontName}"`;
-  ctx.fillText(`@${truncateOneLine(ctx, options.username, TEXT_MAX_WIDTH)}`, TEXT_X, usernameY);
+  ctx.fillText(usernameText, centerX(usernameText, ctx), usernameY);
 
   return canvas.toBuffer("image/png");
 }
