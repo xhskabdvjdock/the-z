@@ -1,8 +1,17 @@
 /** القائمة المرجعية لكل الأوامر المتاحة في البوت (تُستخدم لتهيئة لوحة إدارة الأوامر) */
 export interface CommandMeta {
   name: string;
-  category: "عام" | "إشراف" | "تذاكر" | "رومات صوتية" | "مستويات" | "رولات";
+  category:
+    | "عام"
+    | "إشراف"
+    | "تذاكر"
+    | "رومات صوتية"
+    | "مستويات"
+    | "رولات"
+    | "قوائم سياق";
   descriptionAr: string;
+  /** نوع الأمر: /slash (افتراضي) أو قائمة سياق (زر الفأرة الأيمن) */
+  type?: "slash" | "context-menu";
 }
 
 export const DEFAULT_COMMANDS: CommandMeta[] = [
@@ -16,6 +25,7 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
   { name: "suggest", category: "عام", descriptionAr: "إرسال اقتراح" },
   { name: "poll", category: "عام", descriptionAr: "إنشاء استبيان تصويت" },
   { name: "afk", category: "عام", descriptionAr: "تعيين حالة AFK" },
+  { name: "translate", category: "عام", descriptionAr: "ترجمة نص إلى لغة أخرى" },
 
   { name: "ban", category: "إشراف", descriptionAr: "حظر عضو" },
   { name: "unban", category: "إشراف", descriptionAr: "فك حظر عضو" },
@@ -28,6 +38,7 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
   { name: "lock", category: "إشراف", descriptionAr: "قفل الروم" },
   { name: "unlock", category: "إشراف", descriptionAr: "فتح الروم" },
   { name: "slowmode", category: "إشراف", descriptionAr: "تحديد وضع البطيء" },
+  { name: "setup-logs", category: "إشراف", descriptionAr: "إنشاء رومات اللوق تلقائيًا" },
 
   { name: "ticket-panel", category: "تذاكر", descriptionAr: "إرسال لوحة فتح التذاكر" },
   { name: "ticket-add", category: "تذاكر", descriptionAr: "إضافة عضو للتذكرة" },
@@ -39,5 +50,14 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
   { name: "setlevel", category: "مستويات", descriptionAr: "تعديل مستوى عضو" },
 
   { name: "colors-panel", category: "رولات", descriptionAr: "إرسال قائمة الألوان" },
-  { name: "selfrole-panel", category: "رولات", descriptionAr: "إرسال لوحة الرتب الذاتية" }
+  { name: "selfrole-panel", category: "رولات", descriptionAr: "إرسال لوحة الرتب الذاتية" },
+
+  { name: "voice-setup", category: "رومات صوتية", descriptionAr: "إرسال لوحة إنشاء الرومات الصوتية المؤقتة" },
+
+  {
+    name: "Text Image",
+    category: "قوائم سياق",
+    type: "context-menu",
+    descriptionAr: "زر الفأرة الأيمن: إنشاء صورة من نص الرسالة"
+  }
 ];

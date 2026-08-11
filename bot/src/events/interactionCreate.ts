@@ -97,6 +97,57 @@ const event: BotEvent = {
           await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
           return;
         }
+
+        // احترام إعدادات لوحة التحكم (تفعيل/تعطيل/صلاحيات/رد مخصص)
+        const gConfig = await getGuildConfig(client, interaction.guild.id);
+        const override = gConfig.commandOverrides?.find((c) => c.name === contextMenu.name);
+
+        if (override && !override.enabled) {
+          await interaction.reply({
+            content: "This command is disabled in this server.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        if (override && override.slashEnabled === false) {
+          await interaction.reply({
+            content: "This command is disabled as a Context Menu in this server.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        if (override && override.customResponse?.enabled) {
+          const payload = buildMessageFromCustom(override.customResponse, {
+            user: {
+              id: interaction.user.id,
+              username: interaction.user.username,
+              tag: interaction.user.tag,
+              mention: `<@${interaction.user.id}>`,
+              avatarURL: interaction.user.displayAvatarURL()
+            },
+            server: {
+              name: interaction.guild.name,
+              id: interaction.guild.id,
+              memberCount: interaction.guild.memberCount,
+              iconURL: interaction.guild.iconURL() ?? undefined
+            }
+          });
+          await interaction.reply(payload as InteractionReplyOptions);
+          return;
+        }
+
+        const permCheck = checkCommandPermission(
+          override,
+          interaction.member as GuildMember,
+          interaction.channelId
+        );
+        if (!permCheck.allowed) {
+          await interaction.reply({ content: permCheck.reason, ephemeral: true });
+          return;
+        }
+
         await contextMenu.run(client, interaction);
         return;
       }

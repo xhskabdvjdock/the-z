@@ -34,7 +34,12 @@ export default async function CommandsPage({ params }: { params: { guildId: stri
   const commands: CommandRow[] = DEFAULT_COMMANDS.map((meta) => {
     const existing = overrides.find((o) => o.name === meta.name);
     const override = existing ?? buildDefaultOverride(meta.name);
-    return { ...override, category: meta.category, descriptionAr: meta.descriptionAr };
+    return {
+      ...override,
+      category: meta.category,
+      descriptionAr: meta.descriptionAr,
+      type: meta.type
+    };
   });
 
   return (
