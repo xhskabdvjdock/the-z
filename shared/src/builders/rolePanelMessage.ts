@@ -75,7 +75,7 @@ export function buildRolePanelMessage(panel: ISelfRolePanel): RolePanelMessagePa
         type: 1,
         components: [
           {
-            type: 4,
+            type: 3,
             custom_id: `${SELECT_PREFIX}${panel.id}`,
             placeholder: "اختر رتبة أو أكثر...",
             min_values: panel.maxRoles && panel.maxRoles > 0 ? Math.min(panel.maxRoles, 25) : 0,
