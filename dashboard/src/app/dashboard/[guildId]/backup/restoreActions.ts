@@ -4,7 +4,7 @@ import { requireGuildAdmin } from "@/lib/guildAccess";
 import { ensureDb } from "@/lib/db";
 import { getGuildInfo } from "@/lib/discord";
 import { GuildConfig, ServerBackup, RestoreOptions } from "@thez/shared";
-import { logError } from "@/lib/logger";
+import { logAction, logError } from "@/lib/logger";
 
 function botHeaders() {
   return { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` };
@@ -18,13 +18,32 @@ export async function restoreBackup(guildId: string, backup: ServerBackup, optio
   restoreBotConfig: true
 }) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
 
     const guild = await getGuildInfo(guildId);
     if (!guild) {
       throw new Error("Guild not found");
     }
+
+    logAction({
+      label: "backup/restore",
+      guildId,
+      guildName: guild.name,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "بدء استعادة نسخة احتياطية",
+      details: {
+        backupTimestamp: backup.timestamp ?? null,
+        roles: backup.roles.length,
+        channels: backup.channels.length,
+        deleteExistingRoles: options.deleteExistingRoles,
+        deleteExistingChannels: options.deleteExistingChannels,
+        restoreRoles: options.restoreRoles,
+        restoreChannels: options.restoreChannels,
+        restoreBotConfig: options.restoreBotConfig
+      }
+    });
 
     // Step 1: Restore roles if requested
     if (options.restoreRoles && backup.roles.length > 0) {

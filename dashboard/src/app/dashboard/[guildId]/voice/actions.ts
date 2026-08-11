@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { GuildConfig, IGuildConfig } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
-import { logError } from "@/lib/logger";
+import { logAction, logError, summarizeConfig } from "@/lib/logger";
 
 export async function saveVoiceConfig(guildId: string, data: IGuildConfig["tempVoice"]) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
 
     await GuildConfig.findOneAndUpdate(
@@ -16,6 +16,15 @@ export async function saveVoiceConfig(guildId: string, data: IGuildConfig["tempV
       { $set: { tempVoice: data } },
       { upsert: true }
     );
+
+    logAction({
+      label: "voice/save",
+      guildId,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "حفظ إعدادات الرومات الصوتية المؤقتة",
+      details: summarizeConfig(data as unknown as Record<string, unknown>)
+    });
 
     revalidatePath(`/dashboard/${guildId}/voice`);
   } catch (error) {
@@ -26,7 +35,7 @@ export async function saveVoiceConfig(guildId: string, data: IGuildConfig["tempV
 
 export async function saveAlwaysVoiceConfig(guildId: string, data: IGuildConfig["alwaysVoice"]) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
 
     await GuildConfig.findOneAndUpdate(
@@ -34,6 +43,15 @@ export async function saveAlwaysVoiceConfig(guildId: string, data: IGuildConfig[
       { $set: { alwaysVoice: data } },
       { upsert: true }
     );
+
+    logAction({
+      label: "voice/always-save",
+      guildId,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "حفظ إعدادات الرومات الصوتية الدائمة",
+      details: summarizeConfig(data as unknown as Record<string, unknown>)
+    });
 
     revalidatePath(`/dashboard/${guildId}/voice`);
   } catch (error) {

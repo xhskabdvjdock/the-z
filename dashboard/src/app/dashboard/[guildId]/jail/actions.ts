@@ -4,7 +4,7 @@ import { requireGuildAdmin } from "@/lib/guildAccess";
 import { ensureDb } from "@/lib/db";
 import { GuildConfig } from "@thez/shared";
 import { revalidatePath } from "next/cache";
-import { logError } from "@/lib/logger";
+import { logAction, logError, summarizeConfig } from "@/lib/logger";
 
 export async function saveJailConfig(guildId: string, data: {
   enabled: boolean;
@@ -13,7 +13,7 @@ export async function saveJailConfig(guildId: string, data: {
   allowAdminBypass: boolean;
 }) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
 
     await GuildConfig.findOneAndUpdate(
@@ -21,6 +21,15 @@ export async function saveJailConfig(guildId: string, data: {
       { $set: { jail: data } },
       { upsert: true }
     );
+
+    logAction({
+      label: "jail/save",
+      guildId,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "حفظ إعدادات الجايل",
+      details: summarizeConfig(data as unknown as Record<string, unknown>)
+    });
 
     revalidatePath(`/dashboard/${guildId}/jail`);
   } catch (error) {

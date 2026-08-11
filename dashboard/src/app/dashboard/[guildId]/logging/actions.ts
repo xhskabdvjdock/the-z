@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { GuildConfig, IGuildConfig } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
-import { logError } from "@/lib/logger";
+import { logAction, logError, summarizeConfig } from "@/lib/logger";
 
 export async function saveLoggingConfig(guildId: string, data: IGuildConfig["logging"]) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
 
     // تحويل strings إلى arrays للحقول القديمة
@@ -23,6 +23,19 @@ export async function saveLoggingConfig(guildId: string, data: IGuildConfig["log
     };
 
     await GuildConfig.findOneAndUpdate({ guildId }, { $set: { logging: processedData } }, { upsert: true });
+
+    logAction({
+      label: "logging/save",
+      guildId,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "حفظ إعدادات اللوغات",
+      details: {
+        enabled: processedData.enabled,
+        channels: summarizeConfig(processedData.channels as Record<string, unknown>),
+        customChannels: summarizeConfig(processedData.customChannels as Record<string, unknown>)
+      }
+    });
 
     revalidatePath(`/dashboard/${guildId}/logging`);
   } catch (error) {
