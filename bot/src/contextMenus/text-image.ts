@@ -5,26 +5,24 @@ import { BotContextMenu } from "../types/contextMenu";
 import { ensureFontLoaded } from "../utils/fonts";
 import { logError } from "../utils/logger";
 
-// ─── أبعاد التصميم (مقربة من التصميم المرجعي) ───────────────────────────────
+// ─── أبعاد التصميم ──────────────────────────────────────────────────────────
 const WIDTH = 1000;
-const PAD = 80;
-const AVATAR_SIZE = 300;
-const AVATAR_X = PAD;
-const AVATAR_Y = PAD;
-const RING_COLOR = "#26262B";
-const TEXT_X = AVATAR_X + AVATAR_SIZE + 70;
-const TEXT_MAX_WIDTH = WIDTH - TEXT_X - PAD;
-const MAIN_FONT_SIZE = 54;
-const MAIN_LINE_HEIGHT = 78;
+// الأفاتار يملأ الثلث الأيسر كاملًا من الأعلى للأسفل (غير دائري)
+const AVATAR_COLUMN = Math.round(WIDTH / 3);
+const TEXT_PAD = 70;
+const TEXT_X = AVATAR_COLUMN + TEXT_PAD;
+const TEXT_MAX_WIDTH = WIDTH - TEXT_X - TEXT_PAD;
+const MAIN_FONT_SIZE = 50;
+const MAIN_LINE_HEIGHT = 72;
 const MAX_TEXT_LINES = 6;
-const INFO_FONT_SIZE = 30;
+const NAME_FONT_SIZE = 34;
 const USERNAME_FONT_SIZE = 26;
-const MIN_HEIGHT = 480;
+const MIN_HEIGHT = 500;
 
 interface RenderOptions {
   avatarUrl: string;
   mainText: string;
-  infoText: string;
+  displayName: string;
   username: string;
 }
 
@@ -70,35 +68,29 @@ function truncateOneLine(ctx: SKRSContext2D, text: string, maxWidth: number): st
   return t;
 }
 
-/** يرسم الأفاتار مقصوصًا دائريًا مع حلقة خارجية خفيفة */
+/** يرسم الأفاتار معبئًا العمود الأيسر كاملًا (cover) — مقصوص من الوسط */
 async function drawAvatar(
   ctx: SKRSContext2D,
   avatarUrl: string,
   x: number,
   y: number,
-  size: number
+  width: number,
+  height: number
 ): Promise<void> {
-  const radius = size / 2;
-  const centerX = x + radius;
-  const centerY = y + radius;
-
-  ctx.strokeStyle = RING_COLOR;
-  ctx.lineWidth = 7;
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, radius + 6, 0, Math.PI * 2);
-  ctx.stroke();
-
   ctx.save();
   ctx.beginPath();
-  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-  ctx.closePath();
+  ctx.rect(x, y, width, height);
   ctx.clip();
   try {
     const avatar = await loadImage(avatarUrl);
-    ctx.drawImage(avatar, x, y, size, size);
+    // أبعاد تغطي المستطيل بالكامل دون تشويه
+    const scale = Math.max(width / avatar.width, height / avatar.height);
+    const drawW = avatar.width * scale;
+    const drawH = avatar.height * scale;
+    ctx.drawImage(avatar, x + (width - drawW) / 2, y + (height - drawH) / 2, drawW, drawH);
   } catch {
     ctx.fillStyle = "#1A1C23";
-    ctx.fillRect(x, y, size, size);
+    ctx.fillRect(x, y, width, height);
   }
   ctx.restore();
 }
@@ -112,18 +104,10 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   measureCtx.font = `bold ${MAIN_FONT_SIZE}px "${fontName}"`;
   const lines = truncateLines(measureCtx, options.mainText || "…", TEXT_MAX_WIDTH, MAX_TEXT_LINES);
 
-  const textStartY = AVATAR_Y + 36;
-  const mainTextHeight = lines.length * MAIN_LINE_HEIGHT;
-  const infoY = textStartY + mainTextHeight + 34;
-  const usernameY = infoY + INFO_FONT_SIZE + 26;
-  const textBottom = usernameY + USERNAME_FONT_SIZE + 30;
-  const avatarBottom = AVATAR_Y + AVATAR_SIZE;
+  const textBlockHeight =
+    lines.length * MAIN_LINE_HEIGHT + 24 + NAME_FONT_SIZE + 18 + USERNAME_FONT_SIZE;
 
-  const height = Math.max(
-    textBottom + PAD,
-    avatarBottom + PAD,
-    MIN_HEIGHT
-  );
+  const height = Math.max(MIN_HEIGHT, textBlockHeight + 180);
 
   // 2) الرسم الفعلي
   const canvas = createCanvas(WIDTH, height);
@@ -132,7 +116,11 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, WIDTH, height);
 
-  await drawAvatar(ctx, options.avatarUrl, AVATAR_X, AVATAR_Y, AVATAR_SIZE);
+  // الأفاتار على الثلث الأيسر كاملًا
+  await drawAvatar(ctx, options.avatarUrl, 0, 0, AVATAR_COLUMN, height);
+
+  // الكتلة النصية في منتصف العمود الأيمن عموديًا
+  const textStartY = Math.max(90, (height - textBlockHeight) / 2 - 10);
 
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
@@ -144,30 +132,19 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
     ctx.fillText(line, TEXT_X, textStartY + i * MAIN_LINE_HEIGHT);
   });
 
-  // المعلومات الإضافية — أصغر ورمادي فاتح
-  ctx.fillStyle = "#9AA0A6";
-  ctx.font = `${INFO_FONT_SIZE}px "${fontName}"`;
-  ctx.fillText(truncateOneLine(ctx, options.infoText, TEXT_MAX_WIDTH), TEXT_X, infoY);
+  // اسم الشخص — تحت النص مباشرة
+  const nameY = textStartY + lines.length * MAIN_LINE_HEIGHT + 24;
+  ctx.fillStyle = "#E8EAED";
+  ctx.font = `bold ${NAME_FONT_SIZE}px "${fontName}"`;
+  ctx.fillText(truncateOneLine(ctx, options.displayName || options.username, TEXT_MAX_WIDTH), TEXT_X, nameY);
 
-  // الاسم المستعار — صغير ورمادي
-  ctx.fillStyle = "#7F8288";
+  // @اليوزر — رمادي صغير تحت الاسم
+  const usernameY = nameY + NAME_FONT_SIZE + 18;
+  ctx.fillStyle = "#8E9297";
   ctx.font = `${USERNAME_FONT_SIZE}px "${fontName}"`;
   ctx.fillText(`@${truncateOneLine(ctx, options.username, TEXT_MAX_WIDTH)}`, TEXT_X, usernameY);
 
   return canvas.toBuffer("image/png");
-}
-
-/** صياغة التاريخ بالعربية مع بديل آمن */
-function formatJoinDate(timestamp: number): string {
-  try {
-    return new Date(timestamp).toLocaleDateString("ar", {
-      year: "numeric",
-      month: "long",
-      day: "numeric"
-    });
-  } catch {
-    return new Date(timestamp).toLocaleDateString();
-  }
 }
 
 const command: BotContextMenu = {
@@ -185,16 +162,14 @@ const command: BotContextMenu = {
         return;
       }
 
-      // معلومات إضافية عن صاحب الرسالة (بدون تعديل أي نظام قائم — قراءة فقط)
-      let infoText = author.username;
+      // اسم العرض: من العضو إن أمكن وإلا الاسم العالمي
+      let displayName = author.globalName ?? author.username;
       if (interaction.guild) {
         try {
           const member = await interaction.guild.members.fetch(author.id);
-          const joined = formatJoinDate(member.joinedTimestamp ?? Date.now());
-          const rolesCount = Math.max(member.roles.cache.size - 1, 0);
-          infoText = `انضم في ${joined} • ${rolesCount} ${rolesCount === 1 ? "رتبة" : "رتب"}`;
+          displayName = member.displayName || displayName;
         } catch {
-          // العضو خارج السيرفر — نكتفي بالاسم
+          // العضو خارج السيرفر — نكتفي بالاسم العالمي
         }
       }
 
@@ -204,7 +179,7 @@ const command: BotContextMenu = {
       const buffer = await renderTextImage({
         avatarUrl,
         mainText,
-        infoText,
+        displayName,
         username: author.username
       });
 
