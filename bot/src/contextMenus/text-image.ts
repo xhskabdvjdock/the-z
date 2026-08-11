@@ -18,10 +18,10 @@ const MAX_TEXT_LINES = 6;
 const NAME_FONT_SIZE = 34;
 const USERNAME_FONT_SIZE = 26;
 const MIN_HEIGHT = 500;
-// ميل البطاقة (بالراديان) — 4 درجات عكس عقارب الساعة
-const CARD_TILT_RAD = -(4 * Math.PI) / 180;
+// ميل صورة البروفايل فقط (بالراديان) — النص يبقى مستقيمًا
+const AVATAR_TILT_RAD = -(4 * Math.PI) / 180;
 // عرض منطقة الدمج التدريجي بين صورة الأفاتار والخلفية السوداء
-const FADE_WIDTH = 140;
+const FADE_WIDTH = 260;
 
 interface RenderOptions {
   avatarUrl: string;
@@ -72,7 +72,11 @@ function truncateOneLine(ctx: SKRSContext2D, text: string, maxWidth: number): st
   return t;
 }
 
-/** يرسم الأفاتار معبئًا العمود الأيسر كاملًا (cover) — مقصوص من الوسط */
+/**
+ * يرسم الأفاتار مملوءًا الثلث الأيسر كاملًا (من الأعلى للأسفل بلا فراغات)
+ * ومائلًا قليلًا حول مركز عموده — يتم تكبيره كي تبقى الأركان مغطاة بعد الميل،
+ * مع قصّ داخل حدود العمود حتى لا يتسرب للجانب النصي.
+ */
 async function drawAvatar(
   ctx: SKRSContext2D,
   avatarUrl: string,
@@ -87,11 +91,16 @@ async function drawAvatar(
   ctx.clip();
   try {
     const avatar = await loadImage(avatarUrl);
-    // أبعاد تغطي المستطيل بالكامل دون تشويه
-    const scale = Math.max(width / avatar.width, height / avatar.height);
-    const drawW = avatar.width * scale;
-    const drawH = avatar.height * scale;
-    ctx.drawImage(avatar, x + (width - drawW) / 2, y + (height - drawH) / 2, drawW, drawH);
+    const angle = AVATAR_TILT_RAD;
+    // تغطية كاملة + هامش يعوّض اتساع صندوق الصورة بعد الدوران
+    const cover =
+      Math.max(width / avatar.width, height / avatar.height) *
+      (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)) + 0.08);
+    const drawW = avatar.width * cover;
+    const drawH = avatar.height * cover;
+    ctx.translate(x + width / 2, y + height / 2);
+    ctx.rotate(angle);
+    ctx.drawImage(avatar, -drawW / 2, -drawH / 2, drawW, drawH);
   } catch {
     ctx.fillStyle = "#1A1C23";
     ctx.fillRect(x, y, width, height);
@@ -117,22 +126,13 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   const canvas = createCanvas(WIDTH, height);
   const ctx = canvas.getContext("2d");
 
-  // الخلفية سوداء بالكامل حول البطاقة المائلة
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, WIDTH, height);
 
-  // إمالة البطاقة حول مركزها — الخلفية السوداء تستر الزوايا البارزة
-  const cx = WIDTH / 2;
-  const cy = height / 2;
-  ctx.save();
-  ctx.translate(cx, cy);
-  ctx.rotate(CARD_TILT_RAD);
-  ctx.translate(-cx, -cy);
-
-  // الأفاتار على الثلث الأيسر كاملًا
+  // الأفاتار على الثلث الأيسر كاملًا ومائل — النص يبقى مستقيمًا
   await drawAvatar(ctx, options.avatarUrl, 0, 0, AVATAR_COLUMN, height);
 
-  // دمج تدريجي بين حافة الصورة والخلفية السوداء (Fade)
+  // دمج تدريجي أوسع بين حافة الصورة والخلفية السوداء (Fade)
   const fade = ctx.createLinearGradient(AVATAR_COLUMN - FADE_WIDTH, 0, AVATAR_COLUMN, 0);
   fade.addColorStop(0, "rgba(0, 0, 0, 0)");
   fade.addColorStop(1, "rgba(0, 0, 0, 1)");
@@ -163,8 +163,6 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   ctx.fillStyle = "#8E9297";
   ctx.font = `${USERNAME_FONT_SIZE}px "${fontName}"`;
   ctx.fillText(`@${truncateOneLine(ctx, options.username, TEXT_MAX_WIDTH)}`, TEXT_X, usernameY);
-
-  ctx.restore();
 
   return canvas.toBuffer("image/png");
 }
