@@ -251,14 +251,17 @@ export function validateRolePanel(
 export async function sendChannelMessage(
   channelId: string,
   payload: unknown
-): Promise<{ ok: boolean; status: number; id?: string }> {
+): Promise<{ ok: boolean; status: number; id?: string; error?: string }> {
   const res = await fetch(`${API_BASE}/channels/${channelId}/messages`, {
     method: "POST",
     headers: { ...botHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     cache: "no-store"
   });
-  if (!res.ok) return { ok: false, status: res.status };
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error: detail.slice(0, 500) };
+  }
   const data = (await res.json()) as { id: string };
   return { ok: true, status: res.status, id: data.id };
 }
@@ -267,14 +270,17 @@ export async function editChannelMessage(
   channelId: string,
   messageId: string,
   payload: unknown
-): Promise<{ ok: boolean; status: number; id?: string }> {
+): Promise<{ ok: boolean; status: number; id?: string; error?: string }> {
   const res = await fetch(`${API_BASE}/channels/${channelId}/messages/${messageId}`, {
     method: "PATCH",
     headers: { ...botHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify(payload),
     cache: "no-store"
   });
-  if (!res.ok) return { ok: false, status: res.status };
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    return { ok: false, status: res.status, error: detail.slice(0, 500) };
+  }
   const data = (await res.json()) as { id: string };
   return { ok: true, status: res.status, id: data.id };
 }

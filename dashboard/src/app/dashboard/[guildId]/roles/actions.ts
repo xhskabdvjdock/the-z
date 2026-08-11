@@ -90,7 +90,7 @@ export async function publishRolePanel(
       }
       if (editResult.status !== 404) {
         throw new Error(
-          `لا يمكن تحديث الرسالة المنشورة (HTTP ${editResult.status}) — تحقق من صلاحية البوت في القناة.`
+          `لا يمكن تحديث الرسالة المنشورة (HTTP ${editResult.status}) — تحقق من صلاحية البوت في القناة.${editResult.error ? `\n${editResult.error}` : ""}`
         );
       }
       // 404 = الرسالة حُذفت — نرسل رسالة جديدة أدناه
@@ -98,7 +98,9 @@ export async function publishRolePanel(
 
     const sendResult = await sendChannelMessage(panel.channelId, payload);
     if (!sendResult.ok || !sendResult.id) {
-      throw new Error(`فشل إرسال اللوحة في القناة (HTTP ${sendResult.status}).`);
+      throw new Error(
+        `فشل إرسال اللوحة في القناة (HTTP ${sendResult.status}).${sendResult.error ? `\n${sendResult.error}` : ""}`
+      );
     }
 
     await GuildConfig.findOneAndUpdate(
