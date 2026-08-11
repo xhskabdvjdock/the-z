@@ -1,4 +1,4 @@
-import { Message } from "discord.js";
+import { EmbedBuilder, Message } from "discord.js";
 import { BotEvent } from "../types/event";
 import { getGuildConfig } from "../utils/guildConfig";
 import { buildPrefixContext } from "../utils/context";
@@ -9,6 +9,7 @@ import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
 import { handleLegacyPrefixCommands } from "../handlers/legacyPrefixHandler";
 import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
+import { sendMediaLog } from "../modules/logging/logger";
 import { AfkUser } from "@thez/shared";
 
 const event: BotEvent = {
@@ -193,6 +194,36 @@ const event: BotEvent = {
 
     // 7) نظام الخبرة
     await handleMessageXp(client, message, gConfig);
+
+    // 8) تسجيل المرفقات المرسلة (صور/فيديوهات/ملفات) — يُرسل الملف نفسه لروم اللوق
+    if (message.attachments.size > 0) {
+      const media = [...message.attachments.values()].map((a) => ({
+        url: a.proxyURL || a.url,
+        name: a.name,
+        contentType: a.contentType,
+        size: a.size
+      }));
+
+      const embed = new EmbedBuilder()
+        .setColor(0x2ecc71)
+        .setTitle("📎 ملف جديد")
+        .setDescription(`بواسطة ${message.author.tag} \`${message.author.id}\``)
+        .addFields({
+          name: "القناة",
+          value: `<#${message.channelId}> \`${message.channelId}\``,
+          inline: true
+        });
+
+      if (message.content) {
+        embed.addFields({
+          name: "النص",
+          value: message.content.length > 1000 ? message.content.slice(0, 997) + "..." : message.content
+        });
+      }
+
+      embed.setFooter({ text: `Message ID: ${message.id}` });
+      await sendMediaLog(client, message.guild.id, "files", embed, media);
+    }
   }
 };
 

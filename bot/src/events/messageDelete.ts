@@ -1,6 +1,6 @@
 import { EmbedBuilder, Message, PartialMessage } from "discord.js";
 import { BotEvent } from "../types/event";
-import { sendLog } from "../modules/logging/logger";
+import { sendLog, sendMediaLog } from "../modules/logging/logger";
 
 const event: BotEvent = {
   name: "messageDelete",
@@ -22,15 +22,33 @@ const event: BotEvent = {
       embed.addFields({ name: "Message Content", value: "No text content (may contain image/file)" });
     }
 
-    if (message.attachments?.size > 0) {
-      const attachmentNames = message.attachments.map(a => a.name).join(", ");
+    const attachments = message.attachments?.size ? [...message.attachments.values()] : [];
+
+    if (attachments.length > 0) {
+      const attachmentNames = attachments.map(a => a.name).join(", ");
       embed.addFields({ name: "Attachments", value: attachmentNames, inline: true });
     }
 
     embed.setFooter({ text: `Message ID: ${message.id} | Author ID: ${message.author?.id || "Unknown"}` });
     embed.setTimestamp();
 
-    await sendLog(client, message.guild.id, "messages", embed);
+    // إن كان للمحذوفة مرفقات نعرفها (رسالة مخزنة في الكاش) نرسل الملفات نفسها
+    if (attachments.length > 0) {
+      await sendMediaLog(
+        client,
+        message.guild.id,
+        "messages",
+        embed,
+        attachments.map((a) => ({
+          url: a.proxyURL || a.url,
+          name: a.name,
+          contentType: a.contentType,
+          size: a.size
+        }))
+      );
+    } else {
+      await sendLog(client, message.guild.id, "messages", embed);
+    }
   }
 };
 

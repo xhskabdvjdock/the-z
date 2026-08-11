@@ -43,3 +43,44 @@ export async function sendLog(
     logError("send-log", err);
   }
 }
+
+export interface LogAttachmentRef {
+  url: string;
+  name: string;
+  contentType?: string | null;
+  size?: number;
+}
+
+const MAX_LOG_ATTACHMENTS = 3;
+const MAX_LOG_FILE_BYTES = 8 * 1024 * 1024;
+
+/**
+ * يرسل سجل وسائط (صور/ملفات): يرفق الملفات نفسها برسالة اللوق (حتى لو حُذفت
+ * الرسالة الأصلية — روابط CDN تبقى صالحة) ويعرض أول صورة داخل الـ embed.
+ * الملفات الأكبر من 8MB تُتجاهل وعدد المرفقات محدود بـ 3 لتفادي فشل الإرسال.
+ */
+export async function sendMediaLog(
+  client: ExtendedClient,
+  guildId: string,
+  key: LogChannelKey,
+  embed: EmbedBuilder,
+  attachments: LogAttachmentRef[],
+  limit = MAX_LOG_ATTACHMENTS
+) {
+  const usable = attachments
+    .filter((a) => !a.size || a.size <= MAX_LOG_FILE_BYTES)
+    .slice(0, limit);
+
+  if (!usable.length) {
+    await sendLog(client, guildId, key, embed);
+    return;
+  }
+
+  const files = usable.map((a) => ({ attachment: a.url, name: a.name }));
+  const firstImage = usable.find((a) => a.contentType?.startsWith("image/"));
+  if (firstImage && !embed.data.image) {
+    embed.setImage(`attachment://${firstImage.name}`);
+  }
+
+  await sendLog(client, guildId, key, embed, { files });
+}
