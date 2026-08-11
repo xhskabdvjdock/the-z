@@ -1,4 +1,4 @@
-import { EmbedBuilder, Message, PartialMessage } from "discord.js";
+import { AuditLogEvent, EmbedBuilder, Message, PartialMessage } from "discord.js";
 import { BotEvent } from "../types/event";
 import { sendLog, sendMediaLog } from "../modules/logging/logger";
 
@@ -14,6 +14,27 @@ const event: BotEvent = {
         { name: "Author", value: `${message.author?.tag || "Unknown"} (${message.author?.id || "Unknown"})`, inline: true },
         { name: "Channel", value: `${message.channelId}`, inline: true }
       );
+
+    // من حذف الرسالة؟ — من سجل التدقيق (Audit Log) عبر Message ID
+    try {
+      const audit = await message.guild.fetchAuditLogs({
+        type: AuditLogEvent.MessageDelete,
+        limit: 8
+      });
+      const executor = audit.entries
+        .filter((e) => e.targetId === message.id)
+        .sort((a, b) => (b.createdTimestamp ?? 0) - (a.createdTimestamp ?? 0))
+        .first();
+      if (executor?.executor) {
+        embed.addFields({
+          name: "Deleted By",
+          value: `${executor.executor.tag} (${executor.executor.id})`,
+          inline: true
+        });
+      }
+    } catch {
+      // لا صلاحية لقراءة سجل التدقيق أو التأخير — نكمل بدون اسم المحذف
+    }
 
     if (message.content) {
       const truncatedContent = message.content.length > 1000 ? message.content.slice(0, 997) + "..." : message.content;
