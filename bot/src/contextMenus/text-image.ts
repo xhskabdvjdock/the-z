@@ -18,6 +18,10 @@ const MAX_TEXT_LINES = 6;
 const NAME_FONT_SIZE = 34;
 const USERNAME_FONT_SIZE = 26;
 const MIN_HEIGHT = 500;
+// ميل البطاقة (بالراديان) — 4 درجات عكس عقارب الساعة
+const CARD_TILT_RAD = -(4 * Math.PI) / 180;
+// عرض منطقة الدمج التدريجي بين صورة الأفاتار والخلفية السوداء
+const FADE_WIDTH = 140;
 
 interface RenderOptions {
   avatarUrl: string;
@@ -113,11 +117,27 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   const canvas = createCanvas(WIDTH, height);
   const ctx = canvas.getContext("2d");
 
+  // الخلفية سوداء بالكامل حول البطاقة المائلة
   ctx.fillStyle = "#000000";
   ctx.fillRect(0, 0, WIDTH, height);
 
+  // إمالة البطاقة حول مركزها — الخلفية السوداء تستر الزوايا البارزة
+  const cx = WIDTH / 2;
+  const cy = height / 2;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(CARD_TILT_RAD);
+  ctx.translate(-cx, -cy);
+
   // الأفاتار على الثلث الأيسر كاملًا
   await drawAvatar(ctx, options.avatarUrl, 0, 0, AVATAR_COLUMN, height);
+
+  // دمج تدريجي بين حافة الصورة والخلفية السوداء (Fade)
+  const fade = ctx.createLinearGradient(AVATAR_COLUMN - FADE_WIDTH, 0, AVATAR_COLUMN, 0);
+  fade.addColorStop(0, "rgba(0, 0, 0, 0)");
+  fade.addColorStop(1, "rgba(0, 0, 0, 1)");
+  ctx.fillStyle = fade;
+  ctx.fillRect(AVATAR_COLUMN - FADE_WIDTH, 0, FADE_WIDTH, height);
 
   // الكتلة النصية في منتصف العمود الأيمن عموديًا
   const textStartY = Math.max(90, (height - textBlockHeight) / 2 - 10);
@@ -143,6 +163,8 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   ctx.fillStyle = "#8E9297";
   ctx.font = `${USERNAME_FONT_SIZE}px "${fontName}"`;
   ctx.fillText(`@${truncateOneLine(ctx, options.username, TEXT_MAX_WIDTH)}`, TEXT_X, usernameY);
+
+  ctx.restore();
 
   return canvas.toBuffer("image/png");
 }
