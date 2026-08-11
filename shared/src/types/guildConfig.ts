@@ -113,6 +113,10 @@ export interface ISelfRolePanel {
   messageId?: string;
   type: "button" | "select";
   maxRoles?: number;
+  /** معطّل = لا تستجيب اللوحة للنقر ولا تُعرض في النشر */
+  enabled?: boolean;
+  /** لون الـ Embed (hex مثل #5865F2) */
+  color?: string;
   options: ISelfRoleOption[];
 }
 

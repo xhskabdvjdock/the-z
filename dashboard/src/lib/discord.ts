@@ -192,3 +192,89 @@ export async function getGuildRoles(guildId: string): Promise<DiscordRole[]> {
   const roles: DiscordRole[] = await res.json();
   return roles.sort((a, b) => b.position - a.position);
 }
+
+/**
+ * أعلى رتبة يملكها البوت في السيرفر (position). أي رتبة أعلى منها لا يمكن
+ * للبوت منحها/إزالتها — نستخدمها في التحقق من صلاحية اللوحات.
+ */
+export async function getBotTopRolePosition(guildId: string): Promise<number> {
+  try {
+    const me = await fetch(`${API_BASE}/users/@me`, {
+      headers: botHeaders(),
+      cache: "no-store"
+    });
+    if (!me.ok) return Number.MAX_SAFE_INTEGER;
+    const botId = ((await me.json()) as { id: string }).id;
+
+    const member = await fetch(`${API_BASE}/guilds/${guildId}/members/${botId}`, {
+      headers: botHeaders(),
+      cache: "no-store"
+    });
+    if (!member.ok) return Number.MAX_SAFE_INTEGER;
+    const { roles: botRoleIds } = (await member.json()) as { roles: string[] };
+
+    const allRoles = await getGuildRoles(guildId);
+    const positions = allRoles.filter((r) => botRoleIds.includes(r.id)).map((r) => r.position);
+    return positions.length ? Math.max(...positions) : 0;
+  } catch {
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+/** تحقق من إمكانية إدارة القائمة كاملة: @everyone + رتب مُدارة + رتب أعلى من البوت */
+export function validateRolePanel(
+  guildId: string,
+  roleIds: { roleId: string; label: string }[],
+  roles: DiscordRole[],
+  botTopPosition: number
+): string[] {
+  const issues: string[] = [];
+  const roleMap = new Map(roles.map((r) => [r.id, r]));
+
+  for (const opt of roleIds) {
+    const role = roleMap.get(opt.roleId);
+    if (!role || opt.roleId === guildId) {
+      issues.push(`الرتبة "${opt.label}" غير متاحة (غير موجودة أو @everyone)`);
+      continue;
+    }
+    if (role.managed) {
+      issues.push(`الرتبة "${role.name}" مُدارة (managed) ولا يمكن للبوت منحها`);
+      continue;
+    }
+    if (role.position >= botTopPosition) {
+      issues.push(`الرتبة "${role.name}" أعلى من أعلى رتبة يملكها البوت`);
+    }
+  }
+  return issues;
+}
+
+export async function sendChannelMessage(
+  channelId: string,
+  payload: unknown
+): Promise<{ ok: boolean; status: number; id?: string }> {
+  const res = await fetch(`${API_BASE}/channels/${channelId}/messages`, {
+    method: "POST",
+    headers: { ...botHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store"
+  });
+  if (!res.ok) return { ok: false, status: res.status };
+  const data = (await res.json()) as { id: string };
+  return { ok: true, status: res.status, id: data.id };
+}
+
+export async function editChannelMessage(
+  channelId: string,
+  messageId: string,
+  payload: unknown
+): Promise<{ ok: boolean; status: number; id?: string }> {
+  const res = await fetch(`${API_BASE}/channels/${channelId}/messages/${messageId}`, {
+    method: "PATCH",
+    headers: { ...botHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store"
+  });
+  if (!res.ok) return { ok: false, status: res.status };
+  const data = (await res.json()) as { id: string };
+  return { ok: true, status: res.status, id: data.id };
+}

@@ -1,15 +1,10 @@
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
   ButtonInteraction,
-  ButtonStyle,
-  EmbedBuilder,
   GuildMember,
-  StringSelectMenuBuilder,
   StringSelectMenuInteraction,
   TextChannel
 } from "discord.js";
-import { GuildConfig, ISelfRolePanel } from "@thez/shared";
+import { GuildConfig, ISelfRolePanel, buildRolePanelMessage } from "@thez/shared";
 import { ComponentRouter } from "../../handlers/componentRouter";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
@@ -37,6 +32,11 @@ export function registerSelfRoleComponents(router: ComponentRouter): void {
 
     if (!panel) {
       await interaction.reply({ content: "❌ هذه اللوحة لم تعد متاحة.", ephemeral: true });
+      return;
+    }
+
+    if (panel.enabled === false) {
+      await interaction.reply({ content: "❌ هذه اللوحة معطّلة حاليًا.", ephemeral: true });
       return;
     }
 
@@ -76,6 +76,11 @@ export function registerSelfRoleComponents(router: ComponentRouter): void {
       return;
     }
 
+    if (panel.enabled === false) {
+      await interaction.reply({ content: "❌ هذه اللوحة معطّلة حاليًا.", ephemeral: true });
+      return;
+    }
+
     const panelRoleIds = panel.options.map((o) => o.roleId);
     const selectedRoleIds = interaction.values;
 
@@ -106,52 +111,57 @@ export async function sendSelfRolePanel(
   panel: ISelfRolePanel,
   guildId: string
 ): Promise<void> {
-  const embed = new EmbedBuilder()
-    .setColor("#5865F2")
-    .setTitle(panel.title || "اختر رتبتك")
-    .setDescription(panel.description || "اختر إحدى الرتب أدناه.");
+  const payload = buildRolePanelMessage(panel);
+  const sentMessage = await channel.send({
+    embeds: payload.embeds,
+    components: payload.components as never
+  });
 
-  let components: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [];
-
-  if (panel.type === "select") {
-    const select = new StringSelectMenuBuilder()
-      .setCustomId(`${SELECT_PREFIX}${panel.id}`)
-      .setPlaceholder("اختر رتبة أو أكثر...")
-      .setMinValues(0)
-      .setMaxValues(Math.max(1, Math.min(panel.options.length, 25)));
-
-    for (const option of panel.options.slice(0, 25)) {
-      select.addOptions({
-        label: option.label,
-        value: option.roleId,
-        description: option.description || undefined,
-        emoji: option.emoji || undefined
-      });
-    }
-
-    components = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)];
-  } else {
-    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-    let currentRow = new ActionRowBuilder<ButtonBuilder>();
-
-    panel.options.slice(0, 25).forEach((option, index) => {
-      if (index > 0 && index % 5 === 0) {
-        rows.push(currentRow);
-        currentRow = new ActionRowBuilder<ButtonBuilder>();
+  await GuildConfig.findOneAndUpdate(
+    { guildId, "selfRoles.id": panel.id },
+    {
+      $set: {
+        "selfRoles.$.messageId": sentMessage.id,
+        "selfRoles.$.channelId": channel.id
       }
-      const button = new ButtonBuilder()
-        .setCustomId(`${BUTTON_PREFIX}${panel.id}_${option.roleId}`)
-        .setLabel(option.label)
-        .setStyle(ButtonStyle.Secondary);
-      if (option.emoji) button.setEmoji(option.emoji);
-      currentRow.addComponents(button);
-    });
+    }
+  );
+}
 
-    if (currentRow.components.length) rows.push(currentRow);
-    components = rows;
+/**
+ * تحديث لوحة منشورة: يعدّل نفس الرسالة إن كانت لا تزال موجودة (channelId +
+ * messageId محفوظان)، وإلا يرسل رسالة جديدة وينقّل الموقع. تُستخدم عند تعديل
+ * اللوحة من الداشبورد أو تحديثها بعد أي تغيير.
+ */
+export async function updateSelfRolePanel(
+  client: ExtendedClient,
+  panel: ISelfRolePanel,
+  guildId: string
+): Promise<void> {
+  const payload = buildRolePanelMessage(panel);
+
+  if (panel.channelId && panel.messageId) {
+    try {
+      const channel = await client.channels.fetch(panel.channelId);
+      if (channel?.isTextBased()) {
+        const message = await channel.messages.fetch(panel.messageId);
+        await message.edit({ embeds: payload.embeds, components: payload.components as never });
+        return;
+      }
+    } catch {
+      // الرسالة/القناة لم تعد متاحة — سنرسل رسالة جديدة أدناه
+    }
   }
 
-  const sentMessage = await channel.send({ embeds: [embed], components });
+  const channel = panel.channelId
+    ? ((await client.channels.fetch(panel.channelId).catch(() => null)) as TextChannel | null)
+    : null;
+  if (!channel?.isTextBased()) return;
+
+  const sentMessage = await channel.send({
+    embeds: payload.embeds,
+    components: payload.components as never
+  });
 
   await GuildConfig.findOneAndUpdate(
     { guildId, "selfRoles.id": panel.id },
