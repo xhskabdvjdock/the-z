@@ -11,7 +11,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <div className="flex items-center gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/bot-logo.jpg"
+            src="https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/dashboard/public/bot-logo.jpg"
             alt="شعار البوت"
             className="h-9 w-9 rounded-lg object-cover ring-1 ring-[#5865F2]/40"
           />

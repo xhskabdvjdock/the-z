@@ -6,9 +6,9 @@ export const metadata: Metadata = {
   title: "لوحة تحكم البوت",
   description: "لوحة تحكم إدارية متكاملة لبوت الديسكورد",
   icons: {
-    icon: "/bot-logo.jpg",
-    shortcut: "/bot-logo.jpg",
-    apple: "/bot-logo.jpg"
+    icon: "https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/dashboard/public/bot-logo.jpg",
+    shortcut: "https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/dashboard/public/bot-logo.jpg",
+    apple: "https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/dashboard/public/bot-logo.jpg"
   }
 };
 
