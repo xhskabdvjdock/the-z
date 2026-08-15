@@ -8,6 +8,7 @@ import CustomMessageEditor from "@/components/form/CustomMessageEditor";
 import VariablesHint from "@/components/form/VariablesHint";
 import SaveButton from "@/components/form/SaveButton";
 import { saveWelcomeConfig, WelcomeLeaveInput } from "./actions";
+import BackgroundUpload from "@/components/form/BackgroundUpload";
 
 export default function WelcomeForm({
   guildId,
@@ -57,17 +58,14 @@ export default function WelcomeForm({
         </div>
 
         {state.welcome.imageEnabled && (
-          <div>
-            <label className="label">رابط صورة خلفية مخصصة (اختياري)</label>
-            <input
-              className="input"
-              placeholder="https://..."
-              value={state.welcome.imageBackground ?? ""}
-              onChange={(e) =>
-                setState({ ...state, welcome: { ...state.welcome, imageBackground: e.target.value } })
-              }
-            />
-          </div>
+          <BackgroundUpload
+            value={state.welcome.imageBackground ?? ""}
+            onChange={(v) =>
+              setState({ ...state, welcome: { ...state.welcome, imageBackground: v } })
+            }
+            title="أهلاً بك [الاسم]"
+            subtitle="عضو رقم [العدد] في [السيرفر]"
+          />
         )}
 
         <CustomMessageEditor
@@ -102,6 +100,17 @@ export default function WelcomeForm({
             />
           </div>
         </div>
+
+        {state.leave.imageEnabled && (
+          <BackgroundUpload
+            value={state.leave.imageBackground ?? ""}
+            onChange={(v) =>
+              setState({ ...state, leave: { ...state.leave, imageBackground: v } })
+            }
+            title="وداعاً [الاسم]"
+            subtitle="عضو رقم [العدد] في [السيرفر]"
+          />
+        )}
 
         <CustomMessageEditor
           value={state.leave.message}
