@@ -161,29 +161,12 @@ export interface IScheduledMessage {
   lastRunAt?: string;
 }
 
-/** إعدادات لعبة The Z لكل سيرفر — تفعيل وبرودة ورومات مسموحة */
-export interface IGameOverride {
-  /** اسم اللعبة في الـ Registry (مثل xo، mafia، game2048) */
-  name: string;
-  enabled: boolean;
-  /** مدة البرودة بالثواني (فارغ/0 = الافتراضي من اللعبة نفسها) */
-  cooldownSeconds?: number;
-  /** رومات محددة يُسمح باللعب فيها فقط (فارغ = كل الرومات) */
-  allowedChannelIds: string[];
-}
-
 export interface IGuildConfig {
   _id?: string;
   guildId: string;
   prefix: string;
   language: "ar" | "en";
   embedColor?: string;
-
-  /** ألعاب The Z — تفعيل الألعاب إجمالًا وتخصيص كل لعبة على حدة */
-  games: {
-    enabled: boolean;
-    overrides: IGameOverride[];
-  };
 
   tickets: {
     enabled: boolean;
@@ -534,11 +517,6 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     },
 
     commandOverrides: [],
-
-    games: {
-      enabled: true,
-      overrides: []
-    },
 
     memberCounter: {
       enabled: false,

@@ -11,7 +11,6 @@ import { startAlwaysVoiceLoop } from "./alwaysVoice/alwaysVoiceManager";
 import { startMemberCounter } from "./memberCounter/memberCounterManager";
 import { startScheduledMessages } from "./scheduledMessages/scheduledMessagesManager";
 import { registerReactionRoles } from "./reactionRoles/reactionRolesManager";
-import { initGames } from "../games";
 
 /** نقطة تجميع مركزية: تسجّل كل معالجات الأزرار/القوائم الخاصة بكل موديول، وتشغّل المهام الدورية */
 export function registerAllModules(client: ExtendedClient) {
@@ -21,7 +20,6 @@ export function registerAllModules(client: ExtendedClient) {
   registerSelfRoleComponents(componentRouter);
   registerCaptchaComponents(componentRouter);
   registerReactionRoles(client);
-  initGames(client);
 
   client.once("ready", () => {
     startVoiceXpInterval(client);

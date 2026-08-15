@@ -8,7 +8,6 @@ import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
 import { handleLegacyPrefixCommands } from "../handlers/legacyPrefixHandler";
-import { handleGamePrefix } from "../games";
 import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
 import { sendMediaLog } from "../modules/logging/logger";
 import { AfkUser } from "@thez/shared";
@@ -27,8 +26,7 @@ const event: BotEvent = {
     // 2) القنوات المخصصة لنوع معين من المحتوى
     const customChannels = gConfig.logging?.customChannels;
     const channelId = message.channelId;
-    const isCommand =
-      message.content.startsWith(gConfig.prefix) || message.content.startsWith("-");
+    const isCommand = message.content.startsWith(gConfig.prefix);
     const isTextOnly = !message.attachments.size && !message.stickers.size;
     const hasMedia = message.attachments.some(
       (a) => a.contentType?.startsWith("image/") || a.contentType?.startsWith("video/")
@@ -52,15 +50,11 @@ const event: BotEvent = {
       return;
     }
 
-    // 3) ألعاب The Z — أوامر البادئة الخاصة بالألعاب (-xo، -mafia، -join ...)
-    const wasGame = await handleGamePrefix(client, message, gConfig.prefix, gConfig.games);
-    if (wasGame) return;
-
-    // 4) الرقابة التلقائية
+    // 3) الرقابة التلقائية
     const wasActioned = await handleAutoMod(client, message, gConfig);
     if (wasActioned) return;
 
-    // 5) أوامر بادئة السيرفر (مع دعم البادئة المخصصة لكل أمر)
+    // 4) أوامر بادئة السيرفر (مع دعم البادئة المخصصة لكل أمر)
     const overrideMap = new Map((gConfig.commandOverrides ?? []).map((o) => [o.name, o]));
     const globalPrefix = gConfig.prefix;
 
@@ -147,11 +141,11 @@ const event: BotEvent = {
       }
     }
 
-    // 6) الردود التلقائية
+    // 5) الردود التلقائية
     const responded = await handleAutoResponse(client, message, gConfig);
     if (responded) return;
 
-    // 7) نظام AFK — batch queries بدلاً من N+1
+    // 6) نظام AFK — batch queries بدلاً من N+1
     const mentionedUsers = message.mentions.users.filter((u) => !u.bot);
     if (mentionedUsers.size > 0) {
       const userIds = [...mentionedUsers.keys()];
@@ -198,10 +192,10 @@ const event: BotEvent = {
         .catch(() => null);
     }
 
-    // 8) نظام الخبرة
+    // 7) نظام الخبرة
     await handleMessageXp(client, message, gConfig);
 
-    // 9) تسجيل المرفقات المرسلة (صور/فيديوهات/ملفات) — يُرسل الملف نفسه لروم اللوق
+    // 8) تسجيل المرفقات المرسلة (صور/فيديوهات/ملفات) — يُرسل الملف نفسه لروم اللوق
     if (message.attachments.size > 0) {
       const media = [...message.attachments.values()].map((a) => ({
         url: a.proxyURL || a.url,

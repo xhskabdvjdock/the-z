@@ -55,8 +55,6 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
 
   { name: "voice-setup", category: "رومات صوتية", descriptionAr: "إرسال لوحة إنشاء الرومات الصوتية المؤقتة" },
 
-  { name: "game", category: "ألعاب", descriptionAr: "مركز The Z Games — استعراض الألعاب واللوائح" },
-
   {
     name: "Text Image",
     category: "قوائم سياق",
