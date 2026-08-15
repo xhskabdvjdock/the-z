@@ -159,19 +159,6 @@ export default function CommandsForm({
                             </p>
                           </div>
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-6">
-                          <Toggle
-                            checked={cmd.slashEnabled}
-                            onChange={(v) => updateCommand(cmd.name, { slashEnabled: v })}
-                            label="أمر Slash (/)"
-                          />
-                          <Toggle
-                            checked={cmd.prefixEnabled}
-                            onChange={(v) => updateCommand(cmd.name, { prefixEnabled: v })}
-                            label="أمر بادئة (Prefix)"
-                          />
-                        </div>
                       </>
                     )}
 

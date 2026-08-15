@@ -31,14 +31,6 @@ const event: BotEvent = {
           return;
         }
 
-        if (override && override.slashEnabled === false) {
-          await interaction.reply({
-            content: "This command is disabled as a Slash Command in this server.",
-            ephemeral: true
-          });
-          return;
-        }
-
         const permCheck = checkCommandPermission(
           override,
           interaction.member as GuildMember,
@@ -105,14 +97,6 @@ const event: BotEvent = {
         if (override && override.enabled === false) {
           await interaction.reply({
             content: "This command is disabled in this server.",
-            ephemeral: true
-          });
-          return;
-        }
-
-        if (override && override.slashEnabled === false) {
-          await interaction.reply({
-            content: "This command is disabled as a Context Menu in this server.",
             ephemeral: true
           });
           return;

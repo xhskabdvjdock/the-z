@@ -81,7 +81,7 @@ const event: BotEvent = {
           const override = overrideMap.get(command.name);
           const effectivePrefix = override?.customPrefix || globalPrefix;
 
-          if (effectivePrefix === matchedPrefix && (!override || (override.enabled !== false && override.prefixEnabled !== false))) {
+          if (effectivePrefix === matchedPrefix && (!override || override.enabled !== false)) {
             // 4.1) صلاحيات Discord الأساسية (defaultMemberPermissions) — نفس التطبيق الذي
             // يفرض Discord على الـSlash، مطبّق يدويًا هنا للبادئة (لا يفرضه Discord تلقائيًا)
             const discordPerm = verifyCommandPermission(command, message.member!, message.channel);
