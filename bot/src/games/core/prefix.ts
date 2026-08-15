@@ -1,20 +1,40 @@
 import { EmbedBuilder, Message } from "discord.js";
 import { ExtendedClient } from "../../client";
 import { config } from "../../config";
+import { IGameOverride } from "@thez/shared";
 import { registry } from "./registry";
 import { openLobby } from "./lobby";
 import { sessionManager } from "./engine";
+import { checkCooldown, registerCooldown } from "@thez/shared";
+
+/** إعدادات الألعاب من GuildConfig — كل الحقول اختيارية للتوافق مع المستندات القديمة */
+interface GameSettings {
+  enabled?: boolean;
+  overrides?: IGameOverride[];
+}
+
+/** إعدادات لعبة محددة: الدمج بين إعداد السيرفر والافتراضي من اللعبة */
+function resolveGameOverride(
+  settings: GameSettings | undefined,
+  gameName: string
+): IGameOverride | undefined {
+  const overrides = settings?.overrides;
+  if (!Array.isArray(overrides)) return undefined;
+  return overrides.find((o) => o.name === gameName);
+}
 
 /**
  * معالجة أوامر الألعاب عبر البادئة.
  *   - `<prefix><game> [وسائط]` — فتح لوبي/بدء لعبة (مثال: -xo، -mafia، -hangman كلمة)
  *   - `<prefix>join <كود>` — الانضمام للعبة Cross-Guild من سيرفر آخر
+ * يفحص إعدادات الألعاب (تفعيل/تعطيل اللعبة/الرومات المسموحة/البرودة).
  * يُرجع true إذا استُهلكت الرسالة.
  */
 export async function handleGamePrefix(
   client: ExtendedClient,
   message: Message,
-  prefix: string
+  prefix: string,
+  games?: GameSettings
 ): Promise<boolean> {
   if (!prefix || !message.content.startsWith(prefix)) return false;
 
@@ -25,12 +45,49 @@ export async function handleGamePrefix(
 
   // انضمام عبر الكود (Cross-Guild)
   if (command === "join") {
-    await handleProxyJoin(client, message, args);
+    await handleProxyJoin(client, message, args, games);
     return true;
   }
 
   const def = registry.get(command);
   if (!def) return false;
+
+  // تعطيل الألعاب إجمالًا في هذا السيرفر
+  if (games?.enabled === false) {
+    await message.reply("الألعاب معطلة في هذا السيرفر — فعّلها من لوحة التحكم.").catch(() => null);
+    return true;
+  }
+
+  // إعدادات هذه اللعبة تحديدًا
+  const override = resolveGameOverride(games, def.name);
+  if (override && !override.enabled) {
+    await message
+      .reply(`لعبة **${def.title}** معطلة في هذا السيرفر — فعّلها من لوحة التحكم.`)
+      .catch(() => null);
+    return true;
+  }
+  if (
+    Array.isArray(override?.allowedChannelIds) &&
+    override.allowedChannelIds.length > 0 &&
+    !override.allowedChannelIds.includes(message.channelId)
+  ) {
+    await message.reply(`لعبة **${def.title}** لا تُلعب في هذا الروم.`).catch(() => null);
+    return true;
+  }
+
+  // البرودة: override بالسيرفر > الافتراضي من اللعبة
+  const cooldownSeconds = override?.cooldownSeconds ?? def.cooldownSeconds ?? 0;
+  if (cooldownSeconds > 0) {
+    const key = `game:${def.name}:${message.guildId}:${message.author.id}`;
+    const check = checkCooldown(client.commandCooldowns, key, cooldownSeconds);
+    if (!check.allowed) {
+      await message
+        .reply(`انتظر **${check.remainingSeconds}** ثانية قبل لعب **${def.title}** مجددًا.`)
+        .catch(() => null);
+      return true;
+    }
+    registerCooldown(client.commandCooldowns, key);
+  }
 
   if (def.category === "multiplayer" && def.minPlayers > 1) {
     const busy = sessionManager.getByPlayer(message.author.id);
@@ -70,11 +127,18 @@ export async function handleGamePrefix(
 async function handleProxyJoin(
   client: ExtendedClient,
   message: Message,
-  args: string[]
+  args: string[],
+  games?: GameSettings
 ): Promise<void> {
   const code = args[0]?.toUpperCase();
   if (!code) {
     await message.reply("استخدم: `<البادئة>join <الكود>` للانضمام إلى لعبة عبر السيرفرات.");
+    return;
+  }
+
+  // تعطيل الألعاب في سيرفر المُنضم يمنع الانضمام
+  if (games?.enabled === false) {
+    await message.reply("الألعاب معطلة في هذا السيرفر — فعّلها من لوحة التحكم.");
     return;
   }
 
@@ -86,6 +150,23 @@ async function handleProxyJoin(
 
   if (session.status !== "LOBBY") {
     await message.reply("اللعبة بدأت بالفعل — لا يمكن الانضمام الآن.");
+    return;
+  }
+
+  // تعطيل اللعبة أو تقييد روماتها في سيرفر المُنضم
+  const override = resolveGameOverride(games, session.def.name);
+  if (override && !override.enabled) {
+    await message
+      .reply(`لعبة **${session.def.title}** معطلة في هذا السيرفر — فعّلها من لوحة التحكم.`)
+      .catch(() => null);
+    return;
+  }
+  if (
+    Array.isArray(override?.allowedChannelIds) &&
+    override.allowedChannelIds.length > 0 &&
+    !override.allowedChannelIds.includes(message.channelId)
+  ) {
+    await message.reply(`لعبة **${session.def.title}** لا تُلعب في هذا الروم.`).catch(() => null);
     return;
   }
 

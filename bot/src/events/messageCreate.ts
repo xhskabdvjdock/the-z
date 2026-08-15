@@ -52,7 +52,7 @@ const event: BotEvent = {
     }
 
     // 3) ألعاب The Z — أوامر البادئة الخاصة بالألعاب (-xo، -mafia، -join ...)
-    const wasGame = await handleGamePrefix(client, message, gConfig.prefix);
+    const wasGame = await handleGamePrefix(client, message, gConfig.prefix, gConfig.games);
     if (wasGame) return;
 
     // 4) الرقابة التلقائية
