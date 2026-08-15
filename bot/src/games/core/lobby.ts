@@ -8,6 +8,7 @@ import {
 } from "discord.js";
 import { ExtendedClient } from "../../client";
 import { config } from "../../config";
+import { logError, logInfo } from "../../utils/logger";
 import { GameDefinition } from "./types";
 import { createSession, GameSessionImpl, sessionManager, startGame } from "./engine";
 
@@ -94,6 +95,10 @@ export async function openLobby(
   // منع اللاعب من فتح/الدخول في أكثر من جلسة نشطة
   const busy = sessionManager.getByPlayer(opts.hostId);
   if (busy) {
+    logInfo(
+      "games/openLobby",
+      `رُفض فتح ${def.name} — المضيف ${opts.hostId} في جلسة نشطة (${busy.def.name})`
+    );
     return null;
   }
 
@@ -119,6 +124,7 @@ export async function openLobby(
   if (def.parseArgs) {
     const err = await def.parseArgs(opts.args, session);
     if (err) {
+      logInfo("games/openLobby", `فشل parseArgs لـ ${def.name}: ${err}`);
       sessionManager.remove(session);
       return null;
     }
@@ -131,7 +137,8 @@ export async function openLobby(
     session.startedAt = Date.now();
     try {
       await def.onStart(session);
-    } catch {
+    } catch (err) {
+      logError(`games/onStart/${def.name}`, err);
       sessionManager.remove(session);
       return null;
     }
@@ -147,13 +154,21 @@ export async function openLobby(
   sessionManager.add(session);
 
   const payload = lobbyRender(session);
-  const channel = await client.channels.fetch(opts.channelId).catch(() => null);
+  const channel = await client.channels.fetch(opts.channelId).catch((err) => {
+    logError("games/openLobby/fetchChannel", err);
+    return null;
+  });
   if (!channel || !("isTextBased" in channel) || !channel.isTextBased()) {
+    logInfo("games/openLobby", `فشل الوصول لقناة ${opts.channelId} لـ ${def.name}`);
     await session.cancel("تعذّر الوصول إلى القناة.");
     return null;
   }
-  const sent = await (channel as any).send(payload).catch(() => null);
+  const sent = await (channel as any).send(payload).catch((err: unknown) => {
+    logError("games/openLobby/send", err);
+    return null;
+  });
   if (!sent) {
+    logInfo("games/openLobby", `فشل إرسال رسالة اللوبي لـ ${def.name} في ${opts.channelId}`);
     await session.cancel("تعذّر إرسال رسالة اللعبة.");
     return null;
   }
