@@ -33,7 +33,9 @@ export default async function CommandsPage({ params }: { params: { guildId: stri
 
   const commands: CommandRow[] = DEFAULT_COMMANDS.map((meta) => {
     const existing = overrides.find((o) => o.name === meta.name);
-    const override = existing ?? buildDefaultOverride(meta.name);
+    // دمج الافتراضي مع الموجود: تملأ الحقول القديمة المفقودة (enabled/slashEnabled/prefixEnabled)
+    // بالقيم الآمنة حتى لا تظهر الأوامر معطّلة بسبب بيانات قديمة لا تحتويها.
+    const override = existing ? { ...buildDefaultOverride(meta.name), ...existing } : buildDefaultOverride(meta.name);
     return {
       ...override,
       category: meta.category,
