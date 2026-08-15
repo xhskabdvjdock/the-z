@@ -39,6 +39,13 @@ function canTransition(from: GameStatus, to: GameStatus): boolean {
   return TRANSITIONS[from].includes(to);
 }
 
+/** المهلة القصوى للجلسة النشطة — تمنع بقاء الجلسات معلقة إلى الأبد (وتجميد اللاعب) */
+const MAX_SESSION_MS = 30 * 60_000;
+/** المهلة القصوى للوبي قبل الإلغاء حتى مع وجود لاعبين */
+const LOBBY_MAX_MS = 10 * 60_000;
+/** مهلة الخمول — تنتهي الجلسة إذا لم يتفاعل أحد لفترة */
+const INACTIVITY_MS = 5 * 60_000;
+
 /** عداد أرقام/حروف مؤقتة لمفاتيح جلسات فريدة */
 let seq = 0;
 function nextSessionId(): string {
@@ -156,6 +163,37 @@ export class GameSessionImpl implements GameSession {
 
   setTurn(id: string | null): void {
     this.turnPlayerId = id;
+  }
+
+  /** مهلة قصوى للجلسة — تُلغيها عند انتهائها مهما كانت حالتها */
+  armLifetime(ms: number): void {
+    this.setTimer("lifetime", ms, () => {
+      if (
+        this.status === "LOBBY" ||
+        this.status === "STARTING" ||
+        this.status === "PLAYING" ||
+        this.status === "ROUND"
+      ) {
+        this.expire("انتهت المهلة القصوى للجلسة.").catch(() => null);
+      }
+    });
+  }
+
+  /** مهلة خمول — تُلغى وتُعاد مع كل تفاعل للاعبين */
+  armInactivity(ms: number): void {
+    this.clearTimer("inactivity");
+    this.setTimer("inactivity", ms, () => {
+      if (this.status === "PLAYING" || this.status === "ROUND") {
+        this.expire("انتهت مهلة الخمول — لم يتفاعل أحد منذ مدة.").catch(() => null);
+      }
+    });
+  }
+
+  /** تجديد نشاط الجلسة (يُستدعى بعد كل إجراء لاعب) */
+  touch(): void {
+    if (this.status === "PLAYING" || this.status === "ROUND") {
+      this.armInactivity(INACTIVITY_MS);
+    }
   }
 
   /* ─────────────── رسائل ─────────────── */
@@ -502,6 +540,8 @@ export async function startGame(session: GameSessionImpl): Promise<boolean> {
     return false;
   }
   session.status = "PLAYING";
+  session.armLifetime(MAX_SESSION_MS);
+  session.touch();
   await session.renderNow();
   return true;
 }
@@ -523,6 +563,8 @@ export async function dispatchAction(
       await session.cancel("حدث خطأ غير متوقع في اللعبة.");
       return;
     }
+    // تجديد مهلة الخمول بعد أي إجراء لاعب
+    session.touch();
     // إعادة عرض تلقائية في حالات اللعب فقط — النتائج/الإلغاء تدير عرضها بنفسها
     if (session.status === "PLAYING" || session.status === "ROUND") {
       await session.renderNow();

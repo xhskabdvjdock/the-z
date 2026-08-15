@@ -145,6 +145,8 @@ export async function openLobby(
     session.status = "PLAYING";
     await session.writeRecord();
     sessionManager.add(session);
+    session.armLifetime(30 * 60_000);
+    session.touch();
     await session.renderNow();
     return session;
   }
@@ -152,6 +154,7 @@ export async function openLobby(
   // لوبي جماعي
   session.status = "LOBBY";
   sessionManager.add(session);
+  session.armLifetime(10 * 60_000);
 
   const payload = lobbyRender(session);
   const channel = await client.channels.fetch(opts.channelId).catch((err) => {

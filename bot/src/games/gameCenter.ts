@@ -13,6 +13,7 @@ import { config } from "../config";
 import { registry } from "./core/registry";
 import { GameDefinition } from "./core/types";
 import { sessionManager } from "./core/engine";
+import { openLobby } from "./core/lobby";
 import { getLeaderboard, LeaderboardScope } from "./stats/leaderboard";
 import { getPlayerAllStats } from "./stats/stats";
 
@@ -48,19 +49,20 @@ function gameFields(embed: EmbedBuilder, game: GameDefinition): void {
 export function homeEmbed(): EmbedBuilder {
   const multiplayer = registry.byCategory("multiplayer").length;
   const single = registry.byCategory("singleplayer").length;
+  const active = sessionManager.activeCount();
   return new EmbedBuilder()
     .setColor(config.defaultColor)
     .setTitle("The Z Games — مركز الألعاب")
     .setDescription(
-      "مرحبًا بك في مركز الألعاب.\n" +
-        "استعرض الألعاب، تحقق من لوائح المتصدرين، وإحصاءاتك، والجلسات النشطة.\n\n" +
-        "**للعب**: استخدم البادئة مع اسم اللعبة (مثال: \`-xo\`، \`-mafia\`، \`-trivia\`).\n" +
-        "هذا المركز مخصص للعرض والاستكشاف فقط."
+      "أهلاً بك في مركز الألعاب.\n" +
+        "اختر لعبة من القائمة أدناه للعب مباشرة، أو تصفح الألعاب ولوائح المتصدرين.\n\n" +
+        "**للعب عبر الشات**: استخدم البادئة مع اسم اللعبة (مثال: \`-xo\`، \`-mafia\`، \`-faster\`).\n" +
+        "الألعاب الجماعية تُفتح لوبي في انتظار لاعبين؛ الفردية تبدأ فورًا."
     )
     .addFields(
       { name: "الألعاب الجماعية", value: `${multiplayer} لعبة`, inline: true },
       { name: "الألعاب الفردية", value: `${single} لعبة`, inline: true },
-      { name: "الجلسات النشطة الآن", value: `${sessionManager.activeCount()}`, inline: true }
+      { name: "الجلسات النشطة الآن", value: `${active}`, inline: true }
     )
     .setFooter({ text: "The Z Games" });
 }
@@ -100,6 +102,21 @@ export function gameDetailEmbed(game: GameDefinition): EmbedBuilder {
     embed.addFields({ name: "أسماء مستعارة", value: game.aliases.map((a) => `\`${a}\``).join("، "), inline: false });
   }
   return embed;
+}
+
+/** قائمة سريعة بكل الألعاب للانتقال المباشر */
+export function gameJumpSelect(): ActionRowBuilder<StringSelectMenuBuilder> {
+  const select = new StringSelectMenuBuilder()
+    .setCustomId("gamec:jump")
+    .setPlaceholder("انتقل إلى لعبة...")
+    .addOptions(
+      registry.all().map((g) => ({
+        label: g.title,
+        description: `${g.category === "multiplayer" ? "جماعية" : "فردية"} — ${g.description}`,
+        value: g.name
+      }))
+    );
+  return new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
 }
 
 export async function leaderboardEmbed(
@@ -209,12 +226,12 @@ export function activeGamesEmbed(): EmbedBuilder {
 export function homeRows(): ActionRowBuilder<any>[] {
   const row = new ActionRowBuilder<ButtonBuilder>()
     .addComponents(
-      new ButtonBuilder().setCustomId("gamec:browse:all:0").setLabel("الألعاب").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("gamec:browse:all:0").setLabel("تصفح الألعاب").setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId("gamec:board:global:all:0").setLabel("لوائح المتصدرين").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId("gamec:stats").setLabel("إحصاءاتي").setStyle(ButtonStyle.Secondary),
       new ButtonBuilder().setCustomId("gamec:active").setLabel("جلسات نشطة").setStyle(ButtonStyle.Secondary)
     );
-  return [row];
+  return [row, gameJumpSelect()];
 }
 
 export function browseRows(category: string, page: number, totalPages: number): ActionRowBuilder<any>[] {
@@ -240,7 +257,7 @@ export function browseRows(category: string, page: number, totalPages: number): 
         .setDisabled(page >= totalPages - 1),
       new ButtonBuilder().setCustomId("gamec:home").setLabel("الرئيسية").setStyle(ButtonStyle.Danger)
     );
-  return [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(cat), nav];
+  return [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(cat), nav, gameJumpSelect()];
 }
 
 export function detailRows(gameName: string): ActionRowBuilder<ButtonBuilder>[] {
@@ -251,6 +268,10 @@ export function detailRows(gameName: string): ActionRowBuilder<ButtonBuilder>[] 
         .setCustomId(`gamec:board:server:${gameName}:0`)
         .setLabel("لوائح هذه اللعبة")
         .setStyle(ButtonStyle.Success),
+      new ButtonBuilder()
+        .setCustomId(`gamec:play:${gameName}`)
+        .setLabel("العب الآن")
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId("gamec:home").setLabel("الرئيسية").setStyle(ButtonStyle.Danger)
     );
   return [row];
@@ -342,6 +363,27 @@ async function handleCenterButton(interaction: ButtonInteraction, client: Extend
     return;
   }
 
+  if (kind === "play") {
+    const game = registry.get(parts[2] ?? "");
+    if (!game) return;
+    await interaction.deferReply({ ephemeral: true }).catch(() => null);
+    const session = await openLobby(client, game, {
+      guildId: interaction.guildId ?? "",
+      channelId: interaction.channelId,
+      hostId: interaction.user.id,
+      hostTag: interaction.user.tag,
+      args: []
+    });
+    await interaction
+      .editReply({
+        content: session
+          ? `تم فتح **${game.title}** في <#${interaction.channelId}>.`
+          : "تعذّر فتح اللعبة — ربما أنت في جلسة نشطة أو حدث خطأ ما."
+      })
+      .catch(() => null);
+    return;
+  }
+
   if (kind === "board") {
     const scope = parts[2] as LeaderboardScope;
     const gameName = parts[3] ?? "all";
@@ -382,6 +424,13 @@ async function handleCenterSelect(interaction: StringSelectMenuInteraction, clie
   const parts = interaction.customId.split(":");
   const kind = parts[1];
   const value = interaction.values[0];
+
+  if (kind === "jump") {
+    const game = registry.get(value);
+    if (!game) return;
+    await update(interaction, { embeds: [gameDetailEmbed(game)], components: detailRows(game.name) });
+    return;
+  }
 
   if (kind === "cat") {
     const { embed, totalPages } = browseEmbed(value, 0);
