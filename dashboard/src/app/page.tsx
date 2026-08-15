@@ -27,7 +27,7 @@ export default async function HomePage() {
         <img
           src="https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/dashboard/public/bot-logo.jpg"
           alt="شعار البوت"
-          className="h-16 w-16 rounded-xl object-cover shadow-lg ring-2 ring-[#5865F2]/40"
+          className="h-16 w-16 rounded-full object-cover shadow-lg ring-2 ring-[#5865F2]/40"
         />
         <h1 className="text-4xl font-bold sm:text-5xl text-[#F0F0F0]">
           لوحة تحكم البوت
