@@ -90,10 +90,36 @@ process.on("unhandledRejection", (reason) => {
 
 // خطأ فادح غير ملتقط: لا نستمر بطريقة غير آمنة — نسجّل ونختم فورًا
 process.on("uncaughtException", (err) => {
+  if (isTransientNetworkError(err)) {
+    // أخطاء DNS/شبكة عابرة من بيئة الاستضافة (مثل getaddrinfo ENOTFOUND) —
+    // تسقط العملية بلا داعٍ. نسجّل ونستمر دون إيقاف.
+    logInfo("uncaughtException", `⚠️ خطأ شبكة عابر متجاهل — استمرار العمل: ${sanitizeError(err)}`);
+    return;
+  }
   logError("uncaughtException", err);
-  // لا يمكن الاعتماد على حالة العملية بعد هذا — إيقاف فوري دون انتظار
   gracefulShutdown(1);
 });
+
+/** هل الخطأ عابر (DNS/شبكة) لا يستدعي إسقاط العملية؟ */
+function isTransientNetworkError(err: Error): boolean {
+  const code = (err as NodeJS.ErrnoException).code ?? "";
+  const message = err.message ?? "";
+  const transientCodes = [
+    "ENOTFOUND",
+    "EAI_AGAIN",
+    "ECONNRESET",
+    "ECONNREFUSED",
+    "ETIMEDOUT",
+    "EAGAIN",
+    "ENETUNREACH",
+    "EHOSTUNREACH",
+    "EPIPE"
+  ];
+  return (
+    transientCodes.includes(code) ||
+    /getaddrinfo|ENOTFOUND|EAI_AGAIN|ECONNRESET|ETIMEDOUT|ECONNREFUSED|EPIPE/i.test(message)
+  );
+}
 
 // إيقاف إداري مطلوب (Ctrl+C / kill) — إغلاق نظيف
 process.on("SIGINT", () => gracefulShutdown(0));
