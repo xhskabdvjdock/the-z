@@ -22,6 +22,7 @@ const CATEGORY_ORDER: CommandMeta["category"][] = [
   "رومات صوتية",
   "مستويات",
   "رولات",
+  "ألعاب",
   "قوائم سياق"
 ];
 

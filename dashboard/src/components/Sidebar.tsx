@@ -24,7 +24,8 @@ import {
   Hash,
   Smile,
   CalendarClock,
-  LayoutTemplate
+  LayoutTemplate,
+  Gamepad2
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -40,6 +41,7 @@ const NAV_ITEMS = [
   { href: "/roles", label: "الرولات والألوان", icon: User },
   { href: "/reaction-roles", label: "رولات الرياكشن", icon: Smile },
   { href: "/leveling", label: "المستويات والخبرة", icon: Zap },
+  { href: "/games", label: "ألعاب The Z", icon: Gamepad2 },
   { href: "/automod", label: "الرقابة التلقائية", icon: Shield },
   { href: "/antinuke", label: "مكافحة الغزو", icon: ShieldAlert },
   { href: "/jail", label: "نظام السجن", icon: UserX },
