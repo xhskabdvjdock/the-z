@@ -27,6 +27,7 @@ function resolveGameOverride(
  * معالجة أوامر الألعاب عبر البادئة.
  *   - `<prefix><game> [وسائط]` — فتح لوبي/بدء لعبة (مثال: -xo، -mafia، -hangman كلمة)
  *   - `<prefix>join <كود>` — الانضمام للعبة Cross-Guild من سيرفر آخر
+ * البادئة الخاصة بالألعاب هي `-` دائمًا (مثل -xo)، وتُقبل أيضًا بادئة السيرفر.
  * يفحص إعدادات الألعاب (تفعيل/تعطيل اللعبة/الرومات المسموحة/البرودة).
  * يُرجع true إذا استُهلكت الرسالة.
  */
@@ -36,9 +37,14 @@ export async function handleGamePrefix(
   prefix: string,
   games?: GameSettings
 ): Promise<boolean> {
-  if (!prefix || !message.content.startsWith(prefix)) return false;
+  // بادئة الألعاب الثابتة "-" إضافة إلى بادئة السيرفر العامة
+  const prefixes = new Set<string>(prefix ? [prefix, "-"] : ["-"]);
+  const matched = [...prefixes]
+    .sort((a, b) => b.length - a.length)
+    .find((p) => message.content.startsWith(p));
+  if (!matched) return false;
 
-  const parts = message.content.slice(prefix.length).trim().split(/\s+/);
+  const parts = message.content.slice(matched.length).trim().split(/\s+/);
   const command = parts[0]?.toLowerCase() ?? "";
   const args = parts.slice(1);
   if (!command) return false;

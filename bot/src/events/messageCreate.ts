@@ -27,7 +27,8 @@ const event: BotEvent = {
     // 2) القنوات المخصصة لنوع معين من المحتوى
     const customChannels = gConfig.logging?.customChannels;
     const channelId = message.channelId;
-    const isCommand = message.content.startsWith(gConfig.prefix);
+    const isCommand =
+      message.content.startsWith(gConfig.prefix) || message.content.startsWith("-");
     const isTextOnly = !message.attachments.size && !message.stickers.size;
     const hasMedia = message.attachments.some(
       (a) => a.contentType?.startsWith("image/") || a.contentType?.startsWith("video/")
