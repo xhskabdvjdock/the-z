@@ -18,7 +18,7 @@ services:
       - key: NEXTAUTH_SECRET
         generateValue: true
       - key: NEXTAUTH_URL
-        value: https://the-z-whib.onrender.com
+        value: https://the-z-8c94.onrender.com
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL

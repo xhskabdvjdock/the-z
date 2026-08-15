@@ -10,9 +10,9 @@ const memberCache = new Map<string, { data: { roles: string[] } | null; expiresA
 const MEMBER_CACHE_TTL = 60 * 1000;
 
 export function botHeaders() {
-  const token = process.env.DISCORD_BOT_TOKEN;
+  const token = process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN;
   if (!token) {
-    console.error("DISCORD_BOT_TOKEN environment variable is not set!");
+    console.error("DISCORD_BOT_TOKEN / DISCORD_TOKEN environment variable is not set!");
   }
   return { Authorization: `Bot ${token}` };
 }

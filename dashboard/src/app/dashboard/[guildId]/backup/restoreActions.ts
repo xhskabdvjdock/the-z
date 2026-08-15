@@ -7,7 +7,7 @@ import { GuildConfig, ServerBackup, RestoreOptions } from "@thez/shared";
 import { logAction, logError } from "@/lib/logger";
 
 function botHeaders() {
-  return { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN}` };
+  return { Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN}` };
 }
 
 export async function restoreBackup(guildId: string, backup: ServerBackup, options: RestoreOptions = {
