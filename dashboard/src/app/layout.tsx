@@ -4,7 +4,12 @@ import Providers from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "لوحة تحكم البوت",
-  description: "لوحة تحكم إدارية متكاملة لبوت الديسكورد"
+  description: "لوحة تحكم إدارية متكاملة لبوت الديسكورد",
+  icons: {
+    icon: "/bot-logo.jpg",
+    shortcut: "/bot-logo.jpg",
+    apple: "/bot-logo.jpg"
+  }
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
