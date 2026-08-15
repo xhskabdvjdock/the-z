@@ -18,17 +18,27 @@ import {
   Settings,
   UserX,
   Database,
-  ScrollText
+  ScrollText,
+  BarChart3,
+  History,
+  Hash,
+  Smile,
+  CalendarClock,
+  LayoutTemplate
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "", label: "نظرة عامة", icon: LayoutDashboard },
+  { href: "/stats", label: "لوحة الإحصائيات", icon: BarChart3 },
   { href: "/members", label: "إدارة الأعضاء", icon: Users },
   { href: "/tickets", label: "نظام التذاكر", icon: Ticket },
   { href: "/voice", label: "الرومات الصوتية", icon: Mic },
+  { href: "/member-counter", label: "عداد الأعضاء", icon: Hash },
   { href: "/welcome", label: "الترحيب والمغادرة", icon: MessageSquare },
   { href: "/autoresponse", label: "الردود التلقائية", icon: Bot },
+  { href: "/schedules", label: "الرسائل المجدولة", icon: CalendarClock },
   { href: "/roles", label: "الرولات والألوان", icon: User },
+  { href: "/reaction-roles", label: "رولات الرياكشن", icon: Smile },
   { href: "/leveling", label: "المستويات والخبرة", icon: Zap },
   { href: "/automod", label: "الرقابة التلقائية", icon: Shield },
   { href: "/antinuke", label: "مكافحة الغزو", icon: ShieldAlert },
@@ -36,7 +46,9 @@ const NAV_ITEMS = [
   { href: "/moderation", label: "سجل الإشراف", icon: ScrollText },
   { href: "/captcha", label: "نظام التحقق", icon: Lock },
   { href: "/logging", label: "السجلات", icon: FileText },
+  { href: "/logs", label: "سجل الإجراءات", icon: History },
   { href: "/backup", label: "النسخ الاحتياطي", icon: Database },
+  { href: "/templates", label: "قوالب السيرفر", icon: LayoutTemplate },
   { href: "/commands", label: "إدارة الأوامر", icon: Settings }
 ];
 
