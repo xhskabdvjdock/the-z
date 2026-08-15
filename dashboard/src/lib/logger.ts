@@ -1,3 +1,5 @@
+import { ActionLog } from "@thez/shared";
+
 /** إخفاء أي قيم تشبه أسرارًا (token/secret/key/password) داخل أي نص سجل */
 export function redactSecrets(text: string): string {
   return text.replace(
@@ -44,6 +46,17 @@ export function logAction(ctx: LogActionContext): void {
       ? ` | ${redactSecrets(JSON.stringify(ctx.details))}`
       : "";
   console.log(`[${ctx.label}] ${ts} | server=${server} | user=${who} | ${ctx.action}${detailStr}`);
+
+  // حفظ الإجراء في قاعدة البيانات لعرضه في صفحة سجل الإجراءات (بدون حجب التشغيل)
+  ActionLog.create({
+    guildId: ctx.guildId,
+    userId: ctx.userId,
+    userName: ctx.userName ?? undefined,
+    label: ctx.label,
+    action: ctx.action,
+    details: ctx.details,
+    createdAt: new Date()
+  }).catch((err) => console.error(`[action-log] فشل حفظ سجل الإجراء: ${redactSecrets(err?.message ?? String(err))}`));
 }
 
 /**
