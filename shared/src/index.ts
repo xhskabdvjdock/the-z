@@ -8,6 +8,8 @@ export * from "./models/DashboardUser";
 export * from "./models/AfkUser";
 export * from "./models/JailUser";
 export * from "./models/ModerationLog";
+export * from "./models/ActionLog";
+export * from "./models/ServerTemplate";
 export * from "./utils/variables";
 export * from "./utils/leveling";
 export * from "./utils/cooldown";

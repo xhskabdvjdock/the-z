@@ -134,6 +134,33 @@ export interface ILevelRoleReward {
   removePrevious?: boolean;
 }
 
+/** رتبة تمنح بالرياكشن على رسالة محددة */
+export interface IReactionRole {
+  roleId: string;
+  label?: string;
+  /** إيموجي يونيكود أو ID الإيموجي المخصص أو صيغة <:name:id> */
+  emoji: string;
+}
+
+/** رسالة مجدولة تُرسل في وقت محدد ويمكن أن تتكرر كل X دقيقة */
+export interface IScheduledMessage {
+  id: string;
+  channelId: string;
+  content: string;
+  embed?: {
+    enabled: boolean;
+    title?: string;
+    description?: string;
+    color?: string;
+  };
+  /** أول وقت إرسال (ISO) */
+  runAt?: string;
+  /** التكرار كل N دقيقة (0 = مرة واحدة) */
+  repeatMinutes: number;
+  enabled: boolean;
+  lastRunAt?: string;
+}
+
 export interface IGuildConfig {
   _id?: string;
   guildId: string;
@@ -311,6 +338,27 @@ export interface IGuildConfig {
 
   commandOverrides: ICommandOverride[];
 
+  /** عداد الأعضاء: روم صوتي يُعاد تسميته تلقائيًا بعدد أعضاء السيرفر/المتصلين */
+  memberCounter: {
+    enabled: boolean;
+    channelId?: string;
+    /** قالب الاسم — {count} = عدد الأعضاء، {online} = عدد المتصلين */
+    format: string;
+  };
+
+  /** رسائل مجدولة تُرسل تلقائيًا حسب الوقت */
+  scheduledMessages: IScheduledMessage[];
+
+  /** رولات الرياكشن: منح/إزالة رتبة عند الرياكشن على رسالة */
+  reactionRoles: {
+    enabled: boolean;
+    channelId?: string;
+    messageId?: string;
+    title?: string;
+    description?: string;
+    roles: IReactionRole[];
+  };
+
   /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
   dashboard?: IGuildDashboardSettings;
 
@@ -469,6 +517,18 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     },
 
     commandOverrides: [],
+
+    memberCounter: {
+      enabled: false,
+      format: "الأعضاء: {count}"
+    },
+
+    scheduledMessages: [],
+
+    reactionRoles: {
+      enabled: false,
+      roles: []
+    },
 
     dashboard: {
       allowAdministrators: true,
