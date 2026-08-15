@@ -8,6 +8,7 @@ import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
 import { handleLegacyPrefixCommands } from "../handlers/legacyPrefixHandler";
+import { handleGamePrefix } from "../games";
 import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
 import { sendMediaLog } from "../modules/logging/logger";
 import { AfkUser } from "@thez/shared";
@@ -50,11 +51,15 @@ const event: BotEvent = {
       return;
     }
 
-    // 3) الرقابة التلقائية
+    // 3) ألعاب The Z — أوامر البادئة الخاصة بالألعاب (-xo، -mafia، -join ...)
+    const wasGame = await handleGamePrefix(client, message, gConfig.prefix);
+    if (wasGame) return;
+
+    // 4) الرقابة التلقائية
     const wasActioned = await handleAutoMod(client, message, gConfig);
     if (wasActioned) return;
 
-    // 4) أوامر بادئة السيرفر (مع دعم البادئة المخصصة لكل أمر)
+    // 5) أوامر بادئة السيرفر (مع دعم البادئة المخصصة لكل أمر)
     const overrideMap = new Map((gConfig.commandOverrides ?? []).map((o) => [o.name, o]));
     const globalPrefix = gConfig.prefix;
 
@@ -141,11 +146,11 @@ const event: BotEvent = {
       }
     }
 
-    // 5) الردود التلقائية
+    // 6) الردود التلقائية
     const responded = await handleAutoResponse(client, message, gConfig);
     if (responded) return;
 
-    // 6) نظام AFK — batch queries بدلاً من N+1
+    // 7) نظام AFK — batch queries بدلاً من N+1
     const mentionedUsers = message.mentions.users.filter((u) => !u.bot);
     if (mentionedUsers.size > 0) {
       const userIds = [...mentionedUsers.keys()];
@@ -192,10 +197,10 @@ const event: BotEvent = {
         .catch(() => null);
     }
 
-    // 7) نظام الخبرة
+    // 8) نظام الخبرة
     await handleMessageXp(client, message, gConfig);
 
-    // 8) تسجيل المرفقات المرسلة (صور/فيديوهات/ملفات) — يُرسل الملف نفسه لروم اللوق
+    // 9) تسجيل المرفقات المرسلة (صور/فيديوهات/ملفات) — يُرسل الملف نفسه لروم اللوق
     if (message.attachments.size > 0) {
       const media = [...message.attachments.values()].map((a) => ({
         url: a.proxyURL || a.url,
