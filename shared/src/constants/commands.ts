@@ -8,6 +8,7 @@ export interface CommandMeta {
     | "رومات صوتية"
     | "مستويات"
     | "رولات"
+    | "ألعاب"
     | "قوائم سياق";
   descriptionAr: string;
   /** نوع الأمر: /slash (افتراضي) أو قائمة سياق (زر الفأرة الأيمن) */
@@ -53,6 +54,8 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
   { name: "selfrole-panel", category: "رولات", descriptionAr: "إرسال لوحة الرتب الذاتية" },
 
   { name: "voice-setup", category: "رومات صوتية", descriptionAr: "إرسال لوحة إنشاء الرومات الصوتية المؤقتة" },
+
+  { name: "game", category: "ألعاب", descriptionAr: "مركز The Z Games — استعراض الألعاب واللوائح" },
 
   {
     name: "Text Image",
