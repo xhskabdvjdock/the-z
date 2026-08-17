@@ -26,7 +26,6 @@ const contextMenu: BotContextMenu = {
       const gifBuffer = await convertAttachmentToGif(attachment, { videoCapSeconds: 10 });
 
       await interaction.editReply({
-        content: `✅ تم التحويل — ${attachment.name}`,
         files: [new AttachmentBuilder(gifBuffer, { name: "converted.gif" })]
       });
     } catch (err) {

@@ -52,10 +52,7 @@ const command: BotCommand = {
       });
 
       const gif = new AttachmentBuilder(gifBuffer, { name: "converted.gif" });
-      await ctx.reply({
-        content: `✅ تم التحويل — ${attachment.name}`,
-        files: [gif]
-      });
+      await ctx.reply({ files: [gif] });
     } catch (err) {
       logError("gif-command", err);
       await replyError(err instanceof Error ? err.message : "حدث خطأ غير متوقع أثناء التحويل.");
