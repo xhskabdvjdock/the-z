@@ -4,7 +4,7 @@ import { ExtendedClient } from "../../client";
 import { config } from "../../config";
 import { getGuildConfig } from "../../utils/guildConfig";
 
-const CATEGORY_ORDER = ["عام", "إشراف", "تذاكر", "رومات صوتية", "مستويات", "رولات"];
+const CATEGORY_ORDER = ["عام", "إشراف", "تذاكر", "رومات صوتية", "مستويات", "رولات", "أدوات"];
 
 const CATEGORY_ICONS: Record<string, string> = {
   "عام": "📌",
@@ -12,7 +12,8 @@ const CATEGORY_ICONS: Record<string, string> = {
   "تذاكر": "🎫",
   "رومات صوتية": "🎙️",
   "مستويات": "🆙",
-  "رولات": "🎨"
+  "رولات": "🎨",
+  "أدوات": "🎞️"
 };
 
 /** أوامر البادئة الثابتة (لا تُسجَّل كأوامر Slash) */
@@ -32,7 +33,8 @@ const OPTION_TYPE_LABELS: Record<CommandOptionType, string> = {
   number: "رقم",
   channel: "قناة",
   role: "رتبة",
-  boolean: "نعم/لا"
+  boolean: "نعم/لا",
+  attachment: "ملف"
 };
 
 function optionTypeLabel(type: CommandOptionType): string {
@@ -90,7 +92,13 @@ function buildCommandDetailEmbed(command: BotCommand): EmbedBuilder {
 
   embed.addFields(
     { name: "الفئة", value: command.category, inline: true },
-    { name: "نوع التنفيذ", value: "Slash + بادئة السيرفر", inline: true }
+    {
+      name: "نوع التنفيذ",
+      value: command.dmEnabled
+        ? "Slash + بادئة السيرفر + الرسائل الخاصة (DM)"
+        : "Slash + بادئة السيرفر",
+      inline: true
+    }
   );
 
   if (command.cooldownSeconds && command.cooldownSeconds > 0) {

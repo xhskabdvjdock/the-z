@@ -8,7 +8,7 @@ export interface CommandMeta {
     | "رومات صوتية"
     | "مستويات"
     | "رولات"
-    | "ألعاب"
+    | "أدوات"
     | "قوائم سياق";
   descriptionAr: string;
   /** نوع الأمر: /slash (افتراضي) أو قائمة سياق (زر الفأرة الأيمن) */
@@ -27,6 +27,8 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
   { name: "poll", category: "عام", descriptionAr: "إنشاء استبيان تصويت" },
   { name: "afk", category: "عام", descriptionAr: "تعيين حالة AFK" },
   { name: "translate", category: "عام", descriptionAr: "ترجمة نص إلى لغة أخرى" },
+
+  { name: "gif", category: "أدوات", descriptionAr: "تحويل فيديو أو صورة إلى GIF (يعمل في الخاص)" },
 
   { name: "ban", category: "إشراف", descriptionAr: "حظر عضو" },
   { name: "unban", category: "إشراف", descriptionAr: "فك حظر عضو" },

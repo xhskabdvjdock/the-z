@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# ffmpeg لتحويل الفيديو/الصور إلى GIF (أمر /gif)
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 
 # Copy root package.json for workspaces

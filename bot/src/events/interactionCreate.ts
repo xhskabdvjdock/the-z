@@ -15,8 +15,15 @@ const event: BotEvent = {
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
+
+        // الرسائل الخاصة (DM): أمر مصمم للعمل خارج السيرفرات — بدون إعدادات/صلاحيات سيرفر
         if (!interaction.guild || !interaction.member) {
-          await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+          if (!command.dmEnabled) {
+            await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+            return;
+          }
+          const dmCtx = buildSlashContext(client, interaction);
+          await command.run(dmCtx);
           return;
         }
 

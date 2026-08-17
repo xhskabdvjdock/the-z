@@ -12,17 +12,23 @@ import {
 import { ExtendedClient } from "../client";
 import { BotCommand, CommandContext } from "../types/command";
 
+/**
+ * يبني سياق أمر من تفاعل Slash. يعمل أيضًا في الرسائل الخاصة (DM):
+ * في الخاص لا يوجد سيرفر/عضو — الحقول guild/member تكون undefined لكنها
+ * محفوظة بنوعها لتوافق الواجهة، والأوامر التي تعمل في الخاص لا تقرأهما.
+ */
 export function buildSlashContext(
   client: ExtendedClient,
   interaction: ChatInputCommandInteraction
 ): CommandContext {
-  const guild = interaction.guild!;
-  const member = interaction.member as GuildMember;
+  const isDm = !interaction.guild || !interaction.member;
+  const guild = isDm ? undefined : interaction.guild!;
+  const member = isDm ? undefined : (interaction.member as GuildMember);
 
   return {
     client,
-    guild,
-    member,
+    guild: guild as CommandContext["guild"],
+    member: member as CommandContext["member"],
     user: interaction.user,
     channel: interaction.channel!,
     isSlash: true,
@@ -39,9 +45,11 @@ export function buildSlashContext(
     getInteger: (name) => interaction.options.getInteger(name),
     getBoolean: (name) => interaction.options.getBoolean(name),
     getUser: async (name) => interaction.options.getUser(name),
-    getMember: async (name) => interaction.options.getMember(name) as GuildMember | null,
+    getMember: async (name) =>
+      (interaction.options.getMember(name) as GuildMember | null) ?? null,
     getChannel: (name) => interaction.options.getChannel(name) as GuildBasedChannel | null,
-    getRole: (name) => interaction.options.getRole(name) as Role | null
+    getRole: (name) => interaction.options.getRole(name) as Role | null,
+    getAttachment: (name) => interaction.options.getAttachment(name)
   };
 }
 
@@ -125,6 +133,7 @@ export function buildPrefixContext(
       if (!raw) return null;
       const id = raw.replace(/[<@&>]/g, "");
       return guild.roles.cache.get(id) ?? guild.roles.cache.find((r) => r.name === raw) ?? null;
-    }
+    },
+    getAttachment: () => message.attachments.first() ?? null
   };
 }
