@@ -14,7 +14,8 @@ import {
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
-  if (session) redirect("/dashboard");
+  const sessionBroken = (session as any)?.error === "RefreshFailed";
+  if (session && !sessionBroken) redirect("/dashboard");
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-10 px-4">
