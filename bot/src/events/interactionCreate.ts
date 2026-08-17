@@ -92,8 +92,14 @@ const event: BotEvent = {
       if (interaction.isMessageContextMenuCommand()) {
         const contextMenu = client.contextMenus.get(interaction.commandName);
         if (!contextMenu) return;
+
+        // الرسائل الخاصة (DM): بدون إعدادات/صلاحيات سيرفر
         if (!interaction.guild || !interaction.member) {
-          await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+          if (!contextMenu.dmEnabled) {
+            await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+            return;
+          }
+          await contextMenu.run(client, interaction);
           return;
         }
 

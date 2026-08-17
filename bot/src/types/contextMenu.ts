@@ -6,5 +6,7 @@ export interface BotContextMenu {
   /** نوع قائمة السياق — رسائلي حاليًا فقط */
   type?: "message";
   defaultMemberPermissions?: PermissionResolvable;
+  /** يسمح باستخدام قائمة السياق في الرسائل الخاصة (DM) */
+  dmEnabled?: boolean;
   run(client: ExtendedClient, interaction: MessageContextMenuCommandInteraction): Promise<void>;
 }

@@ -62,5 +62,11 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
     category: "قوائم سياق",
     type: "context-menu",
     descriptionAr: "زر الفأرة الأيمن: إنشاء صورة من نص الرسالة"
+  },
+  {
+    name: "تحويل إلى GIF",
+    category: "قوائم سياق",
+    type: "context-menu",
+    descriptionAr: "زر الفأرة الأيمن: تحويل صورة/فيديو الرسالة إلى GIF"
   }
 ];
