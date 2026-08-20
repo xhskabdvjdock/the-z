@@ -1,14 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import { IColorRole, ISelfRoleOption, ISelfRolePanel } from "@thez/shared/client";
+import {
+  IColorRole,
+  ISelfRoleOption,
+  ISelfRolePanel,
+  COLOR_TEMPLATES,
+  CUSTOM_TEMPLATE_ID,
+  allTemplateColors
+} from "@thez/shared/client";
 import { DiscordChannel, DiscordRole } from "@/lib/discord";
 import Toggle from "@/components/form/Toggle";
 import RoleSelect from "@/components/form/RoleSelect";
 import MultiSelect from "@/components/form/MultiSelect";
 import ChannelSelect from "@/components/form/ChannelSelect";
 import SaveButton from "@/components/form/SaveButton";
-import { saveRolesConfig, publishRolePanel, RolesConfigInput } from "./actions";
+import { saveRolesConfig, publishRolePanel, applyColorTemplate, RolesConfigInput } from "./actions";
 
 function createEmptyColorRole(): IColorRole {
   return { roleId: "", name: "لون جديد", allowedRoleIds: [] };
@@ -43,6 +50,8 @@ export default function RolesForm({
 }) {
   const [state, setState] = useState<RolesConfigInput>(initial);
   const [publishStatus, setPublishStatus] = useState<Record<string, string>>({});
+  const [applyStatus, setApplyStatus] = useState("");
+  const [deleteExisting, setDeleteExisting] = useState(true);
 
   const roleOptions = roles.map((r) => ({ id: r.id, label: `@${r.name}` }));
 
@@ -144,9 +153,151 @@ export default function RolesForm({
           />
         </div>
 
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">قالب الألوان</label>
+            <select
+              className="input"
+              value={state.colors.templateId ?? COLOR_TEMPLATES[0].id}
+              onChange={(e) =>
+                setState({ ...state, colors: { ...state.colors, templateId: e.target.value } })
+              }
+            >
+              {COLOR_TEMPLATES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} — {t.description}
+                </option>
+              ))}
+              <option value={CUSTOM_TEMPLATE_ID}>قالب مخصص — اختر ألوانك من القوالب</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="label">تُنشأ رتب الألوان تحت هذه الرتبة (للترتيب)</label>
+            <RoleSelect
+              roles={roles.filter((r) => r.id !== guildId)}
+              value={state.colors.anchorRoleId ?? ""}
+              onChange={(v) => setState({ ...state, colors: { ...state.colors, anchorRoleId: v } })}
+            />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              اتركها فارغة لإنشاء الرتب في آخر ترتيب الرتب.
+            </p>
+          </div>
+        </div>
+
+        {state.colors.templateId !== CUSTOM_TEMPLATE_ID ? (
+          <div>
+            <label className="label">معاينة ألوان القالب ({COLOR_TEMPLATES.find((t) => t.id === state.colors.templateId)?.colors.length ?? 10} لون)</label>
+            <div className="flex flex-wrap gap-2">
+              {(COLOR_TEMPLATES.find((t) => t.id === state.colors.templateId)?.colors ?? []).map((c) => (
+                <div key={c.hex} className="flex flex-col items-center gap-1">
+                  <div
+                    className="h-10 w-16 rounded-md border border-black/20 dark:border-white/20"
+                    style={{ backgroundColor: `#${c.hex}` }}
+                    title={`#${c.hex}`}
+                  />
+                  <span className="font-mono text-[10px] text-slate-500 dark:text-slate-400">#{c.hex}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <label className="label">
+              اختر ألوانك ({(state.colors.customHexes ?? []).length} لون مختار — حتى 25)
+            </label>
+            <div className="flex max-h-64 flex-col gap-3 overflow-y-auto rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+              {Object.entries(
+                allTemplateColors().reduce<Record<string, string[]>>((acc, c) => {
+                  (acc[c.templateName] ??= []).push(c.hex);
+                  return acc;
+                }, {})
+              ).map(([group, hexes]) => (
+                <div key={group}>
+                  <h5 className="mb-2 text-xs font-bold text-slate-500 dark:text-slate-400">{group}</h5>
+                  <div className="flex flex-wrap gap-2">
+                    {hexes.map((hex) => {
+                      const selected = (state.colors.customHexes ?? []).includes(hex);
+                      return (
+                        <button
+                          key={hex}
+                          type="button"
+                          title={`#${hex}`}
+                          className={`relative h-9 w-9 rounded-md border-2 transition ${
+                            selected
+                              ? "scale-110 border-[#5865F2] shadow-md"
+                              : "border-black/20 hover:scale-105 dark:border-white/20"
+                          }`}
+                          style={{ backgroundColor: `#${hex}` }}
+                          onClick={() => {
+                            const current = state.colors.customHexes ?? [];
+                            const next = selected
+                              ? current.filter((h) => h !== hex)
+                              : current.length < 25
+                                ? [...current, hex]
+                                : current;
+                            setState({ ...state, colors: { ...state.colors, customHexes: next } });
+                          }}
+                        >
+                          {selected && <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white drop-shadow">✓</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={async () => {
+              setApplyStatus("⏳ جاري إنشاء الرتب في السيرفر...");
+              try {
+                const res = await applyColorTemplate(guildId, {
+                  templateId: state.colors.templateId ?? COLOR_TEMPLATES[0].id,
+                  customHexes:
+                    state.colors.templateId === CUSTOM_TEMPLATE_ID
+                      ? state.colors.customHexes
+                      : undefined,
+                  anchorRoleId: state.colors.anchorRoleId || undefined,
+                  deleteExisting
+                });
+                setState({
+                  ...state,
+                  colors: {
+                    ...state.colors,
+                    templateId: state.colors.templateId ?? COLOR_TEMPLATES[0].id,
+                    anchorRoleId: state.colors.anchorRoleId || undefined,
+                    roles: res.roles
+                  }
+                });
+                setApplyStatus(`✅ تم إنشاء ${res.count} رتبة ألوان بنجاح.`);
+              } catch (err) {
+                setApplyStatus(`❌ ${err instanceof Error ? err.message : String(err)}`);
+              }
+            }}
+          >
+            🚀 تطبيق القالب وإنشاء الرتب
+          </button>
+          <Toggle
+            checked={deleteExisting}
+            onChange={setDeleteExisting}
+            label="حذف رتب الألوان الحالية قبل التطبيق"
+          />
+        </div>
+        {applyStatus && (
+          <p className="whitespace-pre-line rounded-lg bg-slate-50 p-2 text-sm dark:bg-slate-800/50">
+            {applyStatus}
+          </p>
+        )}
+
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-slate-500 dark:text-slate-400">
-            الألوان المتاحة ({state.colors.roles.length})
+            الألوان المتاحة حالياً ({state.colors.roles.length})
           </h3>
           <button
             type="button"

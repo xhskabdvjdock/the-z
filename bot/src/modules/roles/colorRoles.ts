@@ -1,5 +1,6 @@
 import {
   ActionRowBuilder,
+  AttachmentBuilder,
   EmbedBuilder,
   GuildMember,
   StringSelectMenuBuilder,
@@ -10,6 +11,8 @@ import { GuildConfig, IGuildConfig } from "@thez/shared";
 import { ComponentRouter } from "../../handlers/componentRouter";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
+import { renderColorSwatch } from "../../utils/colorSwatch";
+import { logError } from "../../utils/logger";
 
 const SELECT_ID = "color_select";
 
@@ -54,28 +57,57 @@ export function registerColorComponents(router: ComponentRouter): void {
   });
 }
 
-/** يرسل لوحة اختيار الألوان في قناة معيّنة، ويحفظ موقعها في إعدادات السيرفر */
-export async function sendColorPanel(channel: TextChannel, gConfig: IGuildConfig): Promise<void> {
+/** يبني رسالة لوحة الألوان: صورة العينات (بالأرقام والكود السداسي) + قائمة اختيار مرقّمة */
+export async function buildColorPanelPayload(gConfig: IGuildConfig) {
   const colorRoles = gConfig.colors?.roles ?? [];
+
+  const swatch = await renderColorSwatch(
+    colorRoles.map((r, i) => ({
+      hex: (r.hex ?? "#5865F2").replace("#", ""),
+      name: r.name || `#${r.hex ?? "5865F2"}`
+    }))
+  );
+  const image = new AttachmentBuilder(swatch, { name: "colors.png" });
 
   const embed = new EmbedBuilder()
     .setColor("#5865F2")
     .setTitle("🎨 اختر لون اسمك")
-    .setDescription("اختر لوناً من القائمة أدناه لتلوين اسمك في السيرفر.");
+    .setDescription(
+      "اختر رقم اللون من الصورة أعلاه، ثم اختر نفس الرقم من القائمة بالأسفل لتلوين اسمك في السيرفر."
+    )
+    .setImage("attachment://colors.png");
 
-  const select = new StringSelectMenuBuilder().setCustomId(SELECT_ID).setPlaceholder("اختر لوناً...");
+  const select = new StringSelectMenuBuilder()
+    .setCustomId(SELECT_ID)
+    .setPlaceholder("اختر رقم اللون...");
 
-  for (const role of colorRoles.slice(0, 25)) {
+  for (let i = 0; i < colorRoles.length && i < 25; i++) {
+    const role = colorRoles[i];
+    const hex = (role.hex ?? "5865F2").toUpperCase();
     select.addOptions({
-      label: role.name,
+      label: `${i + 1} — #${hex}`,
       value: role.roleId,
       emoji: role.emoji || undefined
     });
   }
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
+  return { embeds: [embed], files: [image], components: [row] };
+}
 
-  const sentMessage = await channel.send({ embeds: [embed], components: [row] });
+/** يرسل لوحة اختيار الألوان في قناة معيّنة، ويحفظ موقعها في إعدادات السيرفر */
+export async function sendColorPanel(channel: TextChannel, gConfig: IGuildConfig): Promise<void> {
+  const payload = await buildColorPanelPayload(gConfig);
+
+  // تحديث الرسالة المنشورة سابقًا في نفس القناة بدل إرسال نسخة جديدة
+  const prevChannel = gConfig.colors?.panelChannelId;
+  const prevMessage = gConfig.colors?.panelMessageId;
+  if (prevChannel === channel.id && prevMessage) {
+    const updated = await channel.messages.edit(prevMessage, payload).catch(() => null);
+    if (updated) return;
+  }
+
+  const sentMessage = await channel.send(payload);
 
   await GuildConfig.findOneAndUpdate(
     { guildId: gConfig.guildId },
@@ -85,5 +117,5 @@ export async function sendColorPanel(channel: TextChannel, gConfig: IGuildConfig
         "colors.panelMessageId": sentMessage.id
       }
     }
-  );
+  ).catch((err) => logError("color-panel-save", err));
 }

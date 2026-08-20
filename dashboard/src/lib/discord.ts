@@ -193,6 +193,31 @@ export async function getGuildRoles(guildId: string): Promise<DiscordRole[]> {
   return roles.sort((a, b) => b.position - a.position);
 }
 
+/** إنشاء رتبة جديدة في السيرفر (يتطلب صلاحية Manage Roles في البوت) */
+export async function createGuildRole(guildId: string, body: Record<string, unknown>) {
+  const res = await fetch(`${API_BASE}/guilds/${guildId}/roles`, {
+    method: "POST",
+    headers: { ...botHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store"
+  });
+  const detail = await res.text().catch(() => "");
+  if (!res.ok) {
+    return { ok: false, status: res.status, role: null, error: detail.slice(0, 300) };
+  }
+  return { ok: true, status: res.status, role: (await res.json()) as DiscordRole, error: "" };
+}
+
+/** حذف رتبة من السيرفر (يتطلب صلاحية Manage Roles في البوت) */
+export async function deleteGuildRole(guildId: string, roleId: string) {
+  const res = await fetch(`${API_BASE}/guilds/${guildId}/roles/${roleId}`, {
+    method: "DELETE",
+    headers: botHeaders(),
+    cache: "no-store"
+  });
+  return { ok: res.ok, status: res.status };
+}
+
 /**
  * أعلى رتبة يملكها البوت في السيرفر (position). أي رتبة أعلى منها لا يمكن
  * للبوت منحها/إزالتها — نستخدمها في التحقق من صلاحية اللوحات.

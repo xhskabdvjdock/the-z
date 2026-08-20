@@ -201,6 +201,12 @@ export interface IGuildConfig {
     enabled: boolean;
     panelChannelId?: string;
     panelMessageId?: string;
+    /** آخر قالب تم تطبيقه (id من COLOR_TEMPLATES أو CUSTOM_TEMPLATE_ID) */
+    templateId?: string;
+    /** الرتبة التي أُنشئت رتب الألوان تحتها (للترتيب في السيرفر) */
+    anchorRoleId?: string;
+    /** ألوان القالب المخصص المختارة (HEX بدون #) */
+    customHexes?: string[];
     roles: IColorRole[];
   };
 

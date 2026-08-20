@@ -17,6 +17,7 @@ export * from "./utils/validate";
 export * from "./utils/dashboard";
 export * from "./utils/rateLimit";
 export * from "./constants/commands";
+export * from "./constants/colorTemplates";
 export * from "./types/backup";
 export * from "./builders/rolePanelMessage";
 export * from "./redis/backend";

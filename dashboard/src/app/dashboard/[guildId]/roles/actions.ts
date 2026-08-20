@@ -1,7 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { GuildConfig, IGuildConfig, buildRolePanelMessage } from "@thez/shared";
+import {
+  GuildConfig,
+  IGuildConfig,
+  buildRolePanelMessage,
+  COLOR_TEMPLATES,
+  CUSTOM_TEMPLATE_ID,
+  colorRoleName,
+  IColorRole
+} from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 import { logAction, logError } from "@/lib/logger";
@@ -11,13 +19,129 @@ import {
   validateRolePanel,
   sendChannelMessage,
   editChannelMessage,
-  getGuildInfo
+  getGuildInfo,
+  createGuildRole,
+  deleteGuildRole
 } from "@/lib/discord";
 
 export interface RolesConfigInput {
   autoRole: IGuildConfig["autoRole"];
   colors: IGuildConfig["colors"];
   selfRoles: IGuildConfig["selfRoles"];
+}
+
+export interface ApplyColorTemplateInput {
+  templateId: string;
+  customHexes?: string[];
+  anchorRoleId?: string;
+  deleteExisting?: boolean;
+}
+
+/**
+ * تطبيق قالب ألوان: ينشئ رتب الألوان في السيرفر تحت رتبة محددة (للترتيب)،
+ * ويحذف رتب الألوان الحالية اختياريًا، ويحفظ النتيجة في إعدادات السيرفر.
+ */
+export async function applyColorTemplate(guildId: string, input: ApplyColorTemplateInput) {
+  try {
+    const session = await requireGuildAdmin(guildId);
+    await ensureDb();
+
+    const isCustom = input.templateId === CUSTOM_TEMPLATE_ID;
+    const template = COLOR_TEMPLATES.find((t) => t.id === input.templateId);
+    if (!isCustom && !template) throw new Error("القالب غير موجود.");
+
+    const chosen: { hex: string; templateName: string }[] = isCustom
+      ? (input.customHexes ?? []).map((hex) => ({ hex, templateName: "مخصص" }))
+      : template!.colors.map((c) => ({ hex: c.hex, templateName: template!.name }));
+
+    if (chosen.length === 0) throw new Error("اختر لونًا واحدًا على الأقل.");
+    if (chosen.length > 25) throw new Error("الحد الأقصى للقالب المخصص هو 25 لونًا.");
+
+    const [roles, botTopPosition, guildInfo, config] = await Promise.all([
+      getGuildRoles(guildId),
+      getBotTopRolePosition(guildId),
+      getGuildInfo(guildId).catch(() => null),
+      GuildConfig.findOne({ guildId }).lean()
+    ]);
+
+    // الرتبة المرجعية: تُنشأ رتب الألوان تحتها مباشرة
+    const anchor = input.anchorRoleId ? roles.find((r) => r.id === input.anchorRoleId) : null;
+    if (input.anchorRoleId && !anchor) throw new Error("الرتبة المحددة غير موجودة في السيرفر.");
+    if (anchor && anchor.id === guildId) throw new Error("لا يمكن استخدام @everyone كرتبة مرجعية.");
+    if (anchor && anchor.position >= botTopPosition) {
+      throw new Error("الرتبة المحددة أعلى من أعلى رتبة يملكها البوت — أنزلها أولاً أو اختر رتبة أقل.");
+    }
+
+    // حذف رتب الألوان الحالية (اختياري)
+    const existing = config?.colors?.roles ?? [];
+    if (input.deleteExisting) {
+      for (const cr of existing) {
+        if (!cr.roleId) continue;
+        const del = await deleteGuildRole(guildId, cr.roleId);
+        if (!del.ok && del.status !== 404) {
+          throw new Error(`تعذر حذف الرتبة "${cr.name}" (HTTP ${del.status}).`);
+        }
+      }
+    }
+
+    // إنشاء الرتب الجديدة تحت الرتبة المرجعية (أو في آخر الترتيب إن لم تُحدد)
+    const basePosition = anchor ? anchor.position - 1 : null;
+    const created: IColorRole[] = [];
+    for (let i = 0; i < chosen.length; i++) {
+      const { hex, templateName } = chosen[i];
+      const name = colorRoleName(templateName, i);
+      const body: Record<string, unknown> = {
+        name,
+        color: parseInt(hex, 16),
+        hoist: false,
+        mentionable: false
+      };
+      if (basePosition !== null) body.position = basePosition - i;
+
+      const res = await createGuildRole(guildId, body);
+      if (!res.ok || !res.role) {
+        throw new Error(
+          `تعذر إنشاء الرتبة "${name}" (HTTP ${res.status}) — تأكد أن البوت يملك صلاحية Manage Roles.${res.error ? `\n${res.error}` : ""}`
+        );
+      }
+      created.push({ roleId: res.role.id, name, hex: `#${hex.toUpperCase()}`, allowedRoleIds: [] });
+    }
+
+    await GuildConfig.findOneAndUpdate(
+      { guildId },
+      {
+        $set: {
+          "colors.templateId": input.templateId,
+          "colors.anchorRoleId": input.anchorRoleId ?? null,
+          "colors.customHexes": isCustom ? chosen.map((c) => c.hex) : [],
+          "colors.roles": created
+        }
+      },
+      { upsert: true }
+    );
+
+    logAction({
+      label: "roles/apply-color-template",
+      guildId,
+      guildName: guildInfo?.name,
+      userId: (session.user as any).id,
+      userName: session.user?.name,
+      action: "تطبيق قالب ألوان",
+      details: {
+        templateId: input.templateId,
+        anchorRoleId: input.anchorRoleId ?? null,
+        deleteExisting: !!input.deleteExisting,
+        createdRoles: created.length,
+        deletedRoles: input.deleteExisting ? existing.length : 0
+      }
+    });
+
+    revalidatePath(`/dashboard/${guildId}/roles`);
+    return { ok: true, roles: created, count: created.length };
+  } catch (error) {
+    logError("roles/apply-color-template", error);
+    throw error;
+  }
 }
 
 export async function saveRolesConfig(guildId: string, data: RolesConfigInput) {
