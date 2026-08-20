@@ -87,24 +87,32 @@ export async function applyColorTemplate(guildId: string, input: ApplyColorTempl
     // إنشاء الرتب الجديدة تحت الرتبة المرجعية (أو في آخر الترتيب إن لم تُحدد)
     const basePosition = anchor ? anchor.position - 1 : null;
     const created: IColorRole[] = [];
-    for (let i = 0; i < chosen.length; i++) {
-      const { hex, templateName } = chosen[i];
-      const name = colorRoleName(templateName, i);
-      const body: Record<string, unknown> = {
-        name,
-        color: parseInt(hex, 16),
-        hoist: false,
-        mentionable: false
-      };
-      if (basePosition !== null) body.position = basePosition - i;
+    try {
+      for (let i = 0; i < chosen.length; i++) {
+        const { hex, templateName } = chosen[i];
+        const name = colorRoleName(templateName, i);
+        const body: Record<string, unknown> = {
+          name,
+          color: parseInt(hex, 16),
+          hoist: false,
+          mentionable: false
+        };
+        if (basePosition !== null) body.position = basePosition - i;
 
-      const res = await createGuildRole(guildId, body);
-      if (!res.ok || !res.role) {
-        throw new Error(
-          `تعذر إنشاء الرتبة "${name}" (HTTP ${res.status}) — تأكد أن البوت يملك صلاحية Manage Roles.${res.error ? `\n${res.error}` : ""}`
-        );
+        const res = await createGuildRole(guildId, body);
+        if (!res.ok || !res.role) {
+          throw new Error(
+            `تعذر إنشاء الرتبة "${name}" (HTTP ${res.status}) — تأكد أن البوت يملك صلاحية Manage Roles.${res.error ? `\n${res.error}` : ""}`
+          );
+        }
+        created.push({ roleId: res.role.id, name, hex: `#${hex.toUpperCase()}`, allowedRoleIds: [] });
       }
-      created.push({ roleId: res.role.id, name, hex: `#${hex.toUpperCase()}`, allowedRoleIds: [] });
+    } catch (err) {
+      // تنظيف الرتب التي أُنشئت في هذه المحاولة حتى لا تبقى رتب يتيمة
+      for (const cr of created) {
+        await deleteGuildRole(guildId, cr.roleId).catch(() => null);
+      }
+      throw err;
     }
 
     await GuildConfig.findOneAndUpdate(

@@ -201,11 +201,17 @@ export async function createGuildRole(guildId: string, body: Record<string, unkn
     body: JSON.stringify(body),
     cache: "no-store"
   });
-  const detail = await res.text().catch(() => "");
-  if (!res.ok) {
-    return { ok: false, status: res.status, role: null, error: detail.slice(0, 300) };
+  const text = await res.text().catch(() => "");
+  let role: DiscordRole | null = null;
+  try {
+    role = JSON.parse(text);
+  } catch {
+    // جسم الرد غير JSON — يُعاد خطأ أدناه
   }
-  return { ok: true, status: res.status, role: (await res.json()) as DiscordRole, error: "" };
+  if (!res.ok) {
+    return { ok: false, status: res.status, role: null, error: text.slice(0, 300) };
+  }
+  return { ok: true, status: res.status, role, error: "" };
 }
 
 /** حذف رتبة من السيرفر (يتطلب صلاحية Manage Roles في البوت) */
