@@ -16,6 +16,7 @@ import { resolveEmojiOption } from "../../utils/emoji";
 import { logError } from "../../utils/logger";
 
 const SELECT_ID = "color_select";
+const REMOVE_COLOR_VALUE = "color_remove";
 
 /** يسجّل معالج قائمة اختيار الألوان (نظام لون واحد فقط لكل عضو) */
 export function registerColorComponents(router: ComponentRouter): void {
@@ -26,14 +27,24 @@ export function registerColorComponents(router: ComponentRouter): void {
     const colorRoles = gConfig.colors?.roles ?? [];
 
     const selectedRoleId = interaction.values[0];
+    const member = interaction.member as GuildMember;
+
+    if (selectedRoleId === REMOVE_COLOR_VALUE) {
+      const allColorRoleIds = colorRoles.map((c) => c.roleId);
+      const toRemove = allColorRoleIds.filter((id) => member.roles.cache.has(id));
+      if (toRemove.length) {
+        await member.roles.remove(toRemove).catch(() => null);
+      }
+      await interaction.reply({ content: "✅ تمت إزالة لونك.", ephemeral: true });
+      return;
+    }
+
     const colorRole = colorRoles.find((c) => c.roleId === selectedRoleId);
 
     if (!colorRole) {
       await interaction.reply({ content: "❌ هذا اللون لم يعد متاحاً.", ephemeral: true });
       return;
     }
-
-    const member = interaction.member as GuildMember;
 
     if (colorRole.allowedRoleIds?.length) {
       const hasAllowed = colorRole.allowedRoleIds.some((r) => member.roles.cache.has(r));
@@ -83,7 +94,8 @@ export async function buildColorPanelPayload(gConfig: IGuildConfig) {
     .setCustomId(SELECT_ID)
     .setPlaceholder("اختر رقم اللون...");
 
-  for (let i = 0; i < colorRoles.length && i < 25; i++) {
+  // خيارات الألوان (مع ترك مكان لخيار الحذف — حد القائمة 25 خيارًا)
+  for (let i = 0; i < colorRoles.length && i < 24; i++) {
     const role = colorRoles[i];
     const hex = (role.hex ?? "5865F2").toUpperCase();
     select.addOptions({
@@ -92,6 +104,12 @@ export async function buildColorPanelPayload(gConfig: IGuildConfig) {
       emoji: resolveEmojiOption(role.emoji)
     });
   }
+
+  select.addOptions({
+    label: "حذف اللون",
+    value: REMOVE_COLOR_VALUE,
+    emoji: resolveEmojiOption("🗑️")
+  });
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
   return { embeds: [embed], files: [image], components: [row] };
