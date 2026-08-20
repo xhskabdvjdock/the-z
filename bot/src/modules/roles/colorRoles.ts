@@ -12,6 +12,7 @@ import { ComponentRouter } from "../../handlers/componentRouter";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { renderColorSwatch } from "../../utils/colorSwatch";
+import { resolveEmojiOption } from "../../utils/emoji";
 import { logError } from "../../utils/logger";
 
 const SELECT_ID = "color_select";
@@ -88,7 +89,7 @@ export async function buildColorPanelPayload(gConfig: IGuildConfig) {
     select.addOptions({
       label: `${i + 1} — #${hex}`,
       value: role.roleId,
-      emoji: role.emoji || undefined
+      emoji: resolveEmojiOption(role.emoji)
     });
   }
 

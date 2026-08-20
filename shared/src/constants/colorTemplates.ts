@@ -1,4 +1,4 @@
-/** قوالب الألوان لنظام ألوان الاسم — 10 قوالب × 10 ألوان (تدرج من الفاتح للداكن) */
+/** قوالب الألوان لنظام ألوان الاسم — 10 قوالب × 10 ألوان (درجات مدروسة من الفاتح للداكن) */
 
 export interface ColorTemplateColor {
   /** HEX بدون # */
@@ -19,21 +19,21 @@ export const COLOR_TEMPLATES: ColorTemplate[] = [
   {
     id: "mono",
     name: "أبيض وأسود",
-    description: "تدرجات الأبيض والأسود",
+    description: "تدرجات الأبيض والأسود البارد",
     colors: [
-      { hex: "FFFFFF" }, { hex: "E6E6E6" }, { hex: "CCCCCC" }, { hex: "B3B3B3" },
-      { hex: "999999" }, { hex: "808080" }, { hex: "666666" }, { hex: "4D4D4D" },
-      { hex: "333333" }, { hex: "1A1A1A" }
+      { hex: "F8FAFC" }, { hex: "F1F5F9" }, { hex: "E2E8F0" }, { hex: "CBD5E1" },
+      { hex: "94A3B8" }, { hex: "64748B" }, { hex: "475569" }, { hex: "334155" },
+      { hex: "1E293B" }, { hex: "020617" }
     ]
   },
   {
     id: "gray",
-    name: "رمادي",
-    description: "تدرجات الرمادي",
+    name: "رمادي دافئ",
+    description: "تدرجات الرمادي الدافئ",
     colors: [
-      { hex: "F5F5F5" }, { hex: "E0E0E0" }, { hex: "C9C9C9" }, { hex: "B0B0B0" },
-      { hex: "989898" }, { hex: "7E7E7E" }, { hex: "646464" }, { hex: "4A4A4A" },
-      { hex: "303030" }, { hex: "161616" }
+      { hex: "FAFAF9" }, { hex: "F5F5F4" }, { hex: "E7E5E4" }, { hex: "D6D3D1" },
+      { hex: "A8A29E" }, { hex: "78716C" }, { hex: "57534E" }, { hex: "44403C" },
+      { hex: "292524" }, { hex: "0C0A09" }
     ]
   },
   {
@@ -41,9 +41,9 @@ export const COLOR_TEMPLATES: ColorTemplate[] = [
     name: "أحمر",
     description: "تدرجات الأحمر",
     colors: [
-      { hex: "FF8080" }, { hex: "FF6B6B" }, { hex: "FF4D4D" }, { hex: "FF3333" },
-      { hex: "FF1A1A" }, { hex: "FF0000" }, { hex: "E60000" }, { hex: "CC0000" },
-      { hex: "B30000" }, { hex: "990000" }
+      { hex: "FEF2F2" }, { hex: "FEE2E2" }, { hex: "FECACA" }, { hex: "FCA5A5" },
+      { hex: "F87171" }, { hex: "EF4444" }, { hex: "DC2626" }, { hex: "B91C1C" },
+      { hex: "991B1B" }, { hex: "450A0A" }
     ]
   },
   {
@@ -51,19 +51,19 @@ export const COLOR_TEMPLATES: ColorTemplate[] = [
     name: "برتقالي",
     description: "تدرجات البرتقالي",
     colors: [
-      { hex: "FFD9B3" }, { hex: "FFC080" }, { hex: "FFA64D" }, { hex: "FF8C1A" },
-      { hex: "FF7A00" }, { hex: "E66E00" }, { hex: "CC6100" }, { hex: "B35500" },
-      { hex: "994900" }, { hex: "804000" }
+      { hex: "FFF7ED" }, { hex: "FFEDD5" }, { hex: "FED7AA" }, { hex: "FDBA74" },
+      { hex: "FB923C" }, { hex: "F97316" }, { hex: "EA580C" }, { hex: "C2410C" },
+      { hex: "9A3412" }, { hex: "431407" }
     ]
   },
   {
     id: "yellow",
-    name: "أصفر",
-    description: "تدرجات الأصفر",
+    name: "كهرماني",
+    description: "تدرجات الأصفر الكهرماني",
     colors: [
-      { hex: "FFFF99" }, { hex: "FFFF66" }, { hex: "FFFF33" }, { hex: "FFFF00" },
-      { hex: "E6E600" }, { hex: "CCCC00" }, { hex: "B3B300" }, { hex: "999900" },
-      { hex: "808000" }, { hex: "666600" }
+      { hex: "FFFBEB" }, { hex: "FEF3C7" }, { hex: "FDE68A" }, { hex: "FCD34D" },
+      { hex: "FBBF24" }, { hex: "F59E0B" }, { hex: "D97706" }, { hex: "B45309" },
+      { hex: "92400E" }, { hex: "451A03" }
     ]
   },
   {
@@ -71,19 +71,19 @@ export const COLOR_TEMPLATES: ColorTemplate[] = [
     name: "أخضر",
     description: "تدرجات الأخضر",
     colors: [
-      { hex: "B3FFB3" }, { hex: "80FF80" }, { hex: "4DFF4D" }, { hex: "1AFF1A" },
-      { hex: "00FF00" }, { hex: "00E600" }, { hex: "00CC00" }, { hex: "00B300" },
-      { hex: "009900" }, { hex: "008000" }
+      { hex: "F0FDF4" }, { hex: "DCFCE7" }, { hex: "BBF7D0" }, { hex: "86EFAC" },
+      { hex: "4ADE80" }, { hex: "22C55E" }, { hex: "16A34A" }, { hex: "15803D" },
+      { hex: "166534" }, { hex: "052E16" }
     ]
   },
   {
     id: "teal",
-    name: "سماوي / تركواز",
-    description: "تدرجات السماوي والتركواز",
+    name: "تركواز",
+    description: "تدرجات التركواز والسماوي",
     colors: [
-      { hex: "B3FFFF" }, { hex: "80FFFF" }, { hex: "4DFFFF" }, { hex: "1AFFFF" },
-      { hex: "00FFFF" }, { hex: "00E6E6" }, { hex: "00CCCC" }, { hex: "00B3B3" },
-      { hex: "009999" }, { hex: "008080" }
+      { hex: "F0FDFA" }, { hex: "CCFBF1" }, { hex: "99F6E4" }, { hex: "5EEAD4" },
+      { hex: "2DD4BF" }, { hex: "14B8A6" }, { hex: "0D9488" }, { hex: "0F766E" },
+      { hex: "115E59" }, { hex: "042F2E" }
     ]
   },
   {
@@ -91,9 +91,9 @@ export const COLOR_TEMPLATES: ColorTemplate[] = [
     name: "أزرق",
     description: "تدرجات الأزرق",
     colors: [
-      { hex: "B3CCFF" }, { hex: "80A6FF" }, { hex: "4D80FF" }, { hex: "1A59FF" },
-      { hex: "0040FF" }, { hex: "0039E6" }, { hex: "0033CC" }, { hex: "002DB3" },
-      { hex: "002699" }, { hex: "002080" }
+      { hex: "EFF6FF" }, { hex: "DBEAFE" }, { hex: "BFDBFE" }, { hex: "93C5FD" },
+      { hex: "60A5FA" }, { hex: "3B82F6" }, { hex: "2563EB" }, { hex: "1D4ED8" },
+      { hex: "1E40AF" }, { hex: "172554" }
     ]
   },
   {
@@ -101,19 +101,19 @@ export const COLOR_TEMPLATES: ColorTemplate[] = [
     name: "بنفسجي",
     description: "تدرجات البنفسجي",
     colors: [
-      { hex: "E6B3FF" }, { hex: "D580FF" }, { hex: "C44DFF" }, { hex: "B31AFF" },
-      { hex: "A600FF" }, { hex: "9500E6" }, { hex: "8500CC" }, { hex: "7400B3" },
-      { hex: "640099" }, { hex: "540080" }
+      { hex: "F5F3FF" }, { hex: "EDE9FE" }, { hex: "DDD6FE" }, { hex: "C4B5FD" },
+      { hex: "A78BFA" }, { hex: "8B5CF6" }, { hex: "7C3AED" }, { hex: "6D28D9" },
+      { hex: "5B21B6" }, { hex: "2E1065" }
     ]
   },
   {
     id: "pink",
-    name: "وردي / ماجنتا",
-    description: "تدرجات الوردي والماجنتا",
+    name: "وردي",
+    description: "تدرجات الوردي",
     colors: [
-      { hex: "FFB3D9" }, { hex: "FF80C0" }, { hex: "FF4DA6" }, { hex: "FF1A8C" },
-      { hex: "FF007F" }, { hex: "E60073" }, { hex: "CC0066" }, { hex: "B30059" },
-      { hex: "99004D" }, { hex: "800040" }
+      { hex: "FDF2F8" }, { hex: "FCE7F3" }, { hex: "FBCFE8" }, { hex: "F9A8D4" },
+      { hex: "F472B6" }, { hex: "EC4899" }, { hex: "DB2777" }, { hex: "BE185D" },
+      { hex: "9D174D" }, { hex: "500724" }
     ]
   }
 ];
