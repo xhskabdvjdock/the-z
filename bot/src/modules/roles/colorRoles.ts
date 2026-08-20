@@ -12,7 +12,6 @@ import { ComponentRouter } from "../../handlers/componentRouter";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { renderColorSwatch } from "../../utils/colorSwatch";
-import { resolveEmojiOption } from "../../utils/emoji";
 import { logError } from "../../utils/logger";
 
 const SELECT_ID = "color_select";
@@ -35,21 +34,21 @@ export function registerColorComponents(router: ComponentRouter): void {
       if (toRemove.length) {
         await member.roles.remove(toRemove).catch(() => null);
       }
-      await interaction.reply({ content: "✅ تمت إزالة لونك.", ephemeral: true });
+      await interaction.reply({ content: "تمت إزالة لونك.", ephemeral: true });
       return;
     }
 
     const colorRole = colorRoles.find((c) => c.roleId === selectedRoleId);
 
     if (!colorRole) {
-      await interaction.reply({ content: "❌ هذا اللون لم يعد متاحاً.", ephemeral: true });
+      await interaction.reply({ content: "هذا اللون لم يعد متاحاً.", ephemeral: true });
       return;
     }
 
     if (colorRole.allowedRoleIds?.length) {
       const hasAllowed = colorRole.allowedRoleIds.some((r) => member.roles.cache.has(r));
       if (!hasAllowed) {
-        await interaction.reply({ content: "❌ لا تملك الصلاحية لاختيار هذا اللون.", ephemeral: true });
+        await interaction.reply({ content: "لا تملك الصلاحية لاختيار هذا اللون.", ephemeral: true });
         return;
       }
     }
@@ -65,7 +64,7 @@ export function registerColorComponents(router: ComponentRouter): void {
 
     await member.roles.add(selectedRoleId).catch(() => null);
 
-    await interaction.reply({ content: "✅ تم تغيير لونك", ephemeral: true });
+    await interaction.reply({ content: "تم تغيير لونك", ephemeral: true });
   });
 }
 
@@ -84,9 +83,9 @@ export async function buildColorPanelPayload(gConfig: IGuildConfig) {
 
   const embed = new EmbedBuilder()
     .setColor("#5865F2")
-    .setTitle("🎨 اختر لون اسمك")
+    .setTitle("اختر لون اسمك")
     .setDescription(
-      "اختر رقم اللون من الصورة أعلاه، ثم اختر نفس الرقم من القائمة بالأسفل لتلوين اسمك في السيرفر."
+      "اختر رقم اللون من الصورة أعلاه، ثم اختر نفس الرقم من القائمة بالأسفل لتلوين اسمك في السيرفر، أو اختر حذف اللون لإزالة لونك."
     )
     .setImage("attachment://colors.png");
 
@@ -100,15 +99,13 @@ export async function buildColorPanelPayload(gConfig: IGuildConfig) {
     const hex = (role.hex ?? "5865F2").toUpperCase();
     select.addOptions({
       label: `${i + 1} — #${hex}`,
-      value: role.roleId,
-      emoji: resolveEmojiOption(role.emoji)
+      value: role.roleId
     });
   }
 
   select.addOptions({
     label: "حذف اللون",
-    value: REMOVE_COLOR_VALUE,
-    emoji: resolveEmojiOption("🗑️")
+    value: REMOVE_COLOR_VALUE
   });
 
   const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select);
