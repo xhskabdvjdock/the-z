@@ -161,6 +161,32 @@ export interface IScheduledMessage {
   lastRunAt?: string;
 }
 
+/**
+ * إعدادات نظام الأذكار والمحتوى الإسلامي — القاعدة تحفظ الإعدادات والحالة فقط،
+ * والمحتوى الديني (قرآن/حديث/أذكار) يُجلب من مكتبة islam.js في وقت النشر.
+ */
+export interface IIslamicContent {
+  enabled: boolean;
+  /** قناة النشر التلقائي */
+  channelId: string | null;
+  /** فترة النشر بالدقائق */
+  intervalMinutes: number;
+  /** أنواع المحتوى المفعّلة: quran | hadith | azkar */
+  contentTypes: string[];
+  /** مصادر الأحاديث المسموحة فقط (Bukhari / Muslim) */
+  allowedSources: string[];
+  /** تصنيفات الأذكار المفعّلة (أسماء تصنيفات islam.js) */
+  azkarCategories: string[];
+  /** منع تكرار نفس العنصر خلال هذه الفترة بالدقائق */
+  antiRepeatMinutes: number;
+  /** موعد النشر التالي (ISO) — لاستئناف الجدولة تلقائيًا بعد إعادة التشغيل */
+  nextRunAt?: string;
+  /** آخر عنصر تم نشره */
+  lastPosted?: { id: string; type: string; at: string };
+  /** عناصر أُرسلت مؤخرًا لمنع التكرار — { id, at } */
+  recentlySent?: { id: string; at: string }[];
+}
+
 export interface IGuildConfig {
   _id?: string;
   guildId: string;
@@ -357,6 +383,9 @@ export interface IGuildConfig {
   /** رسائل مجدولة تُرسل تلقائيًا حسب الوقت */
   scheduledMessages: IScheduledMessage[];
 
+  /** نظام الأذكار والمحتوى الإسلامي (مستقل — يمكن تشغيله وإيقافه) */
+  islamicContent: IIslamicContent;
+
   /** رولات الرياكشن: منح/إزالة رتبة عند الرياكشن على رسالة */
   reactionRoles: {
     enabled: boolean;
@@ -532,6 +561,17 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     },
 
     scheduledMessages: [],
+
+    islamicContent: {
+      enabled: false,
+      channelId: null,
+      intervalMinutes: 60,
+      contentTypes: ["quran", "hadith", "azkar"],
+      allowedSources: ["Bukhari", "Muslim"],
+      azkarCategories: ["أذكار الصباح", "أذكار المساء", "أذكار النوم"],
+      antiRepeatMinutes: 180,
+      recentlySent: []
+    },
 
     reactionRoles: {
       enabled: false,

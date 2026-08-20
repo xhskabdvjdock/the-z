@@ -24,7 +24,8 @@ import {
   Hash,
   Smile,
   CalendarClock,
-  LayoutTemplate
+  LayoutTemplate,
+  BookOpen
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { href: "/welcome", label: "الترحيب والمغادرة", icon: MessageSquare },
   { href: "/autoresponse", label: "الردود التلقائية", icon: Bot },
   { href: "/schedules", label: "الرسائل المجدولة", icon: CalendarClock },
+  { href: "/islamic", label: "الأذكار والمحتوى الإسلامي", icon: BookOpen },
   { href: "/roles", label: "الرولات والألوان", icon: User },
   { href: "/reaction-roles", label: "رولات الرياكشن", icon: Smile },
   { href: "/leveling", label: "المستويات والخبرة", icon: Zap },

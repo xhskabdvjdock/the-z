@@ -4,7 +4,7 @@ import { ExtendedClient } from "../../client";
 import { config } from "../../config";
 import { getGuildConfig } from "../../utils/guildConfig";
 
-const CATEGORY_ORDER = ["عام", "إشراف", "تذاكر", "رومات صوتية", "مستويات", "رولات", "أدوات"];
+const CATEGORY_ORDER = ["عام", "إشراف", "تذاكر", "رومات صوتية", "مستويات", "رولات", "أدوات", "إسلاميات"];
 
 const CATEGORY_ICONS: Record<string, string> = {
   "عام": "📌",
@@ -13,7 +13,8 @@ const CATEGORY_ICONS: Record<string, string> = {
   "رومات صوتية": "🎙️",
   "مستويات": "🆙",
   "رولات": "🎨",
-  "أدوات": "🎞️"
+  "أدوات": "🎞️",
+  "إسلاميات": ""
 };
 
 /** أوامر البادئة الثابتة (لا تُسجَّل كأوامر Slash) */

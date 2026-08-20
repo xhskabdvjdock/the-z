@@ -9,7 +9,8 @@ export interface CommandMeta {
     | "مستويات"
     | "رولات"
     | "أدوات"
-    | "قوائم سياق";
+    | "قوائم سياق"
+    | "إسلاميات";
   descriptionAr: string;
   /** نوع الأمر: /slash (افتراضي) أو قائمة سياق (زر الفأرة الأيمن) */
   type?: "slash" | "context-menu";
@@ -54,6 +55,8 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
 
   { name: "colors-panel", category: "رولات", descriptionAr: "إرسال قائمة الألوان" },
   { name: "selfrole-panel", category: "رولات", descriptionAr: "إرسال لوحة الرتب الذاتية" },
+
+  { name: "azkar", category: "إسلاميات", descriptionAr: "إدارة نظام الأذكار والمحتوى الإسلامي (القناة، الفترة، الأنواع)" },
 
   { name: "voice-setup", category: "رومات صوتية", descriptionAr: "إرسال لوحة إنشاء الرومات الصوتية المؤقتة" },
 
