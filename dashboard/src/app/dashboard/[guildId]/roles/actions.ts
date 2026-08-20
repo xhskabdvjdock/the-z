@@ -95,7 +95,8 @@ export async function applyColorTemplate(guildId: string, input: ApplyColorTempl
           name,
           color: parseInt(hex, 16),
           hoist: false,
-          mentionable: false
+          mentionable: false,
+          permissions: "0"
         });
         if (!res.ok || !res.role) {
           throw new Error(
@@ -112,12 +113,13 @@ export async function applyColorTemplate(guildId: string, input: ApplyColorTempl
       throw err;
     }
 
-    // ترتيب الرتب: تحت الرتبة المرجعية مباشرة (تبادل مواضع بالتسلسل)
+    // ترتيب الرتب: إدراج كل رتبة في موضع الرتبة المرجعية نفسه (من الأخيرة للأولى)
+    // فيتراصّن تحتها مباشرة بالترتيب: ر1 → ر2 → ... → ر10، ثم تبقى الرتب الموجودة تحتها.
     if (anchor) {
-      const anchorPos = anchor.position;
+      const targetPosition = anchor.position;
       const positionErrors: string[] = [];
-      for (let i = 0; i < created.length; i++) {
-        const res = await setGuildRolePosition(guildId, created[i].roleId, anchorPos - 1 - i);
+      for (let i = created.length - 1; i >= 0; i--) {
+        const res = await setGuildRolePosition(guildId, created[i].roleId, targetPosition);
         if (!res.ok) positionErrors.push(`"${created[i].name}" (HTTP ${res.status})`);
       }
       if (positionErrors.length) {
