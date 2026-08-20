@@ -7,7 +7,6 @@ import {
   buildRolePanelMessage,
   COLOR_TEMPLATES,
   CUSTOM_TEMPLATE_ID,
-  colorRoleName,
   IColorRole
 } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
@@ -21,7 +20,8 @@ import {
   editChannelMessage,
   getGuildInfo,
   createGuildRole,
-  deleteGuildRole
+  deleteGuildRole,
+  setGuildRolePosition
 } from "@/lib/discord";
 
 export interface RolesConfigInput {
@@ -84,22 +84,19 @@ export async function applyColorTemplate(guildId: string, input: ApplyColorTempl
       }
     }
 
-    // إنشاء الرتب الجديدة تحت الرتبة المرجعية (أو في آخر الترتيب إن لم تُحدد)
-    const basePosition = anchor ? anchor.position - 1 : null;
+    // إنشاء الرتب الجديدة (بدون موضع — يُضبط لاحقًا تحت الرتبة المرجعية)
     const created: IColorRole[] = [];
     try {
       for (let i = 0; i < chosen.length; i++) {
-        const { hex, templateName } = chosen[i];
-        const name = colorRoleName(templateName, i);
-        const body: Record<string, unknown> = {
+        const { hex } = chosen[i];
+        // اسم الرتبة: رقم فقط
+        const name = String(i + 1);
+        const res = await createGuildRole(guildId, {
           name,
           color: parseInt(hex, 16),
           hoist: false,
           mentionable: false
-        };
-        if (basePosition !== null) body.position = basePosition - i;
-
-        const res = await createGuildRole(guildId, body);
+        });
         if (!res.ok || !res.role) {
           throw new Error(
             `تعذر إنشاء الرتبة "${name}" (HTTP ${res.status}) — تأكد أن البوت يملك صلاحية Manage Roles.${res.error ? `\n${res.error}` : ""}`
@@ -113,6 +110,21 @@ export async function applyColorTemplate(guildId: string, input: ApplyColorTempl
         await deleteGuildRole(guildId, cr.roleId).catch(() => null);
       }
       throw err;
+    }
+
+    // ترتيب الرتب: تحت الرتبة المرجعية مباشرة (تبادل مواضع بالتسلسل)
+    if (anchor) {
+      const anchorPos = anchor.position;
+      const positionErrors: string[] = [];
+      for (let i = 0; i < created.length; i++) {
+        const res = await setGuildRolePosition(guildId, created[i].roleId, anchorPos - 1 - i);
+        if (!res.ok) positionErrors.push(`"${created[i].name}" (HTTP ${res.status})`);
+      }
+      if (positionErrors.length) {
+        throw new Error(
+          `تم إنشاء الرتب لكن تعذّر ترتيبها تحت الرتبة المرجعية:\n- ${positionErrors.join("\n- ")}`
+        );
+      }
     }
 
     await GuildConfig.findOneAndUpdate(

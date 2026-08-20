@@ -224,6 +224,17 @@ export async function deleteGuildRole(guildId: string, roleId: string) {
   return { ok: res.ok, status: res.status };
 }
 
+/** تعيين موضع رتبة (للترتيب تحت رتبة معينة — التبادل مع الرتبة الموجودة بالموقع) */
+export async function setGuildRolePosition(guildId: string, roleId: string, position: number) {
+  const res = await fetch(`${API_BASE}/guilds/${guildId}/roles/${roleId}`, {
+    method: "PATCH",
+    headers: { ...botHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ position }),
+    cache: "no-store"
+  });
+  return { ok: res.ok, status: res.status };
+}
+
 /**
  * أعلى رتبة يملكها البوت في السيرفر (position). أي رتبة أعلى منها لا يمكن
  * للبوت منحها/إزالتها — نستخدمها في التحقق من صلاحية اللوحات.

@@ -65,7 +65,8 @@ export async function buildColorPanelPayload(gConfig: IGuildConfig) {
     colorRoles.map((r, i) => ({
       hex: (r.hex ?? "#5865F2").replace("#", ""),
       name: r.name || `#${r.hex ?? "5865F2"}`
-    }))
+    })),
+    { backgroundUrl: gConfig.colors?.backgroundImageUrl }
   );
   const image = new AttachmentBuilder(swatch, { name: "colors.png" });
 

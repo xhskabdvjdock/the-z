@@ -183,6 +183,20 @@ export default function RolesForm({
               اتركها فارغة لإنشاء الرتب في آخر ترتيب الرتب.
             </p>
           </div>
+        <div>
+            <label className="label">صورة خلفية اللوحة (اختياري)</label>
+            <input
+              className="input"
+              placeholder="https://... رابط صورة تُرسم خلف عينات الألوان"
+              value={state.colors.backgroundImageUrl ?? ""}
+              onChange={(e) =>
+                setState({ ...state, colors: { ...state.colors, backgroundImageUrl: e.target.value || undefined } })
+              }
+            />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              تظهر عند إرسال اللوحة عبر /colors-panel.
+            </p>
+          </div>
         </div>
 
         {state.colors.templateId !== CUSTOM_TEMPLATE_ID ? (

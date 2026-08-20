@@ -207,6 +207,8 @@ export interface IGuildConfig {
     anchorRoleId?: string;
     /** ألوان القالب المخصص المختارة (HEX بدون #) */
     customHexes?: string[];
+    /** صورة تُرسم كخلفية خلف عينات الألوان في صورة اللوحة */
+    backgroundImageUrl?: string;
     roles: IColorRole[];
   };
 

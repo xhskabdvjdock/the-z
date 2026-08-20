@@ -1,4 +1,4 @@
-import { createCanvas } from "@napi-rs/canvas";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
 import { ensureFontLoaded } from "./fonts";
 
 const COLUMNS = 5;
@@ -14,6 +14,11 @@ export interface SwatchColor {
   name: string;
 }
 
+export interface SwatchOptions {
+  /** صورة خلفية تُرسم خلف العينات (تغطية كاملة مع تعتيم خفيف للقراءة) */
+  backgroundUrl?: string;
+}
+
 /** لون نص مقروء على خلفية ملونة (أسود أو أبيض حسب الإضاءة) */
 export function contrastText(hex: string): string {
   const r = parseInt(hex.slice(0, 2), 16);
@@ -24,7 +29,10 @@ export function contrastText(hex: string): string {
 }
 
 /** يرسم صورة شبكة عينات الألوان: كل عينة بلونها + رقمها + الكود السداسي */
-export async function renderColorSwatch(colors: SwatchColor[]): Promise<Buffer> {
+export async function renderColorSwatch(
+  colors: SwatchColor[],
+  options: SwatchOptions = {}
+): Promise<Buffer> {
   const fontName = await ensureFontLoaded();
   const rows = Math.max(1, Math.ceil(colors.length / COLUMNS));
   const width = PAD * 2 + COLUMNS * CELL_W + (COLUMNS - 1) * GAP;
@@ -33,8 +41,23 @@ export async function renderColorSwatch(colors: SwatchColor[]): Promise<Buffer> 
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
 
-  ctx.fillStyle = "#232428";
-  ctx.fillRect(0, 0, width, height);
+  // الخلفية: صورة مغطية كاملة مع تعتيم خفيف، أو اللون الداكن الافتراضي
+  if (options.backgroundUrl) {
+    try {
+      const img = await loadImage(options.backgroundUrl);
+      const scale = Math.max(width / img.width, height / img.height);
+      const dw = img.width * scale;
+      const dh = img.height * scale;
+      ctx.drawImage(img, (width - dw) / 2, (height - dh) / 2, dw, dh);
+    } catch {
+      // تعذر تحميل الخلفية — نكمل باللون الداكن
+    }
+    ctx.fillStyle = "rgba(35, 36, 40, 0.75)";
+    ctx.fillRect(0, 0, width, height);
+  } else {
+    ctx.fillStyle = "#232428";
+    ctx.fillRect(0, 0, width, height);
+  }
 
   colors.forEach((color, i) => {
     const col = i % COLUMNS;
