@@ -69,12 +69,31 @@ async function bootstrap() {
       await Promise.race([
         client.login(config.token),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (60 ثانية)")), 60_000)
+          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (120 ثانية)")), 120_000) // زيادة إلى 120 ثانية
         )
       ]);
       break;
     } catch (err) {
       logError("startup/login", err instanceof Error ? err : new Error(String(err)));
+      
+      // إذا كان خطأ في الـ token، لا نعيد المحاولة
+      if (err instanceof Error && err.message.includes('Invalid Token')) {
+        logError("startup/fatal", "❌ Token غير صحيح - لن يتم إعادة المحاولة");
+        gracefulShutdown(1);
+        return;
+      }
+      
+      // إذا كان خطأ في الـ connection timeout، نعيد المحاولة
+      if (err instanceof Error && err.message.includes('انتهت مهلة الاتصال')) {
+        logInfo(
+          "startup",
+          `⚠️ المحاولة #${loginAttempt} فشلت (timeout) — تنظيف وإعادة المحاولة بعد 60 ثانية...`
+        );
+        await Promise.race([client.destroy().catch(() => undefined), new Promise((r) => setTimeout(r, 10_000))]);
+        await new Promise((r) => setTimeout(r, 60_000));
+        continue;
+      }
+      
       logInfo(
         "startup",
         `⚠️ المحاولة #${loginAttempt} فشلت — تنظيف وإعادة المحاولة بعد 60 ثانية...`
