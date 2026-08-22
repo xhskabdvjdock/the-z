@@ -78,10 +78,12 @@ async function bootstrap() {
 
   // تسجيل الدخول: تشخيص المشكلة الحقيقية بدلاً من مجرد زيادة timeout
   let loginAttempt = 0;
-  while (true) {
+  const maxLoginAttempts = 3; // محاولات قليلة لتجنب حلقة طويلة
+  
+  while (loginAttempt < maxLoginAttempts) {
     loginAttempt++;
     try {
-      logInfo("startup", `🔑 محاولة تسجيل الدخول #${loginAttempt}...`);
+      logInfo("startup", `🔑 محاولة تسجيل الدخول #${loginAttempt}/${maxLoginAttempts}...`);
       
       // تشخيص الاتصال قبل محاولة تسجيل الدخول
       logInfo("startup", "🔍 تشخيص الاتصال بـ Discord Gateway...");
@@ -90,7 +92,7 @@ async function bootstrap() {
       await Promise.race([
         client.login(config.token),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (120 ثانية)")), 120_000) // زيادة إلى 120 ثانية
+          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (90 ثانية)")), 90_000)
         )
       ]);
       
@@ -114,23 +116,41 @@ async function bootstrap() {
         if (err.message.includes('انتهت مهلة الاتصال')) {
           logError("startup/timeout", "⏱️ فشل الاتصال بـ Discord Gateway بسبب timeout");
           logError("startup/timeout", "💡 قد يكون بسبب: مشكلة في الشبكة، Firewall، أو Discord Gateway down");
-          logError("startup/timeout", "💡 راجع Render logs أو جرب الاتصال من بيئة مختلفة");
+          
+          if (loginAttempt >= maxLoginAttempts) {
+            logError("startup/fatal", "❌ فشلت جميع محاولات الاتصال");
+            gracefulShutdown(1);
+            return;
+          }
         }
         
         if (err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND')) {
           logError("startup/network", "🌐 فشل الاتصال بالشبكة - Discord غير متاح");
           logError("startup/network", "💡 تحقق من الاتصال بالإنترنت وFirewall settings");
+          
+          if (loginAttempt >= maxLoginAttempts) {
+            logError("startup/fatal", "❌ فشلت جميع محاولات الاتصال بالشبكة");
+            gracefulShutdown(1);
+            return;
+          }
         }
       }
       
       logInfo(
         "startup",
-        `⚠️ المحاولة #${loginAttempt} فشلت — تنظيف وإعادة المحاولة بعد 60 ثانية...`
+        `⚠️ المحاولة #${loginAttempt} فشلت — تنظيف وإعادة المحاولة بعد 30 ثانية...`
       );
       await Promise.race([client.destroy().catch(() => undefined), new Promise((r) => setTimeout(r, 10_000))]);
-      await new Promise((r) => setTimeout(r, 60_000));
+      await new Promise((r) => setTimeout(r, 30_000)); // تقليل وقت الانتظار
     }
   }
+  
+  if (loginAttempt >= maxLoginAttempts) {
+    logError("startup/fatal", "❌ فشلت جميع محاولات تسجيل الدخول");
+    gracefulShutdown(1);
+    return;
+  }
+  
   logInfo("startup", "✅ تم تسجيل دخول البوت بنجاح.");
 }
 

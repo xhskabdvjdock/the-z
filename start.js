@@ -105,11 +105,13 @@ async function main() {
     console.log(`[SYSTEM] ⚠️ مسبار التوثيق فشل بالتأكيد: ${err?.message ?? err}`);
   }
 
-  // خيار لتخطي النشر في الـ production (الأوامر القديمة تعمل)
-  const skipDeploy = process.env.SKIP_DEPLOY === "true";
+  // تخطي النشر في الـ production افتراضياً (الأوامر القديمة تعمل)
+  // يمكن تفعيل النشر بـ SKIP_DEPLOY=false إذا لزم الأمر
+  const skipDeploy = process.env.SKIP_DEPLOY !== "false"; // default true
   
   if (skipDeploy) {
-    console.log("[SYSTEM] ⏭️ تخطي نشر الأوامر (SKIP_DEPLOY=true) - الأوامر القديمة لا تزال تعمل");
+    console.log("[SYSTEM] ⏭️ تخطي نشر الأوامر (افتراضي في الـ production) - الأوامر القديمة لا تزال تعمل");
+    console.log("[SYSTEM] 💡 لتفعيل النشر، استخدم SKIP_DEPLOY=false في Render environment variables");
   } else {
     console.log("[SYSTEM] ⏳ جاري نشر أوامر الـ Slash Commands...");
     await new Promise((resolve) => {
@@ -136,7 +138,6 @@ async function main() {
         if (isGlobal) {
           console.log("[SYSTEM] ⚠️ النشر العالمي بطيء - تخطي وتشغيل البوت (الأوامر القديمة لا تزال تعمل)");
           console.log("[SYSTEM] 💡 لإلغاء هذا، استخدم DEV_GUILD_ID في Render environment variables");
-          console.log("[SYSTEM] 💡 أو استخدم SKIP_DEPLOY=true لتخطي النشر تماماً");
           deploy.kill("SIGKILL");
         } else {
           console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها ومواصلة تشغيل البوت");
