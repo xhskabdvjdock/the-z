@@ -90,7 +90,7 @@ async function bootstrap() {
       await Promise.race([
         client.login(config.token),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (60 ثانية)")), 60_000)
+          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (120 ثانية)")), 120_000) // زيادة إلى 120 ثانية
         )
       ]);
       

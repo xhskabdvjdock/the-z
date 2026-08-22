@@ -92,12 +92,19 @@ async function main() {
   const startTime = Date.now();
   const rest = new REST({
     retries: 3,
-    timeout: 30_000, // زيادة إلى 30 ثانية
+    timeout: 60_000, // زيادة إلى 60 ثانية
     makeRequest: (url: string, init: RequestInit) => fetch(url, init)
   }).setToken(config.token);
 
+  // إذا لم يوجد DEV_GUILD_ID، استخدم نشر عالمي مع timeout أطول
+  const isGlobal = !config.devGuildId;
+  if (isGlobal) {
+    console.log("⚠️ نشر عالمي - قد يستغرق عدة دقائق");
+    console.log("💡 لإلغاء النشر العالمي السريع، استخدم DEV_GUILD_ID في Render environment variables");
+  }
+
   // Retry logic with exponential backoff for rate limits
-  const maxRetries = 5;
+  const maxRetries = isGlobal ? 2 : 5; // أقل محاولات للنشر العالمي
   let attempt = 0;
   
   while (attempt < maxRetries) {

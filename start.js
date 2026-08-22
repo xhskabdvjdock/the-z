@@ -117,7 +117,7 @@ async function main() {
     const deployTimeout = setTimeout(() => {
       console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها ومواصلة تشغيل البوت");
       deploy.kill("SIGKILL");
-    }, 240_000);
+    }, 600_000); // زيادة إلى 10 دقائق (global commands تأخذ وقتاً طويلاً)
     deploy.on("exit", (code) => {
       clearTimeout(deployTimeout);
       console.log(`[SYSTEM] ${code === 0 ? "✅ نُشرت الأوامر" : "⚠️ فشل نشر الأوامر (" + code + ")"}`);
