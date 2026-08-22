@@ -4,22 +4,27 @@ import { revalidatePath } from "next/cache";
 import { GuildConfig, IGuildConfig } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
+import { logAction, logError, summarizeConfig } from "@/lib/logger";
 
 export async function saveCaptchaConfig(guildId: string, data: IGuildConfig["captcha"]) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
-
-    console.log("Saving captcha config for guild:", guildId);
-    console.log("Data:", JSON.stringify(data, null, 2));
 
     await GuildConfig.findOneAndUpdate({ guildId }, { $set: { captcha: data } }, { upsert: true });
 
-    console.log("Captcha config saved successfully");
+    logAction({
+      label: "captcha/save",
+      guildId,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "حفظ إعدادات التحقق (Captcha)",
+      details: summarizeConfig(data as unknown as Record<string, unknown>)
+    });
 
     revalidatePath(`/dashboard/${guildId}/captcha`);
   } catch (error) {
-    console.error("Error saving captcha config:", error);
+    logError("captcha/save", error);
     throw error;
   }
 }

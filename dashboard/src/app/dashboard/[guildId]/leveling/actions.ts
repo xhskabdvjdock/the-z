@@ -4,16 +4,14 @@ import { revalidatePath } from "next/cache";
 import { GuildConfig, IGuildConfig } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
+import { logAction, logError, summarizeConfig } from "@/lib/logger";
 
 export type LevelingInput = IGuildConfig["leveling"];
 
 export async function saveLevelingConfig(guildId: string, data: LevelingInput) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
-
-    console.log("Saving leveling config for guild:", guildId);
-    console.log("Data:", JSON.stringify(data, null, 2));
 
     await GuildConfig.findOneAndUpdate(
       { guildId },
@@ -21,11 +19,18 @@ export async function saveLevelingConfig(guildId: string, data: LevelingInput) {
       { upsert: true }
     );
 
-    console.log("Leveling config saved successfully");
+    logAction({
+      label: "leveling/save",
+      guildId,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "حفظ إعدادات المستويات (Leveling)",
+      details: summarizeConfig(data as unknown as Record<string, unknown>)
+    });
 
     revalidatePath(`/dashboard/${guildId}/leveling`);
   } catch (error) {
-    console.error("Error saving leveling config:", error);
+    logError("leveling/save", error);
     throw error;
   }
 }

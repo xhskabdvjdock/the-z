@@ -1,6 +1,17 @@
 version: '3.8'
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: the-z-redis
+    restart: unless-stopped
+    # بدون فتح أي منفذ للعامة — يخدم فقط داخل شبكة the-z-network (العزل الأمني)
+    expose:
+      - "6379"
+    command: ["redis-server", "--maxmemory", "128mb", "--maxmemory-policy", "allkeys-lru", "--save", ""]
+    networks:
+      - the-z-network
+
   bot:
     build:
       context: .
@@ -8,6 +19,10 @@ services:
       target: builder
     container_name: the-z-bot
     restart: unless-stopped
+    depends_on:
+      - redis
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
     env_file:
       - .env
     volumes:

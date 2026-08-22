@@ -1,4 +1,5 @@
 import {
+  Attachment,
   BaseMessageOptions,
   ChatInputCommandInteraction,
   Guild,
@@ -19,7 +20,8 @@ export type CommandOptionType =
   | "number"
   | "channel"
   | "role"
-  | "boolean";
+  | "boolean"
+  | "attachment";
 
 export interface CommandOptionSpec {
   name: string;
@@ -47,6 +49,7 @@ export interface CommandContext {
   getMember(name: string): Promise<GuildMember | null>;
   getChannel(name: string): GuildBasedChannel | null;
   getRole(name: string): Role | null;
+  getAttachment(name: string): Attachment | null;
 }
 
 export interface BotCommand {
@@ -56,6 +59,8 @@ export interface BotCommand {
   options?: CommandOptionSpec[];
   defaultMemberPermissions?: PermissionResolvable;
   guildOnly?: boolean;
+  /** يسمح باستخدام الأمر في الرسائل الخاصة (DM) — حتى لو البوت خارج سيرفرات المستخدم */
+  dmEnabled?: boolean;
   cooldownSeconds?: number;
   run(ctx: CommandContext): Promise<void>;
 }

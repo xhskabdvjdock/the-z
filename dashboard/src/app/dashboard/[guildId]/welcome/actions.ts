@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { GuildConfig, ICustomMessage } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
+import { logAction, logError, summarizeConfig } from "@/lib/logger";
 
 export interface WelcomeLeaveInput {
   welcome: {
@@ -25,11 +26,8 @@ export interface WelcomeLeaveInput {
 
 export async function saveWelcomeConfig(guildId: string, data: WelcomeLeaveInput) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
-
-    console.log("Saving welcome config for guild:", guildId);
-    console.log("Data:", JSON.stringify(data, null, 2));
 
     await GuildConfig.findOneAndUpdate(
       { guildId },
@@ -37,11 +35,26 @@ export async function saveWelcomeConfig(guildId: string, data: WelcomeLeaveInput
       { upsert: true }
     );
 
-    console.log("Welcome config saved successfully");
+    logAction({
+      label: "welcome/save",
+      guildId,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "حفظ إعدادات الترحيب والمغادرة",
+      details: {
+        welcomeEnabled: data.welcome.enabled,
+        welcomeChannel: data.welcome.channelId ?? null,
+        welcomeDm: data.welcome.sendInDm,
+        welcomeImage: data.welcome.imageEnabled,
+        leaveEnabled: data.leave.enabled,
+        leaveChannel: data.leave.channelId ?? null,
+        leaveImage: data.leave.imageEnabled
+      }
+    });
 
     revalidatePath(`/dashboard/${guildId}/welcome`);
   } catch (error) {
-    console.error("Error saving welcome config:", error);
+    logError("welcome/save", error);
     throw error;
   }
 }

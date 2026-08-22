@@ -24,7 +24,9 @@ import { ExtendedClient } from "../../client";
 import { config } from "../../config";
 import { ComponentRouter } from "../../handlers/componentRouter";
 import { buildMessageFromCustom } from "../../utils/embed";
+import { resolveEmojiOption } from "../../utils/emoji";
 import { getGuildConfig } from "../../utils/guildConfig";
+import { logError } from "../../utils/logger";
 
 type TicketAnswer = { question: string; answer: string };
 
@@ -544,7 +546,7 @@ export async function closeTicket(
       }
     }
   } catch (err) {
-    console.error("❌ فشل إنشاء أو إرسال سجل محادثة التذكرة:", err);
+    logError("ticket-transcript", err);
   }
 
   setTimeout(() => {
@@ -594,7 +596,7 @@ export async function sendTicketPanel(channel: TextChannel, gConfig: IGuildConfi
           categories.slice(0, 25).map((c) => ({
             label: c.name.slice(0, 100),
             value: c.key,
-            emoji: c.emoji || undefined
+            emoji: resolveEmojiOption(c.emoji)
           }))
         )
         .addOptions({
@@ -652,7 +654,7 @@ export function registerTicketComponents(router: ComponentRouter): void {
           categories.slice(0, 25).map((c) => ({
             label: c.name.slice(0, 100),
             value: c.key,
-            emoji: c.emoji || undefined
+            emoji: resolveEmojiOption(c.emoji)
           }))
         )
         .addOptions({

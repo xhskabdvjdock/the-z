@@ -1,4 +1,4 @@
-import { EmbedBuilder, Collection, Message } from "discord.js";
+import { AuditLogEvent, EmbedBuilder, Collection, Message } from "discord.js";
 import { BotEvent } from "../types/event";
 import { sendLog } from "../modules/logging/logger";
 
@@ -18,6 +18,27 @@ const event: BotEvent = {
         { name: "Channel", value: `${channelId}`, inline: true },
         { name: "Messages Deleted", value: `${messages.size}`, inline: true }
       );
+
+    // من نفّذ المسح؟ — من سجل التدقيق (Audit Log) عبر Channel ID
+    try {
+      const audit = await guild.fetchAuditLogs({
+        type: AuditLogEvent.MessageBulkDelete,
+        limit: 8
+      });
+      const executor = audit.entries
+        .filter((e) => e.targetId === channelId)
+        .sort((a, b) => (b.createdTimestamp ?? 0) - (a.createdTimestamp ?? 0))
+        .first();
+      if (executor?.executor) {
+        embed.addFields({
+          name: "Deleted By",
+          value: `${executor.executor.tag} (${executor.executor.id})`,
+          inline: true
+        });
+      }
+    } catch {
+      // لا صلاحية لقراءة سجل التدقيق أو التأخير — نكمل بدون اسم المحذف
+    }
 
     // Show a sample of deleted messages
     const sampleMessages = messages

@@ -6,6 +6,12 @@ import { registerColorComponents } from "./roles/colorRoles";
 import { registerSelfRoleComponents } from "./roles/selfRoles";
 import { registerCaptchaComponents } from "./captcha/captcha";
 import { startVoiceXpInterval } from "./leveling/xpManager";
+import { startJailExpiryInterval } from "./jail/expiry";
+import { startAlwaysVoiceLoop } from "./alwaysVoice/alwaysVoiceManager";
+import { startMemberCounter } from "./memberCounter/memberCounterManager";
+import { startScheduledMessages } from "./scheduledMessages/scheduledMessagesManager";
+import { registerReactionRoles } from "./reactionRoles/reactionRolesManager";
+import { startIslamicContent } from "./islamicContent/islamicContentManager";
 
 /** نقطة تجميع مركزية: تسجّل كل معالجات الأزرار/القوائم الخاصة بكل موديول، وتشغّل المهام الدورية */
 export function registerAllModules(client: ExtendedClient) {
@@ -14,8 +20,14 @@ export function registerAllModules(client: ExtendedClient) {
   registerColorComponents(componentRouter);
   registerSelfRoleComponents(componentRouter);
   registerCaptchaComponents(componentRouter);
+  registerReactionRoles(client);
 
   client.once("ready", () => {
     startVoiceXpInterval(client);
+    startJailExpiryInterval(client);
+    startAlwaysVoiceLoop(client);
+    startMemberCounter(client);
+    startScheduledMessages(client);
+    startIslamicContent(client);
   });
 }

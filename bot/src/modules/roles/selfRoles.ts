@@ -1,21 +1,45 @@
 import {
-  ActionRowBuilder,
-  ButtonBuilder,
   ButtonInteraction,
-  ButtonStyle,
   EmbedBuilder,
   GuildMember,
-  StringSelectMenuBuilder,
   StringSelectMenuInteraction,
   TextChannel
 } from "discord.js";
-import { GuildConfig, ISelfRolePanel } from "@thez/shared";
+import { GuildConfig, ISelfRolePanel, buildRolePanelMessage } from "@thez/shared";
 import { ComponentRouter } from "../../handlers/componentRouter";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
+import { sendLog } from "../logging/logger";
 
 const BUTTON_PREFIX = "selfrole_btn_";
 const SELECT_PREFIX = "selfrole_select_";
+
+const ROLE_ADDED_COLOR = 0x2ecc71;
+const ROLE_REMOVED_COLOR = 0xe74c3c;
+const ROLE_UPDATED_COLOR = 0x3498db;
+
+function logRoleAction(
+  client: ExtendedClient,
+  guildId: string,
+  embedData: {
+    title: string;
+    color: number;
+    memberTag: string;
+    memberId: string;
+    panelTitle: string;
+    fields: { name: string; value: string; inline?: boolean }[];
+  }
+): void {
+  const embed = new EmbedBuilder()
+    .setTitle(embedData.title)
+    .setColor(embedData.color)
+    .addFields(
+      { name: "العضو", value: `${embedData.memberTag} \`${embedData.memberId}\``, inline: false },
+      { name: "اللوحة", value: embedData.panelTitle || "(بدون عنوان)", inline: true },
+      ...embedData.fields
+    );
+  sendLog(client, guildId, "roles", embed);
+}
 
 function parseButtonCustomId(customId: string): { panelId: string; roleId: string } {
   const rest = customId.slice(BUTTON_PREFIX.length);
@@ -29,14 +53,20 @@ function parseButtonCustomId(customId: string): { panelId: string; roleId: strin
 /** يسجّل معالجات الأزرار والقوائم الخاصة بلوحات الرتب الذاتية */
 export function registerSelfRoleComponents(router: ComponentRouter): void {
   router.registerButton(BUTTON_PREFIX, async (interaction: ButtonInteraction, client: ExtendedClient) => {
-    if (!interaction.guild) return;
+    const guild = interaction.guild;
+    if (!guild) return;
 
     const { panelId, roleId } = parseButtonCustomId(interaction.customId);
-    const gConfig = await getGuildConfig(client, interaction.guild.id);
+    const gConfig = await getGuildConfig(client, guild.id);
     const panel = gConfig.selfRoles?.find((p) => p.id === panelId);
 
     if (!panel) {
       await interaction.reply({ content: "❌ هذه اللوحة لم تعد متاحة.", ephemeral: true });
+      return;
+    }
+
+    if (panel.enabled === false) {
+      await interaction.reply({ content: "❌ هذه اللوحة معطّلة حاليًا.", ephemeral: true });
       return;
     }
 
@@ -58,21 +88,53 @@ export function registerSelfRoleComponents(router: ComponentRouter): void {
     if (hasRole) {
       await member.roles.remove(roleId).catch(() => null);
       await interaction.reply({ content: "✅ تمت إزالة الرتبة منك.", ephemeral: true });
+      logRoleAction(client, guild.id, {
+        title: "⛔️ أزال رتبة من لوحة",
+        color: ROLE_REMOVED_COLOR,
+        memberTag: interaction.user.tag,
+        memberId: interaction.user.id,
+        panelTitle: panel.title || "",
+        fields: [
+          {
+            name: "الرتبة",
+            value: `<@&${roleId}> \`${guild.roles.cache.get(roleId)?.name ?? roleId}\``
+          }
+        ]
+      });
     } else {
       await member.roles.add(roleId).catch(() => null);
       await interaction.reply({ content: "✅ تمت إضافة الرتبة إليك.", ephemeral: true });
+      logRoleAction(client, guild.id, {
+        title: "✅ أخذ رتبة من لوحة",
+        color: ROLE_ADDED_COLOR,
+        memberTag: interaction.user.tag,
+        memberId: interaction.user.id,
+        panelTitle: panel.title || "",
+        fields: [
+          {
+            name: "الرتبة",
+            value: `<@&${roleId}> \`${guild.roles.cache.get(roleId)?.name ?? roleId}\``
+          }
+        ]
+      });
     }
   });
 
   router.registerSelect(SELECT_PREFIX, async (interaction: StringSelectMenuInteraction, client: ExtendedClient) => {
-    if (!interaction.guild) return;
+    const guild = interaction.guild;
+    if (!guild) return;
 
     const panelId = interaction.customId.slice(SELECT_PREFIX.length);
-    const gConfig = await getGuildConfig(client, interaction.guild.id);
+    const gConfig = await getGuildConfig(client, guild.id);
     const panel = gConfig.selfRoles?.find((p) => p.id === panelId);
 
     if (!panel) {
       await interaction.reply({ content: "❌ هذه اللوحة لم تعد متاحة.", ephemeral: true });
+      return;
+    }
+
+    if (panel.enabled === false) {
+      await interaction.reply({ content: "❌ هذه اللوحة معطّلة حاليًا.", ephemeral: true });
       return;
     }
 
@@ -97,6 +159,30 @@ export function registerSelfRoleComponents(router: ComponentRouter): void {
     if (toRemove.length) await member.roles.remove(toRemove).catch(() => null);
 
     await interaction.reply({ content: "✅ تم تحديث رتبك.", ephemeral: true });
+
+    if (toAdd.length || toRemove.length) {
+      const roleName = (id: string) =>
+        `<@&${id}> \`${guild.roles.cache.get(id)?.name ?? id}\``;
+      logRoleAction(client, guild.id, {
+        title: "🔄 حدّث رتبه من لوحة",
+        color: ROLE_UPDATED_COLOR,
+        memberTag: interaction.user.tag,
+        memberId: interaction.user.id,
+        panelTitle: panel.title || "",
+        fields: [
+          {
+            name: "أُضيفت",
+            value: toAdd.length ? toAdd.map(roleName).join("\n") : "—",
+            inline: true
+          },
+          {
+            name: "أُزيلت",
+            value: toRemove.length ? toRemove.map(roleName).join("\n") : "—",
+            inline: true
+          }
+        ]
+      });
+    }
   });
 }
 
@@ -106,52 +192,57 @@ export async function sendSelfRolePanel(
   panel: ISelfRolePanel,
   guildId: string
 ): Promise<void> {
-  const embed = new EmbedBuilder()
-    .setColor("#5865F2")
-    .setTitle(panel.title || "اختر رتبتك")
-    .setDescription(panel.description || "اختر إحدى الرتب أدناه.");
+  const payload = buildRolePanelMessage(panel);
+  const sentMessage = await channel.send({
+    embeds: payload.embeds,
+    components: payload.components as never
+  });
 
-  let components: ActionRowBuilder<ButtonBuilder | StringSelectMenuBuilder>[] = [];
-
-  if (panel.type === "select") {
-    const select = new StringSelectMenuBuilder()
-      .setCustomId(`${SELECT_PREFIX}${panel.id}`)
-      .setPlaceholder("اختر رتبة أو أكثر...")
-      .setMinValues(0)
-      .setMaxValues(Math.max(1, Math.min(panel.options.length, 25)));
-
-    for (const option of panel.options.slice(0, 25)) {
-      select.addOptions({
-        label: option.label,
-        value: option.roleId,
-        description: option.description || undefined,
-        emoji: option.emoji || undefined
-      });
-    }
-
-    components = [new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(select)];
-  } else {
-    const rows: ActionRowBuilder<ButtonBuilder>[] = [];
-    let currentRow = new ActionRowBuilder<ButtonBuilder>();
-
-    panel.options.slice(0, 25).forEach((option, index) => {
-      if (index > 0 && index % 5 === 0) {
-        rows.push(currentRow);
-        currentRow = new ActionRowBuilder<ButtonBuilder>();
+  await GuildConfig.findOneAndUpdate(
+    { guildId, "selfRoles.id": panel.id },
+    {
+      $set: {
+        "selfRoles.$.messageId": sentMessage.id,
+        "selfRoles.$.channelId": channel.id
       }
-      const button = new ButtonBuilder()
-        .setCustomId(`${BUTTON_PREFIX}${panel.id}_${option.roleId}`)
-        .setLabel(option.label)
-        .setStyle(ButtonStyle.Secondary);
-      if (option.emoji) button.setEmoji(option.emoji);
-      currentRow.addComponents(button);
-    });
+    }
+  );
+}
 
-    if (currentRow.components.length) rows.push(currentRow);
-    components = rows;
+/**
+ * تحديث لوحة منشورة: يعدّل نفس الرسالة إن كانت لا تزال موجودة (channelId +
+ * messageId محفوظان)، وإلا يرسل رسالة جديدة وينقّل الموقع. تُستخدم عند تعديل
+ * اللوحة من الداشبورد أو تحديثها بعد أي تغيير.
+ */
+export async function updateSelfRolePanel(
+  client: ExtendedClient,
+  panel: ISelfRolePanel,
+  guildId: string
+): Promise<void> {
+  const payload = buildRolePanelMessage(panel);
+
+  if (panel.channelId && panel.messageId) {
+    try {
+      const channel = await client.channels.fetch(panel.channelId);
+      if (channel?.isTextBased()) {
+        const message = await channel.messages.fetch(panel.messageId);
+        await message.edit({ embeds: payload.embeds, components: payload.components as never });
+        return;
+      }
+    } catch {
+      // الرسالة/القناة لم تعد متاحة — سنرسل رسالة جديدة أدناه
+    }
   }
 
-  const sentMessage = await channel.send({ embeds: [embed], components });
+  const channel = panel.channelId
+    ? ((await client.channels.fetch(panel.channelId).catch(() => null)) as TextChannel | null)
+    : null;
+  if (!channel?.isTextBased()) return;
+
+  const sentMessage = await channel.send({
+    embeds: payload.embeds,
+    components: payload.components as never
+  });
 
   await GuildConfig.findOneAndUpdate(
     { guildId, "selfRoles.id": panel.id },

@@ -1,88 +1,145 @@
+// ============================================================
+// Orchestrator: deploy → bot → dashboard (بعد دخول البوت)
+// خادم الصحة يفتح منذ الثانية 0 على PORT حتى لا يقطع Render الخدمة
+// ============================================================
 const { spawn } = require("child_process");
 const http = require("http");
 
-let botReady = false;
-let dashboardProc = null;
-
-// ============================================================
-// Health check server مؤقت حتى ما يقطع Render الخدمة
-// ============================================================
 const PORT = process.env.PORT || 3000;
 
+let botReady = false;
+let dashboardProc = null;
+let dashboardSpawned = false;
+
 const healthServer = http.createServer((req, res) => {
-  if (req.url === "/health" || req.url === "/") {
-    res.writeHead(200);
-    res.end(botReady ? "OK - Bot online" : "Starting...");
-  } else {
-    res.writeHead(404);
-    res.end("Not found");
-  }
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end(botReady && dashboardProc ? "OK - The Z online\n" : "OK - The Z starting\n");
 });
 
 healthServer.listen(PORT, () => {
   console.log(`[SYSTEM] 🌐 Health check server on port ${PORT}`);
 });
 
+function print(prefix, data) {
+  process.stdout.write(`[${prefix}] ${data.toString()}`);
+}
+
 // ============================================================
-// تشغيل الداشبورد بعد ما يشتغل البوت
+// الداشبورد بعد اتصال البوت بـ Discord
 // ============================================================
 function startDashboard() {
+  if (dashboardSpawned) return;
+  dashboardSpawned = true;
   console.log("[SYSTEM] 🚀 البوت اشتغل! جاري تشغيل الداشبورد...");
 
-  // أوقف health check المؤقت
+  // نسحب خادم الصحة أولًا لأن الداشبورد هو من يجب أن يملك المنفذ الآن
   healthServer.close();
-
   dashboardProc = spawn("npm", ["run", "start", "--workspace=dashboard"], {
     cwd: "/app",
-    stdio: "inherit",
-    env: { ...process.env, PORT: String(PORT) },
+    stdio: ["inherit", "pipe", "pipe"],
+    env: { ...process.env, PORT: String(PORT), NODE_OPTIONS: "--max-old-space-size=384" }
   });
 
+  dashboardProc.stdout.on("data", (d) => print("DASH", d));
+  dashboardProc.stderr.on("data", (d) => print("DASH", d));
+
   dashboardProc.on("exit", (code) => {
-    console.log(`[WEB] توقف بكود ${code}`);
-    process.exit(code ?? 0);
+    console.log(`[DASH] ❌ توقف بكود ${code ?? "null"}`);
+    process.exit(code ?? 1);
   });
 }
 
 // ============================================================
-// تشغيل البوت أولاً
+// البوت
 // ============================================================
-console.log("[SYSTEM] ⏳ جاري تشغيل البوت...");
+function startBot() {
+  console.log("[SYSTEM] ⏳ جاري تشغيل البوت...");
 
-const bot = spawn("node", ["bot/dist/index.js"], {
-  cwd: "/app",
-  stdio: ["inherit", "pipe", "pipe"],
-  env: process.env,
-});
+  const bot = spawn("node", ["bot/dist/index.js"], {
+    cwd: "/app",
+    stdio: ["inherit", "pipe", "pipe"],
+    env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=384" }
+  });
 
-bot.stdout.on("data", (data) => {
-  const text = data.toString();
-  process.stdout.write(`[BOT] ${text}`);
+  bot.stdout.on("data", (d) => {
+    const text = d.toString();
+    process.stdout.write(`[BOT] ${text}`);
+    if (!botReady && text.includes("تم تسجيل الدخول")) {
+      botReady = true;
+      startDashboard();
+    }
+  });
 
-  // عندما يتصل البوت بـ Discord نشغّل الداشبورد
-  if (!dashboardProc && text.includes("تم تسجيل الدخول")) {
-    botReady = true;
-    startDashboard();
+  bot.stderr.on("data", (d) => print("BOT", d));
+
+  bot.on("exit", (code) => {
+    console.log(`[BOT] ❌ توقف بكود ${code ?? "null"}`);
+    if (dashboardProc) dashboardProc.kill("SIGTERM");
+    process.exit(code ?? 1);
+  });
+}
+
+// ============================================================
+// تسلسل الإقلاع: deploy → bot → dashboard
+// ============================================================
+async function main() {
+  console.log("[SYSTEM] 🔍 فحص الوصول إلى Discord (IPv4)...");
+  try {
+    const t0 = Date.now();
+    const res = await fetch("https://discord.com/api/v9/gateway", {
+      signal: AbortSignal.timeout(15_000)
+    });
+    console.log(`[SYSTEM] ✅ Discord قابل للوصول (HTTP ${res.status}) خلال ${Date.now() - t0}ms`);
+  } catch (err) {
+    console.log(`[SYSTEM] ⚠️ Discord غير قابل للوصول: ${err?.message ?? err}`);
   }
-});
+  try {
+    const t0 = Date.now();
+    const authed = await fetch("https://discord.com/api/v9/users/@me", {
+      headers: { Authorization: `Bot ${process.env.DISCORD_TOKEN}` },
+      signal: AbortSignal.timeout(15_000)
+    });
+    const detail = authed.status === 200 ? "✅ التوكن صحيح" : `الرد: ${authed.status}`;
+    console.log(`[SYSTEM] مسبار التوثيق: HTTP ${authed.status} (${detail}) خلال ${Date.now() - t0}ms`);
+  } catch (err) {
+    console.log(`[SYSTEM] ⚠️ مسبار التوثيق فشل بالتأكيد: ${err?.message ?? err}`);
+  }
 
-bot.stderr.on("data", (data) => {
-  process.stderr.write(`[BOT] ${data.toString()}`);
-});
+  console.log("[SYSTEM] ⏳ جاري نشر أوامر الـ Slash Commands...");
+  await new Promise((resolve) => {
+    const deploy = spawn("npm", ["run", "deploy", "--workspace=bot"], {
+      cwd: "/app",
+      stdio: ["inherit", "pipe", "pipe"],
+      env: { ...process.env, NODE_OPTIONS: "--max-old-space-size=384" }
+    });
+    deploy.stdout.on("data", (d) => print("DEPLOY", d));
+    deploy.stderr.on("data", (d) => print("DEPLOY", d));
+    const deployTimeout = setTimeout(() => {
+      console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها ومواصلة تشغيل البوت");
+      deploy.kill("SIGKILL");
+    }, 240_000);
+    deploy.on("exit", (code) => {
+      clearTimeout(deployTimeout);
+      console.log(`[SYSTEM] ${code === 0 ? "✅ نُشرت الأوامر" : "⚠️ فشل نشر الأوامر (" + code + ")"}`);
+      resolve();
+    });
+  });
 
-bot.on("exit", (code) => {
-  console.log(`[BOT] ❌ توقف بكود ${code}`);
-  if (dashboardProc) dashboardProc.kill("SIGTERM");
-  process.exit(code ?? 1);
+  startBot();
+}
+
+main().catch((err) => {
+  console.error("[SYSTEM] ❌ فشل الإقلاع:", err);
+  process.exit(1);
 });
 
 // ============================================================
-// Graceful shutdown
+// إيقاف آمن
 // ============================================================
 function shutdown(signal) {
-  console.log(`[SYSTEM] ⚠️ ${signal} - إيقاف تدريجي...`);
-  bot.kill(signal);
-  if (dashboardProc) dashboardProc.kill(signal);
+  console.log(`[SYSTEM] ⚠️ ${signal} — إيقاف تدريجي...`);
+  healthServer.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 2000).unref();
 }
 
 process.on("SIGTERM", () => shutdown("SIGTERM"));

@@ -3,11 +3,17 @@ import { BotEvent } from "../types/event";
 import { sendLog } from "../modules/logging/logger";
 import { getGuildConfig } from "../utils/guildConfig";
 import { handleVoiceStateUpdate as handleTempVoiceUpdate } from "../modules/tempVoice/voiceManager";
+import { scheduleReconcile } from "../modules/alwaysVoice/alwaysVoiceManager";
 
 const event: BotEvent = {
   name: "voiceStateUpdate",
   async execute(client, oldState: VoiceState, newState: VoiceState) {
     if (!newState.guild) return;
+
+    // البوت نفسه: خرج/انتُقل من رومه المقيم — أعد إدخاله بعد ثوانٍ
+    if (newState.member?.id === client.user?.id) {
+      scheduleReconcile(client, newState.guild.id);
+    }
 
     const member = newState.member;
     if (!member) return;

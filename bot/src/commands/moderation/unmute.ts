@@ -2,6 +2,7 @@ import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
 import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
+import { recordModerationLog } from "../../modules/moderation/auditLog";
 
 const command: BotCommand = {
   name: "unmute",
@@ -20,6 +21,28 @@ const command: BotCommand = {
 
     if (!target.isCommunicationDisabled()) {
       await replyWithAutoDelete(ctx, "هذا العضو ليس مكتوماً حالياً.", ctx.guild.id);
+      return;
+    }
+
+    if (target.id === ctx.user.id) {
+      await replyWithAutoDelete(ctx, "لا يمكنك فك كتم نفسك.", ctx.guild.id);
+      return;
+    }
+
+    if (target.id === ctx.guild.ownerId) {
+      await replyWithAutoDelete(ctx, "لا يمكنك فك كتم مالك السيرفر.", ctx.guild.id);
+      return;
+    }
+
+    if (
+      ctx.guild.ownerId !== ctx.user.id &&
+      target.roles.highest.position >= ctx.member.roles.highest.position
+    ) {
+      await replyWithAutoDelete(
+        ctx,
+        "لا يمكنك فك كتم عضو برتبة مساوية أو أعلى من رتبتك.",
+        ctx.guild.id
+      );
       return;
     }
 
@@ -44,6 +67,12 @@ const command: BotCommand = {
       );
 
     await ctx.reply({ embeds: [embed] });
+    await recordModerationLog({
+      guildId: ctx.guild.id,
+      userId: target.id,
+      moderatorId: ctx.user.id,
+      action: "unmute"
+    });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
   }
 };

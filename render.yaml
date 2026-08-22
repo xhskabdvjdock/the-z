@@ -5,6 +5,7 @@ services:
     env: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
+    healthCheckPath: /health
     envVars:
       - key: DISCORD_TOKEN
         sync: false
@@ -17,9 +18,13 @@ services:
       - key: NEXTAUTH_SECRET
         generateValue: true
       - key: NEXTAUTH_URL
-        value: https://the-z-whib.onrender.com
+        value: https://the-z-8c94.onrender.com
       - key: DATABASE_URL
         sync: false
+      - key: REDIS_URL
+        sync: false
+        # اختياري — مثال: redis://... من Render Redis أو Upstash.
+        # عند غيابه: البوت يستمر على ذاكرة العملية (fallback) للبيانات المؤقتة فقط.
       - key: DB_SSL_CA_PATH
         value: /app/certs/root.crt
     disk:

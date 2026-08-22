@@ -49,6 +49,10 @@ export interface ICommandOverride {
   name: string;
   enabled: boolean;
   alias?: string;
+  /** بادئة مخصصة لهذا الأمر (مثل `,` أو `.`) — تتجاوز البادئة العامة للسيرفر */
+  customPrefix?: string;
+  /** مدة البرودة الخاصة بهذا الأمر بالثواني (تتجاوز cooldownSeconds العام للأمر إن وُجد) */
+  cooldownSeconds?: number;
   slashEnabled: boolean;
   prefixEnabled: boolean;
   allowedRoleIds: string[];
@@ -58,6 +62,29 @@ export interface ICommandOverride {
   allowedChannelIds: string[];
   deniedChannelIds: string[];
   customResponse?: ICustomMessage;
+}
+
+/**
+ * إعدادات صلاحيات لوحة التحكم الخاصة بالسيرفر (قابلة للتوسع لاحقًا بالأقسام/المراحل).
+ * ملاحظة أمنية: هذه الصلاحيات لا تتجاوز أبدًا صلاحيات Discord الأساسية — فالعضو
+ * يجب أن يكون فعليًا في السيرفر ويحمل إحدى الرتب المعينة أو مدرجًا في userIds.
+ */
+export interface IGuildDashboardRole {
+  id: string;
+  name: string;
+  /** رتب Discord التي تمنح الوصول للوحة التحكم */
+  roleIds: string[];
+  /** مستخدمون محددون يُمنحون الوصول مباشرة */
+  userIds: string[];
+  /** الأقسام المتاحة لهذه الصلاحية (فارغ = كل الأقسام) — للاستخدام لاحقًا */
+  sections?: string[];
+}
+
+export interface IGuildDashboardSettings {
+  /** هل يُسمح لأعضاء رتبة Administrator (عبر Discord) بصلاحيات اللوحة؟ الافتراضي: نعم */
+  allowAdministrators: boolean;
+  /** رتب الداشبورد المخصصة */
+  roles: IGuildDashboardRole[];
 }
 
 export interface IAutoResponse {
@@ -86,6 +113,10 @@ export interface ISelfRolePanel {
   messageId?: string;
   type: "button" | "select";
   maxRoles?: number;
+  /** معطّل = لا تستجيب اللوحة للنقر ولا تُعرض في النشر */
+  enabled?: boolean;
+  /** لون الـ Embed (hex مثل #5865F2) */
+  color?: string;
   options: ISelfRoleOption[];
 }
 
@@ -101,6 +132,59 @@ export interface ILevelRoleReward {
   level: number;
   roleId: string;
   removePrevious?: boolean;
+}
+
+/** رتبة تمنح بالرياكشن على رسالة محددة */
+export interface IReactionRole {
+  roleId: string;
+  label?: string;
+  /** إيموجي يونيكود أو ID الإيموجي المخصص أو صيغة <:name:id> */
+  emoji: string;
+}
+
+/** رسالة مجدولة تُرسل في وقت محدد ويمكن أن تتكرر كل X دقيقة */
+export interface IScheduledMessage {
+  id: string;
+  channelId: string;
+  content: string;
+  embed?: {
+    enabled: boolean;
+    title?: string;
+    description?: string;
+    color?: string;
+  };
+  /** أول وقت إرسال (ISO) */
+  runAt?: string;
+  /** التكرار كل N دقيقة (0 = مرة واحدة) */
+  repeatMinutes: number;
+  enabled: boolean;
+  lastRunAt?: string;
+}
+
+/**
+ * إعدادات نظام الأذكار والمحتوى الإسلامي — القاعدة تحفظ الإعدادات والحالة فقط،
+ * والمحتوى الديني (قرآن/حديث/أذكار) يُجلب من مكتبة islam.js في وقت النشر.
+ */
+export interface IIslamicContent {
+  enabled: boolean;
+  /** قناة النشر التلقائي */
+  channelId: string | null;
+  /** فترة النشر بالدقائق */
+  intervalMinutes: number;
+  /** أنواع المحتوى المفعّلة: quran | hadith | azkar */
+  contentTypes: string[];
+  /** مصادر الأحاديث المسموحة فقط (Bukhari / Muslim) */
+  allowedSources: string[];
+  /** تصنيفات الأذكار المفعّلة (أسماء تصنيفات islam.js) */
+  azkarCategories: string[];
+  /** منع تكرار نفس العنصر خلال هذه الفترة بالدقائق */
+  antiRepeatMinutes: number;
+  /** موعد النشر التالي (ISO) — لاستئناف الجدولة تلقائيًا بعد إعادة التشغيل */
+  nextRunAt?: string;
+  /** آخر عنصر تم نشره */
+  lastPosted?: { id: string; type: string; at: string };
+  /** عناصر أُرسلت مؤخرًا لمنع التكرار — { id, at } */
+  recentlySent?: { id: string; at: string }[];
 }
 
 export interface IGuildConfig {
@@ -133,10 +217,24 @@ export interface IGuildConfig {
     controlPanelMessageId?: string;
   };
 
+  /** البوت مقيم دائمًا في روم صوتي محدد — يُضبط من الداشبورد */
+  alwaysVoice: {
+    enabled: boolean;
+    channelId?: string;
+  };
+
   colors: {
     enabled: boolean;
     panelChannelId?: string;
     panelMessageId?: string;
+    /** آخر قالب تم تطبيقه (id من COLOR_TEMPLATES أو CUSTOM_TEMPLATE_ID) */
+    templateId?: string;
+    /** الرتبة التي أُنشئت رتب الألوان تحتها (للترتيب في السيرفر) */
+    anchorRoleId?: string;
+    /** ألوان القالب المخصص المختارة (HEX بدون #) */
+    customHexes?: string[];
+    /** صورة تُرسم كخلفية خلف عينات الألوان في صورة اللوحة */
+    backgroundImageUrl?: string;
     roles: IColorRole[];
   };
 
@@ -274,8 +372,49 @@ export interface IGuildConfig {
 
   commandOverrides: ICommandOverride[];
 
+  /** عداد الأعضاء: روم صوتي يُعاد تسميته تلقائيًا بعدد أعضاء السيرفر/المتصلين */
+  memberCounter: {
+    enabled: boolean;
+    channelId?: string;
+    /** قالب الاسم — {count} = عدد الأعضاء، {online} = عدد المتصلين */
+    format: string;
+  };
+
+  /** رسائل مجدولة تُرسل تلقائيًا حسب الوقت */
+  scheduledMessages: IScheduledMessage[];
+
+  /** نظام الأذكار والمحتوى الإسلامي (مستقل — يمكن تشغيله وإيقافه) */
+  islamicContent: IIslamicContent;
+
+  /** رولات الرياكشن: منح/إزالة رتبة عند الرياكشن على رسالة */
+  reactionRoles: {
+    enabled: boolean;
+    channelId?: string;
+    messageId?: string;
+    title?: string;
+    description?: string;
+    roles: IReactionRole[];
+  };
+
+  /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
+  dashboard?: IGuildDashboardSettings;
+
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * قراءة الإعدادات مع القيم الافتراضية الآمنة — تُستدعى بدل الوصول المباشر
+ * لقابلية التوافق مع المستندات القديمة التي لا تحتوي على الحقل.
+ */
+export function resolveDashboardSettings(
+  config?: Pick<IGuildConfig, "dashboard"> | null
+): IGuildDashboardSettings {
+  const dashboard = config?.dashboard;
+  return {
+    allowAdministrators: dashboard?.allowAdministrators ?? true,
+    roles: Array.isArray(dashboard?.roles) ? dashboard.roles : []
+  };
 }
 
 function defaultCustomMessage(): ICustomMessage {
@@ -316,6 +455,10 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       enabled: false,
       defaultUserLimit: 0,
       nameTemplate: "روم {user}"
+    },
+
+    alwaysVoice: {
+      enabled: false
     },
 
     colors: {
@@ -411,6 +554,34 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     },
 
     commandOverrides: [],
+
+    memberCounter: {
+      enabled: false,
+      format: "الأعضاء: {count}"
+    },
+
+    scheduledMessages: [],
+
+    islamicContent: {
+      enabled: false,
+      channelId: null,
+      intervalMinutes: 60,
+      contentTypes: ["quran", "hadith", "azkar"],
+      allowedSources: ["Bukhari", "Muslim"],
+      azkarCategories: ["أذكار الصباح", "أذكار المساء", "أذكار النوم"],
+      antiRepeatMinutes: 180,
+      recentlySent: []
+    },
+
+    reactionRoles: {
+      enabled: false,
+      roles: []
+    },
+
+    dashboard: {
+      allowAdministrators: true,
+      roles: []
+    },
 
     createdAt: now,
     updatedAt: now

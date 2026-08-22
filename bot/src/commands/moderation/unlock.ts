@@ -2,6 +2,7 @@ import { BaseGuildTextChannel, EmbedBuilder, PermissionFlagsBits, ThreadChannel 
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
 import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
+import { recordModerationLog } from "../../modules/moderation/auditLog";
 
 const command: BotCommand = {
   name: "unlock",
@@ -50,6 +51,13 @@ const command: BotCommand = {
       );
 
     await ctx.reply({ embeds: [embed] });
+    await recordModerationLog({
+      guildId: ctx.guild.id,
+      userId: ctx.user.id,
+      moderatorId: ctx.user.id,
+      action: "unlock",
+      reason: selected.id
+    });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
   }
 };

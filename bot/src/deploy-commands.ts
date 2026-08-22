@@ -6,6 +6,10 @@ import { promisify } from "util";
 import { config } from "./config";
 import { BotCommand } from "./types/command";
 import { buildSlashCommandJSON } from "./utils/slashBuilder";
+import { buildContextMenuJSON } from "./utils/contextMenuBuilder";
+import dns from "node:dns";
+
+dns.setDefaultResultOrder("ipv4first");
 
 const execAsync = promisify(exec);
 
@@ -15,15 +19,18 @@ function walk(dir: string): string[] {
   for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) files = files.concat(walk(full));
-    else if (entry.name.endsWith(".ts")) files.push(full);
+    else if (entry.name.endsWith(".ts") || entry.name.endsWith(".js")) files.push(full);
   }
   return files;
 }
 
 async function buildShared() {
   try {
-    console.log("🔨 Building @thez/shared package...");
     const sharedPath = path.join(__dirname, "../../shared");
+    const sharedDist = path.join(sharedPath, "dist");
+    // مدمج مسبقًا في الصورة — لا نعيد البناء كل إقلاع
+    if (fs.existsSync(path.join(sharedDist, "index.js"))) return;
+    console.log("🔨 Building @thez/shared package...");
     await execAsync("npm run build", { cwd: sharedPath });
     console.log("✅ @thez/shared built successfully");
   } catch (error) {
@@ -32,13 +39,18 @@ async function buildShared() {
   }
 }
 
+/** موقع مجلد الأوامر: مجاور لملف التشغيل — يطابق src في ts-node وdist عند المجمّع */
+function commandsDir(): string {
+  return path.join(__dirname, "commands");
+}
+
 async function main() {
   // Build shared package first
   await buildShared();
 
-  const commandsDir = path.join(__dirname, "commands");
-  console.log("📁 Looking for commands in:", commandsDir);
-  const files = walk(commandsDir);
+  const dir = commandsDir();
+  console.log("📁 Looking for commands in:", dir);
+  const files = walk(dir);
   console.log("📄 Found files:", files);
   const payload: unknown[] = [];
 
@@ -50,8 +62,26 @@ async function main() {
     payload.push(buildSlashCommandJSON(command));
   }
 
+  // أوامر قائمة السياق (زر الفأرة الأيمن) من مجلد contextMenus/
+  const contextDir = path.join(__dirname, "contextMenus");
+  if (fs.existsSync(contextDir)) {
+    for (const file of walk(contextDir)) {
+      const imported = require(file);
+      const contextMenu = imported.default ?? imported;
+      if (!contextMenu?.name) continue;
+      console.log(`➕ Adding context menu: ${contextMenu.name}`);
+      payload.push(buildContextMenuJSON(contextMenu));
+    }
+  }
+
   console.log(`📤 Deploying ${payload.length} commands...`);
-  const rest = new REST().setToken(config.token);
+  const startTime = Date.now();
+  const rest = new REST({
+    retries: 0,
+    timeout: 15_000,
+    rejectOnRateLimit: () => true,
+    makeRequest: (url: string, init: RequestInit) => fetch(url, init)
+  }).setToken(config.token);
 
   if (config.devGuildId) {
     await rest.put(Routes.applicationGuildCommands(config.clientId, config.devGuildId), {
@@ -62,6 +92,12 @@ async function main() {
     await rest.put(Routes.applicationCommands(config.clientId), { body: payload });
     console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
   }
+  console.log(`⏱️ استغرق نشر الأوامر ${((Date.now() - startTime) / 1000).toFixed(1)} ثانية`);
 }
 
-main().catch(console.error);
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error("❌ فشل نشر الأوامر:", error);
+    process.exit(1);
+  });

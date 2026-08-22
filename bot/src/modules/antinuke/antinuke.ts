@@ -1,11 +1,15 @@
 import { AuditLogEvent, EmbedBuilder, Guild, GuildBasedChannel, GuildMember, Role, User } from "discord.js";
 import { IGuildConfig } from "@thez/shared";
 import { ExtendedClient } from "../../client";
+import { logError } from "../../utils/logger";
 
 type ActionType = "channelCreate" | "channelDelete" | "roleCreate" | "roleDelete" | "ban" | "kick";
 
 /** يتتبّع طوابع زمن إجراءات كل فاعل في كل سيرفر (مفتاح: guildId:executorId:actionType) */
 const actionTracker = new Map<string, number[]>();
+
+/** فاعلون عوقبوا بالفعل داخل النافذة الحالية — منع تكرار العقوبة/إغراق السجل */
+const punishmentTracker = new Map<string, number>();
 
 const ACTION_LABELS: Record<ActionType, string> = {
   channelCreate: "إنشاء رومات بشكل مفرط",
@@ -81,9 +85,24 @@ function registerActionAndCheck(
   const windowMs = gConfig.antiNuke.timeWindowSeconds * 1000;
   const timestamps = (actionTracker.get(key) ?? []).filter((t) => now - t < windowMs);
   timestamps.push(now);
-  actionTracker.set(key, timestamps);
+  // حماية الذاكرة: نحتفظ بآخر 64 طابعًا فقط لكل مفتاح، ونحذف المفتاح فارغه بالكامل
+  const slim = timestamps.slice(-64);
+  if (slim.length > 0) actionTracker.set(key, slim);
+  else actionTracker.delete(key);
 
-  return timestamps.length > getLimit(actionType, gConfig);
+  // تنظيف دوري: مفاتيح توقفت عن النشاط تُحذف، ومنع نمو المفتاحين بلا حدود
+  if (actionTracker.size % 512 === 0) {
+    const cutoff = now - windowMs * 2;
+    for (const [k, arr] of actionTracker) {
+      const last = arr[arr.length - 1];
+      if (last === undefined || last < cutoff) actionTracker.delete(k);
+    }
+    for (const [k, ts] of punishmentTracker) {
+      if (ts < cutoff) punishmentTracker.delete(k);
+    }
+  }
+
+  return slim.length > getLimit(actionType, gConfig);
 }
 
 async function sendAntiNukeLog(
@@ -141,7 +160,7 @@ async function punishExecutor(
       }
     }
   } catch (err) {
-    console.error("خطأ أثناء تطبيق عقوبة مكافحة الغزو:", err);
+    logError("antinuke-punishment", err);
   }
 
   await sendAntiNukeLog(client, guild, executorId, actionType, punishmentLabel, gConfig);
@@ -161,8 +180,16 @@ async function processEvent(
   if (!executorId) return;
   if (isWhitelisted(guild, executorId, client, gConfig)) return;
 
+  // عقوبة نافذة واحدة فقط لكل فاعل/نوع — لا نكرر الضرب كل رسالة أثناء نفس النافذة
+  const key = `${guild.id}:${executorId}:${actionType}`;
+  const punishedAt = punishmentTracker.get(key);
+  if (punishedAt != null && Date.now() - punishedAt < gConfig.antiNuke.timeWindowSeconds * 1000) {
+    return;
+  }
+
   const exceeded = registerActionAndCheck(guild, executorId, actionType, gConfig);
   if (exceeded) {
+    punishmentTracker.set(key, Date.now());
     await punishExecutor(client, guild, executorId, actionType, gConfig);
   }
 }
@@ -220,8 +247,15 @@ export async function handleMemberRemove(
   if (!executorId) return;
   if (isWhitelisted(member.guild, executorId, client, gConfig)) return;
 
+  const key = `${member.guild.id}:${executorId}:kick`;
+  const punishedAt = punishmentTracker.get(key);
+  if (punishedAt != null && Date.now() - punishedAt < gConfig.antiNuke.timeWindowSeconds * 1000) {
+    return;
+  }
+
   const exceeded = registerActionAndCheck(member.guild, executorId, "kick", gConfig);
   if (exceeded) {
+    punishmentTracker.set(key, Date.now());
     await punishExecutor(client, member.guild, executorId, "kick", gConfig);
   }
 }

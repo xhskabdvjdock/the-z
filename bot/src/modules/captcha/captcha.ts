@@ -8,6 +8,7 @@ import {
 } from "discord.js";
 import { IGuildConfig } from "@thez/shared";
 import { ExtendedClient } from "../../client";
+import { logError } from "../../utils/logger";
 import { ComponentRouter } from "../../handlers/componentRouter";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { handleAutoRole } from "../autoRole";
@@ -91,7 +92,7 @@ export async function handleMemberJoinCaptcha(
         await freshMember.kick("لم يتم التحقق من الكابتشا في الوقت المحدد").catch(() => null);
       }
     } catch (err) {
-      console.error("خطأ أثناء طرد عضو لم يتحقق من الكابتشا:", err);
+      logError("captcha-kick", err);
     }
   }, kickAfterMs);
 

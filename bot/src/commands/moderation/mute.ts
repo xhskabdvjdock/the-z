@@ -2,6 +2,7 @@ import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
 import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
+import { recordModerationLog } from "../../modules/moderation/auditLog";
 
 const MAX_TIMEOUT_MINUTES = 40320; // الحد الأقصى المسموح به من ديسكورد (28 يوماً)
 
@@ -72,6 +73,14 @@ const command: BotCommand = {
       );
 
     await ctx.reply({ embeds: [embed] });
+    await recordModerationLog({
+      guildId: ctx.guild.id,
+      userId: target.id,
+      moderatorId: ctx.user.id,
+      action: "mute",
+      reason,
+      durationMinutes: duration
+    });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
   }
 };

@@ -14,7 +14,19 @@ const event: BotEvent = {
 
     // Check if user was jailed before leaving
     if (gConfig.jail?.enabled && gConfig.jail.roleId) {
-      const jailRecord = await JailUser.findOne({ userId: member.id, guildId: member.guild.id });
+      let jailRecord = await JailUser.findOne({ userId: member.id, guildId: member.guild.id });
+      if (jailRecord) {
+        // انتهت مدة الج إوم الصادرة مسبقاً — لا نعيد تفعيله وننظف السجل
+        if (
+          jailRecord.jailedUntil &&
+          new Date(jailRecord.jailedUntil).getTime() <= Date.now()
+        ) {
+          await JailUser.deleteOne({ userId: member.id, guildId: member.guild.id }).catch(
+            () => null
+          );
+          jailRecord = null;
+        }
+      }
       if (jailRecord) {
         const jailRole = member.guild.roles.cache.get(gConfig.jail.roleId);
         if (jailRole) {

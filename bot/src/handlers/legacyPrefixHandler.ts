@@ -1,0 +1,406 @@
+import { Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, GuildMember } from "discord.js";
+import { ExtendedClient } from "../client";
+import { AfkUser, JailUser } from "@thez/shared";
+import { getGuildConfig } from "../utils/guildConfig";
+import { config } from "../config";
+import translate from "translate";
+import { releaseJailedMember } from "../modules/jail/expiry";
+import { recordModerationLog } from "../modules/moderation/auditLog";
+
+// ضبط محرك الترجمة
+translate.engine = "google";
+
+// ذاكرة مؤقتة للترجمات — محدودة الحجم لمنع نمو غير محدود
+const translationCache = new Map<string, { text: string; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+const CACHE_MAX_ENTRIES = 500;
+
+function cacheSet(key: string, value: { text: string; timestamp: number }): void {
+  if (translationCache.size >= CACHE_MAX_ENTRIES) {
+    const oldest = translationCache.keys().next().value;
+    if (oldest !== undefined) translationCache.delete(oldest);
+    const now = Date.now();
+    for (const [k, v] of translationCache) {
+      if (now - v.timestamp >= CACHE_DURATION) translationCache.delete(k);
+    }
+  }
+  translationCache.set(key, value);
+}
+
+/**
+ * يعالج الأوامر ذات البادئة الثابتة (`,tr | ,afk | ,avatar | ,banner | ,jail | ,unjail`).
+ * يُرجع `true` إذا تمّت معالجة الرسالة ويجب إيقاف المعالجة اللاحقة.
+ */
+export async function handleLegacyPrefixCommands(
+  client: ExtendedClient,
+  message: Message
+): Promise<boolean> {
+  const content = message.content;
+
+  // ────── ,tr ── ترجمة ──────────────────────────────────────────────────────
+  if (content.startsWith(",tr")) {
+    const referencedMessage = message.reference?.messageId
+      ? await message.channel.messages.fetch(message.reference.messageId).catch(() => null)
+      : null;
+
+    let text = referencedMessage?.content || "";
+
+    if (!text) {
+      text = content.slice(3).trim();
+    }
+
+    if (!text) {
+      await message.reply("يجب تحديد رسالة لترجمتها (رد على رسالة واستخدم ,tr)");
+      return true;
+    }
+
+    const isArabic = /[\u0600-\u06FF]/.test(text);
+    const targetLang = isArabic ? "en" : "ar";
+    const cacheKey = `${text.substring(0, 100)}_${targetLang}`;
+    const cached = translationCache.get(cacheKey);
+    const now = Date.now();
+
+    if (cached && now - cached.timestamp < CACHE_DURATION) {
+      const display = cached.text.length > 4096 ? cached.text.substring(0, 4093) + "..." : cached.text;
+      await message.reply({
+        embeds: [new EmbedBuilder().setColor(config.defaultColor).setDescription(display)]
+      });
+      return true;
+    }
+
+    try {
+      const translated = await translate(text, {
+        to: targetLang,
+        from: isArabic ? "ar" : "auto"
+      });
+
+      if (!translated?.trim()) {
+        await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
+        return true;
+      }
+
+      const finalText = translated.length > 4096 ? translated.substring(0, 4093) + "..." : translated;
+      cacheSet(cacheKey, { text: translated, timestamp: now });
+
+      await message.reply({
+        embeds: [new EmbedBuilder().setColor(config.defaultColor).setDescription(finalText)]
+      });
+    } catch {
+      await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
+    }
+    return true;
+  }
+
+  // ────── ,afk ─────────────────────────────────────────────────────────────
+  if (content.startsWith(",afk")) {
+    const reason = content.slice(4).trim() || "No reason provided";
+    const guildId = message.guild!.id;
+    const userId = message.author.id;
+
+    try {
+      const existing = await AfkUser.findOne({ guildId, userId });
+
+      if (existing?.status) {
+        await AfkUser.findOneAndUpdate({ guildId, userId }, { $set: { status: false, mentionCount: 0 } });
+        await message.reply({
+          embeds: [new EmbedBuilder().setColor(config.defaultColor).setDescription("You are no longer AFK.")]
+        });
+        return true;
+      }
+
+      const afkData = { guildId, userId, status: true, reason, mentionCount: 0, since: new Date() };
+      if (existing) {
+        await AfkUser.findOneAndUpdate({ guildId, userId }, { $set: afkData });
+      } else {
+        await AfkUser.create(afkData);
+      }
+
+      await message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(config.defaultColor)
+            .setDescription(`You are now AFK. Reason: ${reason}`)
+        ]
+      });
+    } catch {
+      await message.reply({ content: "Failed to set AFK status. Please try again." });
+    }
+    return true;
+  }
+
+  // ────── ,avatar ───────────────────────────────────────────────────────────
+  if (content.startsWith(",avatar")) {
+    const args = content.slice(7).trim().split(/\s+/);
+    const useServerAvatar = args.includes("server");
+
+    let targetMember: GuildMember | null = null;
+
+    if (message.mentions.users.size > 0) {
+      const mentioned = message.mentions.users.first();
+      if (mentioned && !mentioned.bot) {
+        targetMember = await message.guild!.members.fetch(mentioned.id).catch(() => null);
+      }
+    }
+
+    if (!targetMember) {
+      const rawId = args.find((a) => /^\d+$/.test(a));
+      if (rawId) targetMember = await message.guild!.members.fetch(rawId).catch(() => null);
+    }
+
+    if (!targetMember) targetMember = message.member!;
+
+    const avatarUrl =
+      useServerAvatar && targetMember.avatar
+        ? targetMember.avatarURL({ size: 4096 }) ?? targetMember.user.displayAvatarURL({ size: 4096 })
+        : targetMember.user.displayAvatarURL({ size: 4096 });
+
+    const avatarType = useServerAvatar && targetMember.avatar ? "Server Avatar" : "Global Avatar";
+
+    const embed = new EmbedBuilder()
+      .setColor(config.defaultColor)
+      .setTitle(`${targetMember.user.tag}'s ${avatarType}`)
+      .setImage(avatarUrl);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setLabel("Download").setStyle(ButtonStyle.Link).setURL(avatarUrl),
+      new ButtonBuilder().setLabel("Open in Browser").setStyle(ButtonStyle.Link).setURL(avatarUrl)
+    );
+
+    await message.reply({ embeds: [embed], components: [row] });
+    return true;
+  }
+
+  // ────── ,banner ───────────────────────────────────────────────────────────
+  if (content.startsWith(",banner")) {
+    const args = content.slice(7).trim().split(/\s+/);
+    const useServerBanner = args.includes("server");
+    const targetId = args.find((a) => /^\d+$/.test(a)) ?? message.author.id;
+
+    const targetMember = await message.guild!.members.fetch(targetId).catch(() => null);
+    if (!targetMember) {
+      await message.reply({ content: "Could not find that user." });
+      return true;
+    }
+
+    let bannerUrl: string | null;
+    let bannerType: string;
+
+    if (useServerBanner) {
+      bannerUrl = targetMember.guild.bannerURL({ size: 4096 });
+      bannerType = "Server Banner";
+    } else {
+      const fullUser = await message.client.users.fetch(targetMember.user.id, { force: true }).catch(() => null);
+      bannerUrl = fullUser?.bannerURL({ size: 4096 }) ?? null;
+      bannerType = "Profile Banner";
+    }
+
+    if (!bannerUrl) {
+      await message.reply({ content: "This user does not have a banner." });
+      return true;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(config.defaultColor)
+      .setTitle(`${targetMember.user.tag}'s ${bannerType}`)
+      .setImage(bannerUrl);
+
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setLabel("Download").setStyle(ButtonStyle.Link).setURL(bannerUrl),
+      new ButtonBuilder().setLabel("Open in Browser").setStyle(ButtonStyle.Link).setURL(bannerUrl)
+    );
+
+    await message.reply({ embeds: [embed], components: [row] });
+    return true;
+  }
+
+  // ────── ,jail ─────────────────────────────────────────────────────────────
+  if (content.startsWith(",jail") && !content.startsWith(",unjail")) {
+    const args = content.slice(5).trim().split(/\s+/);
+    const targetId = args[0]?.replace(/[<@!>]/g, "");
+    const durationMinutes = Number.parseInt(args[1] ?? "", 10);
+
+    if (durationMinutes && (isNaN(durationMinutes) || durationMinutes < 1)) {
+      await message.reply("Duration must be a positive number of minutes.");
+      return true;
+    }
+
+    if (!targetId) {
+      await message.reply("Please specify a user to jail.");
+      return true;
+    }
+
+    const targetMember = await message.guild!.members.fetch(targetId).catch(() => null);
+    if (!targetMember) {
+      await message.reply("User not found.");
+      return true;
+    }
+
+    const gConfig = await getGuildConfig(client, message.guild!.id);
+
+    if (!message.member?.permissions.has("Administrator")) {
+      await message.reply("Only administrators can use this command.");
+      return true;
+    }
+
+    if (targetMember.id === message.author.id) {
+      await message.reply("You cannot jail yourself.");
+      return true;
+    }
+
+    if (targetMember.id === message.guild!.ownerId) {
+      await message.reply("You cannot jail the server owner.");
+      return true;
+    }
+
+    if (
+      message.guild!.ownerId !== message.author.id &&
+      targetMember.roles.highest.position >= message.member!.roles.highest.position
+    ) {
+      await message.reply("You cannot jail a member with an equal or higher role than yours.");
+      return true;
+    }
+
+    if (targetMember.permissions.has("Administrator")) {
+      await message.reply("Cannot jail administrators.");
+      return true;
+    }
+
+    if (!targetMember.roles.cache.hasAny(...(gConfig.jail?.removeRoles ?? [])) && !targetMember.manageable) {
+      // لا أستطيع تعديل رتب هذا العضو (رتبته أعلى من رتب البوت) — صدّ بشكل واضح وغير صامت
+      await message.reply("I do not have permission to jail this member (role hierarchy).");
+      return true;
+    }
+
+    if (!gConfig.jail?.enabled || !gConfig.jail.roleId) {
+      await message.reply("Jail system is not configured.");
+      return true;
+    }
+
+    const jailRole = message.guild!.roles.cache.get(gConfig.jail.roleId);
+    if (!jailRole) {
+      await message.reply("Jail role not found.");
+      return true;
+    }
+
+    const existingJail = await JailUser.findOne({ userId: targetId, guildId: message.guild!.id });
+    if (existingJail) {
+      await message.reply("User is already jailed.");
+      return true;
+    }
+
+    const removeRoles = gConfig.jail.removeRoles ?? [];
+    const currentRoles = targetMember.roles.cache
+      .filter((r) => r.id !== message.guild!.id && !removeRoles.includes(r.id))
+      .map((r) => r.id);
+
+    const rolesToRemove = targetMember.roles.cache.filter((r) => removeRoles.includes(r.id));
+    if (rolesToRemove.size > 0) await targetMember.roles.remove(rolesToRemove).catch(() => null);
+
+    await targetMember.roles.add(jailRole).catch(() => null);
+    await JailUser.create({
+      userId: targetId,
+      guildId: message.guild!.id,
+      originalRoles: currentRoles,
+      jailedBy: message.author.id,
+      jailedAt: new Date(),
+      ...(durationMinutes > 0 ? { jailedUntil: new Date(Date.now() + durationMinutes * 60_000) } : {})
+    });
+
+    const durationText = durationMinutes > 0 ? ` for ${durationMinutes} minute(s)` : "";
+    await message.reply(`Successfully jailed ${targetMember.user.tag}${durationText}.`);
+
+    await recordModerationLog({
+      guildId: message.guild!.id,
+      userId: targetId,
+      moderatorId: message.author.id,
+      action: "jail",
+      reason: "prefix jail",
+      ...(durationMinutes > 0 ? { durationMinutes } : {})
+    });
+    return true;
+  }
+
+  // ────── ,unjail ───────────────────────────────────────────────────────────
+  if (content.startsWith(",unjail")) {
+    const args = content.slice(7).trim().split(/\s+/);
+    const targetId = args[0]?.replace(/[<@!>]/g, "");
+
+    if (!targetId) {
+      await message.reply("Please specify a user to unjail.");
+      return true;
+    }
+
+    const targetMember = await message.guild!.members.fetch(targetId).catch(() => null);
+    if (!targetMember) {
+      await message.reply("User not found.");
+      return true;
+    }
+
+    if (!message.member?.permissions.has("Administrator")) {
+      await message.reply("Only administrators can use this command.");
+      return true;
+    }
+
+    if (targetMember.id === message.author.id) {
+      await message.reply("You cannot unjail yourself.");
+      return true;
+    }
+
+    if (targetMember.id === message.guild!.ownerId) {
+      await message.reply("You cannot unjail the server owner.");
+      return true;
+    }
+
+    if (
+      message.guild!.ownerId !== message.author.id &&
+      targetMember.roles.highest.position >= message.member!.roles.highest.position
+    ) {
+      await message.reply("You cannot unjail a member with an equal or higher role than yours.");
+      return true;
+    }
+
+    if (targetMember.permissions.has("Administrator")) {
+      await message.reply("Cannot unjail administrators.");
+      return true;
+    }
+
+    if (!targetMember.manageable) {
+      await message.reply("I do not have permission to unjail this member (role hierarchy).");
+      return true;
+    }
+
+    const gConfig = await getGuildConfig(client, message.guild!.id);
+    if (!gConfig.jail?.enabled || !gConfig.jail.roleId) {
+      await message.reply("Jail system is not configured.");
+      return true;
+    }
+
+    const jailRole = message.guild!.roles.cache.get(gConfig.jail.roleId);
+    if (!jailRole) {
+      await message.reply("Jail role not found.");
+      return true;
+    }
+
+    const jailRecord = await JailUser.findOne({ userId: targetId, guildId: message.guild!.id });
+    if (!jailRecord) {
+      await message.reply("User is not jailed.");
+      return true;
+    }
+
+    await releaseJailedMember(message.guild!, gConfig, jailRecord, targetMember);
+
+    await JailUser.deleteOne({ userId: targetId, guildId: message.guild!.id });
+    await message.reply(`Successfully unjailed ${targetMember.user.tag}.`);
+
+    await recordModerationLog({
+      guildId: message.guild!.id,
+      userId: targetId,
+      moderatorId: message.author.id,
+      action: "unjail",
+      reason: "prefix unjail"
+    });
+    return true;
+  }
+
+  return false;
+}

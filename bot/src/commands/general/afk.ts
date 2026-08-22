@@ -2,6 +2,7 @@ import { EmbedBuilder } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
 import { AfkUser } from "@thez/shared";
+import { logError } from "../../utils/logger";
 
 const command: BotCommand = {
   name: "afk",
@@ -57,7 +58,7 @@ const command: BotCommand = {
 
       await ctx.reply({ embeds: [embed] });
     } catch (error) {
-      console.error("Error setting AFK status:", error);
+      logError("afk", error);
       await ctx.reply({ content: "Failed to set AFK status. Please try again." });
     }
   }

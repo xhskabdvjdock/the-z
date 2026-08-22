@@ -7,15 +7,17 @@
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "deploy": "ts-node --transpile-only src/deploy-commands.ts",
-    "clear": "ts-node --transpile-only src/clear-commands.ts"
+    "deploy": "node dist/deploy-commands.js",
+    "clear": "node dist/clear-commands.js"
   },
   "dependencies": {
+    "@discordjs/voice": "^0.18.0",
     "@napi-rs/canvas": "^0.1.53",
     "@thez/shared": "^1.0.0",
     "discord-html-transcripts": "^3.2.0",
     "discord.js": "^14.15.3",
     "dotenv": "^16.4.5",
+    "islam.js": "^1.3.0",
     "translate": "^3.1.0"
   },
   "devDependencies": {

@@ -2,6 +2,7 @@ import { EmbedBuilder, PermissionFlagsBits } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
 import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
+import { recordModerationLog } from "../../modules/moderation/auditLog";
 
 const command: BotCommand = {
   name: "unban",
@@ -47,6 +48,12 @@ const command: BotCommand = {
       );
 
     await ctx.reply({ embeds: [embed] });
+    await recordModerationLog({
+      guildId: ctx.guild.id,
+      userId,
+      moderatorId: ctx.user.id,
+      action: "unban"
+    });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
   }
 };

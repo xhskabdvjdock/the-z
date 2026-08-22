@@ -21,6 +21,7 @@ import { IGuildConfig, ITempVoiceChannel, TempVoiceChannel, LiveDoc } from "@the
 import { ExtendedClient } from "../../client";
 import { ComponentRouter } from "../../handlers/componentRouter";
 import { config } from "../../config";
+import { logError } from "../../utils/logger";
 
 const CONTROL_PANEL_TITLE = "⚙️ Welcome to your own temporary voice channel";
 
@@ -126,14 +127,14 @@ async function createTempChannel(
       userLimit
     });
   } catch (err) {
-    console.error("فشل إنشاء الروم الصوتي المؤقت:", err);
+    logError("voice-create", err);
     return;
   }
 
   try {
     await member.voice.setChannel(newChannel);
   } catch (err) {
-    console.error("فشل نقل العضو إلى الروم الصوتي الجديد:", err);
+    logError("voice-move", err);
   }
 
   try {
@@ -143,7 +144,7 @@ async function createTempChannel(
       ownerId: member.id
     });
   } catch (err) {
-    console.error("فشل حفظ بيانات الروم الصوتي المؤقت:", err);
+    logError("voice-save", err);
   }
 
   try {
@@ -152,7 +153,7 @@ async function createTempChannel(
       components: buildControlComponents(newChannel)
     });
   } catch (err) {
-    console.error("فشل إرسال لوحة تحكم الروم الصوتي:", err);
+    logError("voice-control-panel", err);
   }
 }
 

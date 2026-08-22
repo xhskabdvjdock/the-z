@@ -1,6 +1,6 @@
-import { EmbedBuilder, Message, PartialMessage } from "discord.js";
+import { AuditLogEvent, EmbedBuilder, Message, PartialMessage } from "discord.js";
 import { BotEvent } from "../types/event";
-import { sendLog } from "../modules/logging/logger";
+import { sendLog, sendMediaLog } from "../modules/logging/logger";
 
 const event: BotEvent = {
   name: "messageDelete",
@@ -15,6 +15,27 @@ const event: BotEvent = {
         { name: "Channel", value: `${message.channelId}`, inline: true }
       );
 
+    // من حذف الرسالة؟ — من سجل التدقيق (Audit Log) عبر Message ID
+    try {
+      const audit = await message.guild.fetchAuditLogs({
+        type: AuditLogEvent.MessageDelete,
+        limit: 8
+      });
+      const executor = audit.entries
+        .filter((e) => e.targetId === message.id)
+        .sort((a, b) => (b.createdTimestamp ?? 0) - (a.createdTimestamp ?? 0))
+        .first();
+      if (executor?.executor) {
+        embed.addFields({
+          name: "Deleted By",
+          value: `${executor.executor.tag} (${executor.executor.id})`,
+          inline: true
+        });
+      }
+    } catch {
+      // لا صلاحية لقراءة سجل التدقيق أو التأخير — نكمل بدون اسم المحذف
+    }
+
     if (message.content) {
       const truncatedContent = message.content.length > 1000 ? message.content.slice(0, 997) + "..." : message.content;
       embed.addFields({ name: "Message Content", value: truncatedContent });
@@ -22,15 +43,33 @@ const event: BotEvent = {
       embed.addFields({ name: "Message Content", value: "No text content (may contain image/file)" });
     }
 
-    if (message.attachments?.size > 0) {
-      const attachmentNames = message.attachments.map(a => a.name).join(", ");
+    const attachments = message.attachments?.size ? [...message.attachments.values()] : [];
+
+    if (attachments.length > 0) {
+      const attachmentNames = attachments.map(a => a.name).join(", ");
       embed.addFields({ name: "Attachments", value: attachmentNames, inline: true });
     }
 
     embed.setFooter({ text: `Message ID: ${message.id} | Author ID: ${message.author?.id || "Unknown"}` });
     embed.setTimestamp();
 
-    await sendLog(client, message.guild.id, "messages", embed);
+    // إن كان للمحذوفة مرفقات نعرفها (رسالة مخزنة في الكاش) نرسل الملفات نفسها
+    if (attachments.length > 0) {
+      await sendMediaLog(
+        client,
+        message.guild.id,
+        "messages",
+        embed,
+        attachments.map((a) => ({
+          url: a.proxyURL || a.url,
+          name: a.name,
+          contentType: a.contentType,
+          size: a.size
+        }))
+      );
+    } else {
+      await sendLog(client, message.guild.id, "messages", embed);
+    }
   }
 };
 

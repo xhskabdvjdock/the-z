@@ -1,10 +1,12 @@
-import { EmbedBuilder, Interaction } from "discord.js";
+import { EmbedBuilder, GuildMember, Interaction, InteractionReplyOptions } from "discord.js";
 import { BotEvent } from "../types/event";
 import { componentRouter } from "../handlers/componentRouter";
 import { buildSlashContext } from "../utils/context";
 import { getGuildConfig } from "../utils/guildConfig";
 import { checkCommandPermission } from "../utils/permissions";
 import { buildMessageFromCustom } from "../utils/embed";
+import { applyCommandCooldown, checkCommandCooldown } from "../utils/cooldown";
+import { logError } from "../utils/logger";
 
 const event: BotEvent = {
   name: "interactionCreate",
@@ -13,8 +15,15 @@ const event: BotEvent = {
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
+
+        // الرسائل الخاصة (DM): أمر مصمم للعمل خارج السيرفرات — بدون إعدادات/صلاحيات سيرفر
         if (!interaction.guild || !interaction.member) {
-          await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+          if (!command.dmEnabled) {
+            await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+            return;
+          }
+          const dmCtx = buildSlashContext(client, interaction);
+          await command.run(dmCtx);
           return;
         }
 
@@ -26,7 +35,7 @@ const event: BotEvent = {
         const gConfig = await getGuildConfig(client, interaction.guild.id);
         const override = gConfig.commandOverrides?.find((c) => c.name === command.name);
 
-        if (override && !override.enabled) {
+        if (override && override.enabled === false) {
           await client.withRetry(async () => {
             await interaction.editReply({
               content: "This command is disabled in this server."
@@ -35,18 +44,9 @@ const event: BotEvent = {
           return;
         }
 
-        if (override && !override.slashEnabled) {
-          await client.withRetry(async () => {
-            await interaction.editReply({
-              content: "This command is disabled as a Slash Command in this server."
-            });
-          }, 2, 500).catch(() => null);
-          return;
-        }
-
         const permCheck = checkCommandPermission(
           override,
-          interaction.member as any,
+          interaction.member as GuildMember,
           interaction.channelId
         );
         if (!permCheck.allowed) {
@@ -55,6 +55,22 @@ const event: BotEvent = {
           }, 2, 500).catch(() => null);
           return;
         }
+
+        const cdCheck = checkCommandCooldown(
+          client,
+          command,
+          interaction.guild.id,
+          interaction.user.id,
+          override
+        );
+        if (!cdCheck.allowed) {
+          await interaction.reply({
+            content: `⏳ هذا الأمر قيد البرودة — انتظر ${cdCheck.remainingSeconds} ثانية تقريبًا.`,
+            ephemeral: true
+          });
+          return;
+        }
+        applyCommandCooldown(client, command, interaction.guild.id, interaction.user.id, override);
 
         if (override?.customResponse?.enabled) {
           const payload = buildMessageFromCustom(override.customResponse, {
@@ -83,6 +99,66 @@ const event: BotEvent = {
         return;
       }
 
+      if (interaction.isMessageContextMenuCommand()) {
+        const contextMenu = client.contextMenus.get(interaction.commandName);
+        if (!contextMenu) return;
+
+        // الرسائل الخاصة (DM): بدون إعدادات/صلاحيات سيرفر
+        if (!interaction.guild || !interaction.member) {
+          if (!contextMenu.dmEnabled) {
+            await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+            return;
+          }
+          await contextMenu.run(client, interaction);
+          return;
+        }
+
+        // احترام إعدادات لوحة التحكم (تفعيل/تعطيل/صلاحيات/رد مخصص)
+        const gConfig = await getGuildConfig(client, interaction.guild.id);
+        const override = gConfig.commandOverrides?.find((c) => c.name === contextMenu.name);
+
+        if (override && override.enabled === false) {
+          await interaction.reply({
+            content: "This command is disabled in this server.",
+            ephemeral: true
+          });
+          return;
+        }
+
+        if (override && override.customResponse?.enabled) {
+          const payload = buildMessageFromCustom(override.customResponse, {
+            user: {
+              id: interaction.user.id,
+              username: interaction.user.username,
+              tag: interaction.user.tag,
+              mention: `<@${interaction.user.id}>`,
+              avatarURL: interaction.user.displayAvatarURL()
+            },
+            server: {
+              name: interaction.guild.name,
+              id: interaction.guild.id,
+              memberCount: interaction.guild.memberCount,
+              iconURL: interaction.guild.iconURL() ?? undefined
+            }
+          });
+          await interaction.reply(payload as InteractionReplyOptions);
+          return;
+        }
+
+        const permCheck = checkCommandPermission(
+          override,
+          interaction.member as GuildMember,
+          interaction.channelId
+        );
+        if (!permCheck.allowed) {
+          await interaction.reply({ content: permCheck.reason, ephemeral: true });
+          return;
+        }
+
+        await contextMenu.run(client, interaction);
+        return;
+      }
+
       if (interaction.isButton()) {
         await componentRouter.dispatchButton(interaction, client);
         return;
@@ -98,7 +174,7 @@ const event: BotEvent = {
         return;
       }
     } catch (err: any) {
-      console.error("خطأ أثناء معالجة التفاعل:", err);
+      logError("interaction", err);
 
       // التعامل مع rate limits بشكل خاص
       if (err.code === 50001 || err.message?.includes('Rate limit')) {

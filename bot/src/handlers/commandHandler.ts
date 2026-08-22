@@ -36,7 +36,7 @@ export async function checkCommandOverride(client: ExtendedClient, commandName: 
 
   if (!override) return { allowed: true };
 
-  if (!override.enabled) {
+  if (override.enabled === false) {
     return { allowed: false, reason: "This command is disabled in this server." };
   }
 

@@ -307,3 +307,8 @@ body {
   border-color: var(--border-color);
   background-color: var(--bg-tertiary);
 }
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

@@ -1,9 +1,21 @@
 import { Client, Collection, GatewayIntentBits, Partials, REST } from "discord.js";
+import { createCooldownStore, CooldownStore } from "@thez/shared";
 import { BotCommand } from "./types/command";
+import { BotContextMenu } from "./types/contextMenu";
 
 export class ExtendedClient extends Client {
   commands: Collection<string, BotCommand> = new Collection();
-  cooldowns: Collection<string, Collection<string, number>> = new Collection();
+
+  /** أوامر قائمة السياق (زر الفأرة الأيمن) — رسائل حاليًا */
+  contextMenus: Collection<string, BotContextMenu> = new Collection();
+
+  /**
+   * مخزن البرودة الموحّد. التنفيذ Hybrid: كتابة محلية فورية + تمرير إلى Redis
+   * عند التوفر (TTL إجباري) — الواجهة CooldownStore لم تتغير، لذا لا يعرف أي أمر
+   * أنه تعامل مع Redis. عند غياب Redis: يبقى محليًا آمنًا مع تحذير واحد.
+   */
+  commandCooldowns: CooldownStore = createCooldownStore();
+
   /** كاش بسيط لإعدادات كل سيرفر لتقليل قراءات قاعدة البيانات */
   guildConfigCache: Collection<string, { data: any; expiresAt: number }> = new Collection();
   /** نظام إعادة المحاولة مع exponential backoff للتعامل مع rate limits */
@@ -21,7 +33,15 @@ export class ExtendedClient extends Client {
         GatewayIntentBits.GuildModeration,
         GatewayIntentBits.GuildPresences
       ],
-      partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.GuildMember]
+      partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.GuildMember],
+      // تجمع undici الافتراضي في @discordjs/rest يعلّق الطلبات على Render —
+      // استخدام fetch الأصلي لكل طلب (بدون keep-alive) يجعل الفشل مرئيًا وفوريًا
+      rest: {
+        makeRequest: (url: string, init: RequestInit) => fetch(url, init),
+        retries: 0,
+        timeout: 15_000,
+        rejectOnRateLimit: () => true
+      }
     });
 
     this.rest = new REST({ version: '10' }).setAgent(this.options.ws?.agent);

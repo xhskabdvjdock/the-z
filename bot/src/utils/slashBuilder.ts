@@ -50,6 +50,11 @@ export function buildSlashCommandJSON(command: BotCommand) {
           o.setName(opt.name).setDescription(opt.description).setRequired(required)
         );
         break;
+      case "attachment":
+        builder.addAttachmentOption((o) =>
+          o.setName(opt.name).setDescription(opt.description).setRequired(required)
+        );
+        break;
     }
   }
 

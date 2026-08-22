@@ -14,7 +14,8 @@ import {
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
-  if (session) redirect("/dashboard");
+  const sessionBroken = (session as any)?.error === "RefreshFailed";
+  if (session && !sessionBroken) redirect("/dashboard");
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-10 px-4">
@@ -23,9 +24,12 @@ export default async function HomePage() {
       </div>
 
       <div className="flex flex-col items-center gap-5 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-[#5865F2] text-2xl font-bold text-white">
-          Z
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/dashboard/public/bot-logo.jpg"
+          alt="شعار البوت"
+          className="h-16 w-16 rounded-full object-cover shadow-lg ring-2 ring-[#5865F2]/40"
+        />
         <h1 className="text-4xl font-bold sm:text-5xl text-[#F0F0F0]">
           لوحة تحكم البوت
         </h1>

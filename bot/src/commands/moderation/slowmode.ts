@@ -2,6 +2,7 @@ import { BaseGuildTextChannel, EmbedBuilder, PermissionFlagsBits } from "discord
 import { BotCommand } from "../../types/command";
 import { sendLog } from "../../modules/logging/logger";
 import { replyWithAutoDelete } from "../../utils/replyWithAutoDelete";
+import { recordModerationLog } from "../../modules/moderation/auditLog";
 
 const command: BotCommand = {
   name: "slowmode",
@@ -47,6 +48,14 @@ const command: BotCommand = {
       );
 
     await ctx.reply({ embeds: [embed] });
+    await recordModerationLog({
+      guildId: ctx.guild.id,
+      userId: ctx.user.id,
+      moderatorId: ctx.user.id,
+      action: "slowmode",
+      durationMinutes: Math.ceil(seconds / 60),
+      reason: ctx.channel.id
+    });
     await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
   }
 };

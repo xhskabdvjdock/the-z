@@ -3,24 +3,32 @@ import {
   ChatInputCommandInteraction,
   GuildBasedChannel,
   GuildMember,
+  InteractionReplyOptions,
   Message,
+  MessageReplyOptions,
   Role,
   User
 } from "discord.js";
 import { ExtendedClient } from "../client";
 import { BotCommand, CommandContext } from "../types/command";
 
+/**
+ * يبني سياق أمر من تفاعل Slash. يعمل أيضًا في الرسائل الخاصة (DM):
+ * في الخاص لا يوجد سيرفر/عضو — الحقول guild/member تكون undefined لكنها
+ * محفوظة بنوعها لتوافق الواجهة، والأوامر التي تعمل في الخاص لا تقرأهما.
+ */
 export function buildSlashContext(
   client: ExtendedClient,
   interaction: ChatInputCommandInteraction
 ): CommandContext {
-  const guild = interaction.guild!;
-  const member = interaction.member as GuildMember;
+  const isDm = !interaction.guild || !interaction.member;
+  const guild = isDm ? undefined : interaction.guild!;
+  const member = isDm ? undefined : (interaction.member as GuildMember);
 
   return {
     client,
-    guild,
-    member,
+    guild: guild as CommandContext["guild"],
+    member: member as CommandContext["member"],
     user: interaction.user,
     channel: interaction.channel!,
     isSlash: true,
@@ -30,21 +38,24 @@ export function buildSlashContext(
       // إضافة تأخير بسيط لتقليل rate limits
       await new Promise(resolve => setTimeout(resolve, 100));
 
+      const payload = options as InteractionReplyOptions | string;
       if (interaction.deferred) {
-        return interaction.editReply(options as any) as any;
+        return interaction.editReply(payload) as unknown as Message;
       }
       if (interaction.replied) {
-        return interaction.followUp(options as any) as any;
+        return interaction.followUp(payload) as unknown as Message;
       }
-      return interaction.reply(options as any) as any;
+      return interaction.reply(payload) as unknown as Message;
     },
     getString: (name) => interaction.options.getString(name),
     getInteger: (name) => interaction.options.getInteger(name),
     getBoolean: (name) => interaction.options.getBoolean(name),
     getUser: async (name) => interaction.options.getUser(name),
-    getMember: async (name) => interaction.options.getMember(name) as GuildMember | null,
+    getMember: async (name) =>
+      (interaction.options.getMember(name) as GuildMember | null) ?? null,
     getChannel: (name) => interaction.options.getChannel(name) as GuildBasedChannel | null,
-    getRole: (name) => interaction.options.getRole(name) as Role | null
+    getRole: (name) => interaction.options.getRole(name) as Role | null,
+    getAttachment: (name) => interaction.options.getAttachment(name)
   };
 }
 
@@ -77,7 +88,8 @@ export function buildPrefixContext(
     message,
     args,
     reply: async (options) => {
-      return message.reply(options as any) as any;
+      // BaseMessageOptions ⊆ MessageReplyOptions — الإرسال آمن
+      return message.reply(options as MessageReplyOptions);
     },
     getString: (name) => {
       const index = specs.findIndex((s) => s.name === name);
@@ -127,6 +139,7 @@ export function buildPrefixContext(
       if (!raw) return null;
       const id = raw.replace(/[<@&>]/g, "");
       return guild.roles.cache.get(id) ?? guild.roles.cache.find((r) => r.name === raw) ?? null;
-    }
+    },
+    getAttachment: () => message.attachments.first() ?? null
   };
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { requireGuildAdmin } from "@/lib/guildAccess";
+import { logAction, logError } from "@/lib/logger";
 import { ensureDb } from "@/lib/db";
 import { getGuildInfo, getGuildRoles, getGuildChannels } from "@/lib/discord";
 import { GuildConfig, ServerBackup, BackupOptions } from "@thez/shared";
@@ -12,7 +13,7 @@ export async function createBackup(guildId: string, options: BackupOptions = {
   includeGuildInfo: true
 }) {
   try {
-    await requireGuildAdmin(guildId);
+    const session = await requireGuildAdmin(guildId);
     await ensureDb();
 
     const [config, guild, roles, channels] = await Promise.all([
@@ -108,9 +109,24 @@ export async function createBackup(guildId: string, options: BackupOptions = {
       }
     };
 
+    logAction({
+      label: "backup/create",
+      guildId,
+      guildName: guild.name,
+      userId: (session.user as any).id,
+      userName: session.user?.name ?? undefined,
+      action: "إنشاء نسخة احتياطية",
+      details: {
+        roles: backup.roles.length,
+        channels: backup.channels.length,
+        includeGuildInfo: options.includeGuildInfo,
+        includeBotConfig: options.includeBotConfig
+      }
+    });
+
     return backup;
   } catch (error) {
-    console.error("Error creating backup:", error);
+    logError("backup/create", error);
     throw error;
   }
 }

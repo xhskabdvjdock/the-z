@@ -12,6 +12,7 @@ import { saveCommandOverrides, saveModerationSettings } from "./actions";
 export interface CommandRow extends ICommandOverride {
   category: CommandMeta["category"];
   descriptionAr: string;
+  type?: CommandMeta["type"];
 }
 
 const CATEGORY_ORDER: CommandMeta["category"][] = [
@@ -20,7 +21,9 @@ const CATEGORY_ORDER: CommandMeta["category"][] = [
   "تذاكر",
   "رومات صوتية",
   "مستويات",
-  "رولات"
+  "رولات",
+  "أدوات",
+  "قوائم سياق"
 ];
 
 const TEXT_CHANNEL_TYPES = [0, 5];
@@ -58,7 +61,9 @@ export default function CommandsForm({
   })).filter((g) => g.items.length > 0);
 
   const handleSave = async () => {
-    const overrides: ICommandOverride[] = state.map(({ category, descriptionAr, ...rest }) => rest);
+    const overrides: ICommandOverride[] = state.map(
+      ({ category, descriptionAr, type, ...rest }) => rest
+    );
     await saveCommandOverrides(guildId, overrides);
     await saveModerationSettings(guildId, moderationSettings);
   };
@@ -92,6 +97,7 @@ export default function CommandsForm({
           <div className="flex flex-col gap-2">
             {group.items.map((cmd) => {
               const customResponse: ICustomMessage = cmd.customResponse ?? { enabled: false };
+              const isContextMenu = cmd.type === "context-menu";
 
               return (
                 <details
@@ -102,6 +108,11 @@ export default function CommandsForm({
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="font-semibold">
                         {cmd.name}
+                        {isContextMenu && (
+                          <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-xs font-normal text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                            قائمة سياق
+                          </span>
+                        )}
                         {!cmd.enabled && (
                           <span className="mr-2 text-xs font-normal text-red-500">(معطّل)</span>
                         )}
@@ -119,28 +130,38 @@ export default function CommandsForm({
                   </summary>
 
                   <div className="flex flex-col gap-4 border-t border-slate-200 p-4 dark:border-slate-800">
-                    <div>
-                      <label className="label">بديل اسم الأمر (Alias)</label>
-                      <input
-                        className="input"
-                        placeholder={cmd.name}
-                        value={cmd.alias ?? ""}
-                        onChange={(e) => updateCommand(cmd.name, { alias: e.target.value })}
-                      />
-                    </div>
+                    {!isContextMenu && (
+                      <>
+                        <div>
+                          <label className="label">بديل اسم الأمر (Alias)</label>
+                          <input
+                            className="input"
+                            placeholder={cmd.name}
+                            value={cmd.alias ?? ""}
+                            onChange={(e) => updateCommand(cmd.name, { alias: e.target.value })}
+                          />
+                        </div>
 
-                    <div className="flex flex-wrap items-center gap-6">
-                      <Toggle
-                        checked={cmd.slashEnabled}
-                        onChange={(v) => updateCommand(cmd.name, { slashEnabled: v })}
-                        label="أمر Slash (/)"
-                      />
-                      <Toggle
-                        checked={cmd.prefixEnabled}
-                        onChange={(v) => updateCommand(cmd.name, { prefixEnabled: v })}
-                        label="أمر بادئة (Prefix)"
-                      />
-                    </div>
+                        <div>
+                          <label className="label">بادئة مخصصة للأمر</label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              className="input w-28 font-mono text-center"
+                              placeholder={initialConfig.prefix}
+                              maxLength={5}
+                              value={cmd.customPrefix ?? ""}
+                              onChange={(e) => updateCommand(cmd.name, { customPrefix: e.target.value || undefined })}
+                            />
+                            <p className="text-xs text-slate-500 dark:text-slate-400">
+                              اتركها فارغة لاستخدام البادئة العامة للسيرفر{" "}
+                              <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">
+                                {initialConfig.prefix}
+                              </code>
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
 
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <MultiSelect

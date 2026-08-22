@@ -1,22 +1,16 @@
-import { Message, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
+import { EmbedBuilder, Message } from "discord.js";
 import { BotEvent } from "../types/event";
 import { getGuildConfig } from "../utils/guildConfig";
 import { buildPrefixContext } from "../utils/context";
-import { checkCommandPermission } from "../utils/permissions";
+import { checkCommandPermission, verifyCommandPermission } from "../utils/permissions";
 import { buildMessageFromCustom } from "../utils/embed";
 import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
-import translate from "translate";
-import { config } from "../config";
-import { AfkUser, JailUser } from "@thez/shared";
-
-// ضبط المحرك مجاناً
-translate.engine = "google";
-
-// بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة
-const translationCache = new Map<string, { text: string; timestamp: number }>();
-const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
+import { handleLegacyPrefixCommands } from "../handlers/legacyPrefixHandler";
+import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
+import { sendMediaLog } from "../modules/logging/logger";
+import { AfkUser } from "@thez/shared";
 
 // نظام بسيط لتقليل rate limits من خلال تأخير الردود
 const messageQueue = new Map<string, number>();
@@ -419,82 +413,103 @@ const event: BotEvent = {
       await message.reply(`Successfully unjailed ${targetMember.user.tag}.`);
       return;
     }
+=======
+    // 1) أوامر البادئة الثابتة (,tr | ,afk | ,avatar | ,banner | ,jail | ,unjail)
+    const wasLegacy = await handleLegacyPrefixCommands(client, message);
+    if (wasLegacy) return;
+>>>>>>> 61a8f7516fe4981c9ac0161f084a6af398373b18
 
     const gConfig = await getGuildConfig(client, message.guild.id);
 
-    // التحقق من القنوات المخصصة
+    // 2) القنوات المخصصة لنوع معين من المحتوى
     const customChannels = gConfig.logging?.customChannels;
-    console.log("Custom channels config:", JSON.stringify(customChannels));
-
     const channelId = message.channelId;
-    const isTextMessage = !message.attachments.size && !message.stickers.size;
     const isCommand = message.content.startsWith(gConfig.prefix);
-    const hasMedia = message.attachments.some(a => a.contentType?.startsWith("image/") || a.contentType?.startsWith("video/"));
+    const isTextOnly = !message.attachments.size && !message.stickers.size;
+    const hasMedia = message.attachments.some(
+      (a) => a.contentType?.startsWith("image/") || a.contentType?.startsWith("video/")
+    );
     const hasStickers = message.stickers.size > 0;
 
-    // إذا الشات مخصص للرسائل - يُسمح فقط بالرسائل النصية
-    if (customChannels?.messages?.includes(channelId)) {
-      if (!isTextMessage) {
-        console.log("Channel is for messages only, deleting non-text content");
-        await message.delete().catch(() => null);
-        return;
-      }
+    if (customChannels?.messages?.includes(channelId) && !isTextOnly) {
+      await message.delete().catch(() => null);
+      return;
+    }
+    if (customChannels?.commands?.includes(channelId) && !isCommand) {
+      await message.delete().catch(() => null);
+      return;
+    }
+    if (customChannels?.media?.includes(channelId) && !hasMedia) {
+      await message.delete().catch(() => null);
+      return;
+    }
+    if (customChannels?.stickers?.includes(channelId) && !hasStickers) {
+      await message.delete().catch(() => null);
+      return;
     }
 
-    // إذا الشات مخصص للأوامر - يُسمح فقط بالأوامر
-    if (customChannels?.commands?.includes(channelId)) {
-      if (!isCommand) {
-        console.log("Channel is for commands only, deleting non-command content");
-        await message.delete().catch(() => null);
-        return;
-      }
-    }
-
-    // إذا الشات مخصص للصور والفيديوهات - يُسمح فقط بالصور والفيديوهات
-    if (customChannels?.media?.includes(channelId)) {
-      if (!hasMedia) {
-        console.log("Channel is for media only, deleting non-media content");
-        await message.delete().catch(() => null);
-        return;
-      }
-    }
-
-    // إذا الشات مخصص للملصقات - يُسمح فقط بالملصقات
-    if (customChannels?.stickers?.includes(channelId)) {
-      if (!hasStickers) {
-        console.log("Channel is for stickers only, deleting non-sticker content");
-        await message.delete().catch(() => null);
-        return;
-      }
-    }
-
-    // 1) الرقابة التلقائية أولاً (Auto-Mod)
+    // 3) الرقابة التلقائية
     const wasActioned = await handleAutoMod(client, message, gConfig);
     if (wasActioned) return;
 
-    // 2) الأوامر (بادئة نصية)
-    if (message.content.startsWith(gConfig.prefix)) {
-      const withoutPrefix = message.content.slice(gConfig.prefix.length).trim();
-      const args = withoutPrefix.split(/\s+/);
-      const commandName = args.shift()?.toLowerCase();
+    // 4) أوامر بادئة السيرفر (مع دعم البادئة المخصصة لكل أمر)
+    const overrideMap = new Map((gConfig.commandOverrides ?? []).map((o) => [o.name, o]));
+    const globalPrefix = gConfig.prefix;
+
+    const allPrefixes = new Set<string>([globalPrefix]);
+    for (const o of gConfig.commandOverrides ?? []) {
+      if (o.customPrefix) allPrefixes.add(o.customPrefix);
+    }
+
+    const matchedPrefix = [...allPrefixes]
+      .sort((a, b) => b.length - a.length)
+      .find((p) => message.content.startsWith(p));
+
+    if (matchedPrefix) {
+      const parts = message.content.slice(matchedPrefix.length).trim().split(/\s+/);
+      const commandName = parts[0]?.toLowerCase();
+      const args = parts.slice(1);
 
       if (commandName) {
         const command =
           client.commands.get(commandName) ??
-          client.commands.find(
-            (c) =>
-              gConfig.commandOverrides?.find((o) => o.name === c.name)?.alias === commandName
-          );
+          client.commands.find((c) => overrideMap.get(c.name)?.alias === commandName);
 
         if (command) {
-          const override = gConfig.commandOverrides?.find((c) => c.name === command.name);
+          const override = overrideMap.get(command.name);
+          const effectivePrefix = override?.customPrefix || globalPrefix;
 
-          if (!override || override.prefixEnabled) {
+          if (effectivePrefix === matchedPrefix && (!override || override.enabled !== false)) {
+            // 4.1) صلاحيات Discord الأساسية (defaultMemberPermissions) — نفس التطبيق الذي
+            // يفرض Discord على الـSlash، مطبّق يدويًا هنا للبادئة (لا يفرضه Discord تلقائيًا)
+            const discordPerm = verifyCommandPermission(command, message.member!, message.channel);
+            if (!discordPerm.allowed) {
+              await message.reply(discordPerm.reason ?? "❌ لا تملك الصلاحيات الكافية.");
+              return;
+            }
+
+            // 4.2) تخصيصات لوحة التحكم (Command Overrides) — نظام موجود لا يتغير
             const permCheck = checkCommandPermission(override, message.member!, message.channelId);
             if (!permCheck.allowed) {
               await message.reply(permCheck.reason ?? "❌ غير مسموح.");
               return;
             }
+
+            // 4.3) البرودة (Cooldown) — مدة الأمر نفسه أو override أو صفر (بدون برودة)
+            const cdCheck = checkCommandCooldown(
+              client,
+              command,
+              message.guild.id,
+              message.author.id,
+              override
+            );
+            if (!cdCheck.allowed) {
+              await message.reply(
+                `⏳ هذا الأمر قيد البرودة — انتظر ${cdCheck.remainingSeconds} ثانية تقريبًا.`
+              );
+              return;
+            }
+            applyCommandCooldown(client, command, message.guild.id, message.author.id, override);
 
             if (override?.customResponse?.enabled) {
               const payload = buildMessageFromCustom(override.customResponse, {
@@ -524,42 +539,89 @@ const event: BotEvent = {
       }
     }
 
-    // 3) الردود التلقائية
+    // 5) الردود التلقائية
     const responded = await handleAutoResponse(client, message, gConfig);
     if (responded) return;
 
-    // 4) نظام AFK
-    // Check if mentioned users are AFK
-    const mentionedUsers = message.mentions.users.filter(u => !u.bot);
-    for (const [userId, user] of mentionedUsers) {
-      const afkUser = await AfkUser.findOne({ guildId: message.guild.id, userId });
-      if (afkUser && afkUser.status) {
-        // Increment mention count
-        await AfkUser.updateOne(
-          { guildId: message.guild.id, userId },
-          { $inc: { mentionCount: 1 } }
-        );
+    // 6) نظام AFK — batch queries بدلاً من N+1
+    const mentionedUsers = message.mentions.users.filter((u) => !u.bot);
+    if (mentionedUsers.size > 0) {
+      const userIds = [...mentionedUsers.keys()];
+      const afkUsers = await AfkUser.find({
+        guildId: message.guild.id,
+        userId: { $in: userIds },
+        status: true
+      });
 
-        // Send AFK message
-        await message.reply(`User ${user.tag} is currently AFK. Reason: ${afkUser.reason || "No reason provided"}`);
+      if (afkUsers.length > 0) {
+        // updateMany غير متاح على نوع هذا الموديل — نستخدم updateOne متوازية
+        await Promise.all(
+          afkUsers.map((a) =>
+            AfkUser.updateOne(
+              { guildId: message.guild!.id, userId: a.userId },
+              { $inc: { mentionCount: 1 } }
+            )
+          )
+        );
+        const afkMap = new Map(afkUsers.map((a) => [a.userId, a]));
+        for (const [userId, user] of mentionedUsers) {
+          const afkData = afkMap.get(userId);
+          if (afkData) {
+            await message
+              .reply(`User ${user.tag} is currently AFK. Reason: ${afkData.reason || "No reason provided"}`)
+              .catch(() => null);
+          }
+        }
       }
     }
 
-    // Check if message author is AFK and coming back
-    const authorAfk = await AfkUser.findOne({ guildId: message.guild.id, userId: message.author.id });
-    if (authorAfk && authorAfk.status) {
-      // Remove AFK status
+    const authorAfk = await AfkUser.findOne({
+      guildId: message.guild.id,
+      userId: message.author.id,
+      status: true
+    });
+    if (authorAfk) {
       await AfkUser.updateOne(
         { guildId: message.guild.id, userId: message.author.id },
         { $set: { status: false, mentionCount: 0 } }
       );
-
-      // Send welcome back message
-      await message.reply(`Welcome back! You have ${authorAfk.mentionCount} unread mentions while you were away.`);
+      await message
+        .reply(`Welcome back! You have ${authorAfk.mentionCount} unread mentions while you were away.`)
+        .catch(() => null);
     }
 
-    // 5) نظام الخبرة (نصي)
+    // 7) نظام الخبرة
     await handleMessageXp(client, message, gConfig);
+
+    // 8) تسجيل المرفقات المرسلة (صور/فيديوهات/ملفات) — يُرسل الملف نفسه لروم اللوق
+    if (message.attachments.size > 0) {
+      const media = [...message.attachments.values()].map((a) => ({
+        url: a.proxyURL || a.url,
+        name: a.name,
+        contentType: a.contentType,
+        size: a.size
+      }));
+
+      const embed = new EmbedBuilder()
+        .setColor(0x2ecc71)
+        .setTitle("📎 ملف جديد")
+        .setDescription(`بواسطة ${message.author.tag} \`${message.author.id}\``)
+        .addFields({
+          name: "القناة",
+          value: `<#${message.channelId}> \`${message.channelId}\``,
+          inline: true
+        });
+
+      if (message.content) {
+        embed.addFields({
+          name: "النص",
+          value: message.content.length > 1000 ? message.content.slice(0, 997) + "..." : message.content
+        });
+      }
+
+      embed.setFooter({ text: `Message ID: ${message.id}` });
+      await sendMediaLog(client, message.guild.id, "files", embed, media);
+    }
   }
 };
 

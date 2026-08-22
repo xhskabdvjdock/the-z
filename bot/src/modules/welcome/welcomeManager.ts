@@ -44,7 +44,7 @@ async function generateImage(
   const ctx = canvas.getContext("2d");
 
   let hasBackgroundImage = false;
-  if (background && /^https?:\/\//i.test(background)) {
+  if (background && (background.startsWith("data:image/") || /^https?:\/\//i.test(background))) {
     try {
       const bgImage = await loadImage(background);
       ctx.drawImage(bgImage, 0, 0, width, height);
