@@ -47,7 +47,7 @@ async function bootstrap() {
   // أخطاء عميل Discord العابرة (فقدان اتصال، راتينج...) — لا تُسقط العملية
   client.on("error", (err) => {
     // التعامل مع rate limits بشكل خاص
-    if (err.message?.includes('Rate limit') || err.code === 50001) {
+    if (err.message?.includes('Rate limit') || (err as any).code === 50001) {
       console.warn('[Global] Rate limit detected, auto-recovering...');
       return;
     }

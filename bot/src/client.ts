@@ -44,7 +44,7 @@ export class ExtendedClient extends Client {
       }
     });
 
-    this.rest = new REST({ version: '10' }).setAgent(this.options.ws?.agent);
+    this.rest = new REST({ version: '10' });
 
     // إضافة error handler للـ REST
     this.rest.on('restDebug', (info) => {

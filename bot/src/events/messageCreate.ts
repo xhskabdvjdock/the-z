@@ -30,6 +30,24 @@ async function queueReply(channelId: string, replyFn: () => Promise<any>) {
   return await replyFn();
 }
 
+// نظام بسيط لتقليل rate limits من خلال تأخير الردود
+const messageQueue = new Map<string, number>();
+const QUEUE_DELAY = 200; // 200ms بين الردود في نفس الروم
+
+/** دالة مساعدة لتأخير الردود لتقليل rate limits */
+async function queueReply(channelId: string, replyFn: () => Promise<any>) {
+  const lastReply = messageQueue.get(channelId) || 0;
+  const now = Date.now();
+  const timeSinceLastReply = now - lastReply;
+
+  if (timeSinceLastReply < QUEUE_DELAY) {
+    await new Promise(resolve => setTimeout(resolve, QUEUE_DELAY - timeSinceLastReply));
+  }
+
+  messageQueue.set(channelId, Date.now());
+  return await replyFn();
+}
+
 const event: BotEvent = {
   name: "messageCreate",
   async execute(client, message: Message) {

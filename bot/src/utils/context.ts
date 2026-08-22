@@ -40,7 +40,7 @@ export function buildSlashContext(
 
       const payload = options as InteractionReplyOptions | string;
       if (interaction.deferred) {
-        return interaction.editReply(payload) as unknown as Message;
+        return interaction.editReply(payload as any) as unknown as Message;
       }
       if (interaction.replied) {
         return interaction.followUp(payload) as unknown as Message;
