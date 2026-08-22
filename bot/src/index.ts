@@ -59,6 +59,23 @@ async function bootstrap() {
 
   logInfo("startup", `   - Token المستخدم: ${config.token.substring(0, 10)}... (طول: ${config.token.length})`);
 
+  // تشخيص الاتصال بـ Discord API قبل محاولة تسجيل الدخول
+  logInfo("startup", "🔍 تشخيص الاتصال بـ Discord API...");
+  try {
+    const response = await fetch("https://discord.com/api/v10/gateway", {
+      method: "GET",
+      signal: AbortSignal.timeout(15_000)
+    });
+    if (response.ok) {
+      const data = await response.json() as { url?: string };
+      logInfo("startup", `✅ Discord API قابل للوصول - Gateway URL: ${data.url?.substring(0, 30)}...`);
+    } else {
+      logError("startup/network", `⚠️ Discord API رد بـ HTTP ${response.status}`);
+    }
+  } catch (error) {
+    logError("startup/network", `⚠️ فشل الاتصال بـ Discord API: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
   client = new ExtendedClient();
 
   // أخطاء عميل Discord العابرة (فقدان اتصال، راتينج...) — لا تُسقط العملية
@@ -78,7 +95,7 @@ async function bootstrap() {
 
   // تسجيل الدخول: تشخيص المشكلة الحقيقية بدلاً من مجرد زيادة timeout
   let loginAttempt = 0;
-  const maxLoginAttempts = 3; // محاولات قليلة لتجنب حلقة طويلة
+  const maxLoginAttempts = 5; // زيادة المحاولات
   
   while (loginAttempt < maxLoginAttempts) {
     loginAttempt++;
@@ -92,7 +109,7 @@ async function bootstrap() {
       await Promise.race([
         client.login(config.token),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (90 ثانية)")), 90_000)
+          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (180 ثانية)")), 180_000) // زيادة إلى 180 ثانية
         )
       ]);
       
@@ -116,9 +133,11 @@ async function bootstrap() {
         if (err.message.includes('انتهت مهلة الاتصال')) {
           logError("startup/timeout", "⏱️ فشل الاتصال بـ Discord Gateway بسبب timeout");
           logError("startup/timeout", "💡 قد يكون بسبب: مشكلة في الشبكة، Firewall، أو Discord Gateway down");
+          logError("startup/timeout", "💡 محاولة اتصال WebSocket أخرى مع إعدادات مختلفة");
           
           if (loginAttempt >= maxLoginAttempts) {
-            logError("startup/fatal", "❌ فشلت جميع محاولات الاتصال");
+            logError("startup/fatal", "❌ فشلت جميع محاولات الاتصال - قد يكون هناك مشكلة في الشبكة");
+            logError("startup/fatal", "💡 تحقق من إعدادات الشبكة في Render وFirewall rules");
             gracefulShutdown(1);
             return;
           }
@@ -136,12 +155,13 @@ async function bootstrap() {
         }
       }
       
+      const retryDelay = Math.min(30 + (loginAttempt * 10), 60); // زيادة تدريجية للانتظار
       logInfo(
         "startup",
-        `⚠️ المحاولة #${loginAttempt} فشلت — تنظيف وإعادة المحاولة بعد 30 ثانية...`
+        `⚠️ المحاولة #${loginAttempt} فشلت — تنظيف وإعادة المحاولة بعد ${retryDelay} ثانية...`
       );
       await Promise.race([client.destroy().catch(() => undefined), new Promise((r) => setTimeout(r, 10_000))]);
-      await new Promise((r) => setTimeout(r, 30_000)); // تقليل وقت الانتظار
+      await new Promise((r) => setTimeout(r, retryDelay * 1000));
     }
   }
   
