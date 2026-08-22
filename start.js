@@ -114,10 +114,29 @@ async function main() {
     });
     deploy.stdout.on("data", (d) => print("DEPLOY", d));
     deploy.stderr.on("data", (d) => print("DEPLOY", d));
+    
+    // إذا كان نشر عالمي ولم ينجح بسرعة، نخطيه
+    let isGlobal = true;
+    deploy.stdout.on("data", (d) => {
+      if (d.toString().includes("نشر عالمي")) {
+        isGlobal = true;
+      }
+      if (d.toString().includes("سيرفر التطوير")) {
+        isGlobal = false;
+      }
+    });
+    
     const deployTimeout = setTimeout(() => {
-      console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها ومواصلة تشغيل البوت");
-      deploy.kill("SIGKILL");
-    }, 600_000); // زيادة إلى 10 دقائق (global commands تأخذ وقتاً طويلاً)
+      if (isGlobal) {
+        console.log("[SYSTEM] ⚠️ النشر العالمي بطيء - تخطي وتشغيل البوت (الأوامر القديمة لا تزال تعمل)");
+        console.log("[SYSTEM] 💡 لإلغاء هذا، استخدم DEV_GUILD_ID في Render environment variables");
+        deploy.kill("SIGKILL");
+      } else {
+        console.log("[SYSTEM] ⚠️ انقضت مهلة نشر الأوامر — قتلها ومواصلة تشغيل البوت");
+        deploy.kill("SIGKILL");
+      }
+    }, 180_000); // 3 دقائق للنشر العالمي، 10 دقائق للنشر على سيرفر
+    
     deploy.on("exit", (code) => {
       clearTimeout(deployTimeout);
       console.log(`[SYSTEM] ${code === 0 ? "✅ نُشرت الأوامر" : "⚠️ فشل نشر الأوامر (" + code + ")"}`);
