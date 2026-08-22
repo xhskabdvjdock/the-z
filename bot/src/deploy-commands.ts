@@ -48,6 +48,20 @@ async function main() {
   // Build shared package first
   await buildShared();
 
+  // تشخيص متغيرات البيئة
+  console.log("🔍 تشخيص متغيرات البيئة:");
+  console.log(`   - DISCORD_TOKEN موجود: ${!!process.env.DISCORD_TOKEN}`);
+  console.log(`   - DISCORD_BOT_TOKEN موجود: ${!!process.env.DISCORD_BOT_TOKEN}`);
+  console.log(`   - DISCORD_CLIENT_ID موجود: ${!!process.env.DISCORD_CLIENT_ID}`);
+  console.log(`   - DEV_GUILD_ID موجود: ${!!process.env.DEV_GUILD_ID}`);
+  
+  if (!config.token) {
+    console.error("❌ Discord Token غير موجود - لا يمكن نشر الأوامر");
+    process.exit(1);
+  }
+  
+  console.log(`   - Token المستخدم: ${config.token.substring(0, 10)}... (طول: ${config.token.length})`);
+
   const dir = commandsDir();
   console.log("📁 Looking for commands in:", dir);
   const files = walk(dir);
@@ -78,7 +92,7 @@ async function main() {
   const startTime = Date.now();
   const rest = new REST({
     retries: 3,
-    timeout: 15_000,
+    timeout: 30_000, // زيادة إلى 30 ثانية
     makeRequest: (url: string, init: RequestInit) => fetch(url, init)
   }).setToken(config.token);
 
@@ -88,12 +102,16 @@ async function main() {
   
   while (attempt < maxRetries) {
     try {
+      console.log(`🔄 محاولة نشر #${attempt + 1}/${maxRetries}...`);
+      
       if (config.devGuildId) {
+        console.log(`🎯 نشر إلى سيرفر التطوير: ${config.devGuildId}`);
         await rest.put(Routes.applicationGuildCommands(config.clientId, config.devGuildId), {
           body: payload
         });
         console.log(`✅ تم تسجيل ${payload.length} أمر على سيرفر التطوير.`);
       } else {
+        console.log(`🌐 نشر عالمي (global commands)`);
         await rest.put(Routes.applicationCommands(config.clientId), { body: payload });
         console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
       }
@@ -101,18 +119,21 @@ async function main() {
       process.exit(0);
     } catch (error: any) {
       attempt++;
+      console.error(`❌ فشل المحاولة #${attempt}:`, error.message);
       
-      if (error.code === 50001 || error.message?.includes('Rate limit')) {
+      if (error.code === 50001 || error.message?.includes('Rate limit') || error.message?.includes('429')) {
         const retryAfter = error.retryAfter || 60; // default 60 seconds
         console.warn(`⚠️ Rate limit hit. Retry in ${retryAfter} seconds (attempt ${attempt}/${maxRetries})`);
         
         if (attempt >= maxRetries) {
           console.error("❌ فشل نشر الأوامر: تم تجاوز الحد الأقصى للمحاولات بسبب rate limit.");
           console.error("💡 حاول مرة أخرى بعد حوالي 21 يوم (حسب Discord).");
+          console.error("💡 أو استخدم DEV_GUILD_ID للنشر على سيرفر واحد فقط (أسرع بدون rate limits).");
           process.exit(1);
         }
         
         // Wait for retry after seconds (convert to ms)
+        console.log(`⏳ انتظار ${retryAfter} ثانية قبل المحاولة التالية...`);
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
         continue;
       }
