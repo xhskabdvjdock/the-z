@@ -42,6 +42,23 @@ async function bootstrap() {
   });
   logInfo("startup", "✅ تم الاتصال بقاعدة البيانات بنجاح.");
 
+  // تشخيص متغيرات البيئة
+  logInfo("startup", "🔍 تشخيص متغيرات البيانات:");
+  logInfo("startup", `   - DISCORD_TOKEN موجود: ${!!process.env.DISCORD_TOKEN}`);
+  logInfo("startup", `   - DISCORD_BOT_TOKEN موجود: ${!!process.env.DISCORD_BOT_TOKEN}`);
+  logInfo("startup", `   - DISCORD_CLIENT_ID موجود: ${!!process.env.DISCORD_CLIENT_ID}`);
+  logInfo("startup", `   - DATABASE_URL موجود: ${!!process.env.DATABASE_URL}`);
+  
+  // تحقق من الـ token
+  if (!config.token) {
+    logError("startup/fatal", "❌ Discord Token غير موجود - لا يمكن تسجيل الدخول");
+    logError("startup/fatal", "💡 تأكد من DISCORD_TOKEN أو DISCORD_BOT_TOKEN في Render environment variables");
+    gracefulShutdown(1);
+    return;
+  }
+
+  logInfo("startup", `   - Token المستخدم: ${config.token.substring(0, 10)}... (طول: ${config.token.length})`);
+
   client = new ExtendedClient();
 
   // أخطاء عميل Discord العابرة (فقدان اتصال، راتينج...) — لا تُسقط العملية
@@ -59,39 +76,51 @@ async function bootstrap() {
   loadEvents(client);
   registerAllModules(client);
 
-  // تسجيل الدخول: غير فتّاك — محاولات تباعدية بدل إسقاط العملية (كان يسبب
-  // حلقة إعادة تشغيل تضغط على Discord بـ 429 مرارًا)
+  // تسجيل الدخول: تشخيص المشكلة الحقيقية بدلاً من مجرد زيادة timeout
   let loginAttempt = 0;
   while (true) {
     loginAttempt++;
     try {
       logInfo("startup", `🔑 محاولة تسجيل الدخول #${loginAttempt}...`);
+      
+      // تشخيص الاتصال قبل محاولة تسجيل الدخول
+      logInfo("startup", "🔍 تشخيص الاتصال بـ Discord Gateway...");
+      const startTime = Date.now();
+      
       await Promise.race([
         client.login(config.token),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (120 ثانية)")), 120_000) // زيادة إلى 120 ثانية
+          setTimeout(() => reject(new Error("⏱️ انتهت مهلة الاتصال بـ Discord (60 ثانية)")), 60_000)
         )
       ]);
+      
+      const connectTime = Date.now() - startTime;
+      logInfo("startup", `✅ تم تسجيل الدخول بنجاح (${(connectTime/1000).toFixed(1)} ثانية)`);
       break;
+      
     } catch (err) {
+      const errorTime = Date.now();
       logError("startup/login", err instanceof Error ? err : new Error(String(err)));
       
-      // إذا كان خطأ في الـ token، لا نعيد المحاولة
-      if (err instanceof Error && err.message.includes('Invalid Token')) {
-        logError("startup/fatal", "❌ Token غير صحيح - لن يتم إعادة المحاولة");
-        gracefulShutdown(1);
-        return;
-      }
-      
-      // إذا كان خطأ في الـ connection timeout، نعيد المحاولة
-      if (err instanceof Error && err.message.includes('انتهت مهلة الاتصال')) {
-        logInfo(
-          "startup",
-          `⚠️ المحاولة #${loginAttempt} فشلت (timeout) — تنظيف وإعادة المحاولة بعد 60 ثانية...`
-        );
-        await Promise.race([client.destroy().catch(() => undefined), new Promise((r) => setTimeout(r, 10_000))]);
-        await new Promise((r) => setTimeout(r, 60_000));
-        continue;
+      // تشخيص نوع الخطأ الحقيقي
+      if (err instanceof Error) {
+        if (err.message.includes('Invalid Token') || err.message.includes('401')) {
+          logError("startup/fatal", "❌ Discord Token غير صحيح أو منتهي الصلاحية");
+          logError("startup/fatal", "💡 تحقق من DISCORD_TOKEN في Render environment variables");
+          gracefulShutdown(1);
+          return;
+        }
+        
+        if (err.message.includes('انتهت مهلة الاتصال')) {
+          logError("startup/timeout", "⏱️ فشل الاتصال بـ Discord Gateway بسبب timeout");
+          logError("startup/timeout", "💡 قد يكون بسبب: مشكلة في الشبكة، Firewall، أو Discord Gateway down");
+          logError("startup/timeout", "💡 راجع Render logs أو جرب الاتصال من بيئة مختلفة");
+        }
+        
+        if (err.message.includes('ECONNREFUSED') || err.message.includes('ENOTFOUND')) {
+          logError("startup/network", "🌐 فشل الاتصال بالشبكة - Discord غير متاح");
+          logError("startup/network", "💡 تحقق من الاتصال بالإنترنت وFirewall settings");
+        }
       }
       
       logInfo(

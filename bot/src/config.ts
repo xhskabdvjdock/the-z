@@ -11,7 +11,7 @@ function required(name: string): string {
 }
 
 export const config = {
-  token: required("DISCORD_TOKEN"),
+  token: process.env.DISCORD_TOKEN || process.env.DISCORD_BOT_TOKEN || required("DISCORD_TOKEN"),
   clientId: required("DISCORD_CLIENT_ID"),
   clientSecret: process.env.DISCORD_CLIENT_SECRET ?? "",
   databaseUrl: required("DATABASE_URL"),
