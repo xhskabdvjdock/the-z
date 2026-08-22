@@ -18,23 +18,29 @@ const event: BotEvent = {
           return;
         }
 
-        // Defer immediately to avoid timeout
-        await interaction.deferReply({ ephemeral: false }).catch(() => null);
+        // Defer immediately to avoid timeout - مع التعامل مع rate limit
+        await client.withRetry(async () => {
+          await interaction.deferReply({ ephemeral: false });
+        }, 2, 500).catch(() => null);
 
         const gConfig = await getGuildConfig(client, interaction.guild.id);
         const override = gConfig.commandOverrides?.find((c) => c.name === command.name);
 
         if (override && !override.enabled) {
-          await interaction.editReply({
-            content: "This command is disabled in this server."
-          }).catch(() => null);
+          await client.withRetry(async () => {
+            await interaction.editReply({
+              content: "This command is disabled in this server."
+            });
+          }, 2, 500).catch(() => null);
           return;
         }
 
         if (override && !override.slashEnabled) {
-          await interaction.editReply({
-            content: "This command is disabled as a Slash Command in this server."
-          }).catch(() => null);
+          await client.withRetry(async () => {
+            await interaction.editReply({
+              content: "This command is disabled as a Slash Command in this server."
+            });
+          }, 2, 500).catch(() => null);
           return;
         }
 
@@ -44,7 +50,9 @@ const event: BotEvent = {
           interaction.channelId
         );
         if (!permCheck.allowed) {
-          await interaction.editReply({ content: permCheck.reason }).catch(() => null);
+          await client.withRetry(async () => {
+            await interaction.editReply({ content: permCheck.reason });
+          }, 2, 500).catch(() => null);
           return;
         }
 
@@ -64,7 +72,9 @@ const event: BotEvent = {
               iconURL: interaction.guild.iconURL() ?? undefined
             }
           });
-          await interaction.editReply(payload as any).catch(() => null);
+          await client.withRetry(async () => {
+            await interaction.editReply(payload as any);
+          }, 2, 500).catch(() => null);
           return;
         }
 
@@ -87,16 +97,27 @@ const event: BotEvent = {
         await componentRouter.dispatchModal(interaction, client);
         return;
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("خطأ أثناء معالجة التفاعل:", err);
+
+      // التعامل مع rate limits بشكل خاص
+      if (err.code === 50001 || err.message?.includes('Rate limit')) {
+        console.warn('[Interaction] Rate limit hit, skipping error response');
+        return;
+      }
+
       const errorEmbed = new EmbedBuilder()
         .setColor(0xed4245)
         .setDescription("❌ حدث خطأ غير متوقع أثناء تنفيذ هذا الإجراء.");
       if (interaction.isRepliable()) {
         if (interaction.replied || interaction.deferred) {
-          await interaction.followUp({ embeds: [errorEmbed], ephemeral: true }).catch(() => null);
+          await client.withRetry(async () => {
+            await interaction.followUp({ embeds: [errorEmbed], ephemeral: true });
+          }, 2, 500).catch(() => null);
         } else {
-          await interaction.reply({ embeds: [errorEmbed], ephemeral: true }).catch(() => null);
+          await client.withRetry(async () => {
+            await interaction.reply({ embeds: [errorEmbed], ephemeral: true });
+          }, 2, 500).catch(() => null);
         }
       }
     }

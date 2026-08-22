@@ -12,6 +12,15 @@ async function bootstrap() {
 
   const client = new ExtendedClient();
 
+  // إضافة global error handler للتعامل مع rate limits
+  client.on('error', (error) => {
+    if (error.message?.includes('Rate limit') || error.code === 50001) {
+      console.warn('[Global] Rate limit detected, auto-recovering...');
+    } else {
+      console.error('[Global] Client error:', error);
+    }
+  });
+
   loadCommands(client);
   loadEvents(client);
   registerAllModules(client);

@@ -27,6 +27,9 @@ export function buildSlashContext(
     interaction,
     args: [],
     reply: async (options) => {
+      // إضافة تأخير بسيط لتقليل rate limits
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       if (interaction.deferred) {
         return interaction.editReply(options as any) as any;
       }
