@@ -77,22 +77,50 @@ async function main() {
   console.log(`📤 Deploying ${payload.length} commands...`);
   const startTime = Date.now();
   const rest = new REST({
-    retries: 0,
+    retries: 3,
     timeout: 15_000,
-    rejectOnRateLimit: () => true,
     makeRequest: (url: string, init: RequestInit) => fetch(url, init)
   }).setToken(config.token);
 
-  if (config.devGuildId) {
-    await rest.put(Routes.applicationGuildCommands(config.clientId, config.devGuildId), {
-      body: payload
-    });
-    console.log(`✅ تم تسجيل ${payload.length} أمر على سيرفر التطوير.`);
-  } else {
-    await rest.put(Routes.applicationCommands(config.clientId), { body: payload });
-    console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
+  // Retry logic with exponential backoff for rate limits
+  const maxRetries = 5;
+  let attempt = 0;
+  
+  while (attempt < maxRetries) {
+    try {
+      if (config.devGuildId) {
+        await rest.put(Routes.applicationGuildCommands(config.clientId, config.devGuildId), {
+          body: payload
+        });
+        console.log(`✅ تم تسجيل ${payload.length} أمر على سيرفر التطوير.`);
+      } else {
+        await rest.put(Routes.applicationCommands(config.clientId), { body: payload });
+        console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
+      }
+      console.log(`⏱️ استغرق نشر الأوامر ${((Date.now() - startTime) / 1000).toFixed(1)} ثانية`);
+      process.exit(0);
+    } catch (error: any) {
+      attempt++;
+      
+      if (error.code === 50001 || error.message?.includes('Rate limit')) {
+        const retryAfter = error.retryAfter || 60; // default 60 seconds
+        console.warn(`⚠️ Rate limit hit. Retry in ${retryAfter} seconds (attempt ${attempt}/${maxRetries})`);
+        
+        if (attempt >= maxRetries) {
+          console.error("❌ فشل نشر الأوامر: تم تجاوز الحد الأقصى للمحاولات بسبب rate limit.");
+          console.error("💡 حاول مرة أخرى بعد حوالي 21 يوم (حسب Discord).");
+          process.exit(1);
+        }
+        
+        // Wait for retry after seconds (convert to ms)
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        continue;
+      }
+      
+      console.error("❌ فشل نشر الأوامر:", error);
+      process.exit(1);
+    }
   }
-  console.log(`⏱️ استغرق نشر الأوامر ${((Date.now() - startTime) / 1000).toFixed(1)} ثانية`);
 }
 
 main()
