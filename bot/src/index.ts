@@ -155,7 +155,9 @@ async function bootstrap() {
         }
       }
       
-      const retryDelay = Math.min(30 + (loginAttempt * 10), 60); // زيادة تدريجية للانتظار
+      const isRateLimited = /429|rate limit|Cloudflare|Attention Required/i.test((err as Error)?.message ?? "") || (err as any)?.status === 429;
+      const retryDelay = isRateLimited ? 300 : Math.min(30 + (loginAttempt * 10), 60); // 5 دقائق عند 429
+      if (isRateLimited) logInfo("startup", "⏳ تم تقييد المعدل (429) — انتظار 5 دقائق لتهدئة الحظر...");
       logInfo(
         "startup",
         `⚠️ المحاولة #${loginAttempt} فشلت — تنظيف وإعادة المحاولة بعد ${retryDelay} ثانية...`
