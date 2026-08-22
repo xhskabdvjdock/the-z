@@ -413,11 +413,10 @@ const event: BotEvent = {
       await message.reply(`Successfully unjailed ${targetMember.user.tag}.`);
       return;
     }
-=======
+
     // 1) أوامر البادئة الثابتة (,tr | ,afk | ,avatar | ,banner | ,jail | ,unjail)
     const wasLegacy = await handleLegacyPrefixCommands(client, message);
     if (wasLegacy) return;
->>>>>>> 61a8f7516fe4981c9ac0161f084a6af398373b18
 
     const gConfig = await getGuildConfig(client, message.guild.id);
 
