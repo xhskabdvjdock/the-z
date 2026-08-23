@@ -403,6 +403,7 @@ export interface IGuildConfig {
     logChannelId: string | null;
     allowVoting: boolean;
     autoThread: boolean;
+    backgroundImage?: string;
   };
 
   /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
@@ -592,7 +593,8 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       channelId: null,
       logChannelId: null,
       allowVoting: true,
-      autoThread: false
+      autoThread: false,
+      backgroundImage: ""
     },
 
     dashboard: {

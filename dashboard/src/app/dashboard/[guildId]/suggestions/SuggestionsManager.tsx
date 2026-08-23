@@ -5,6 +5,7 @@ import { DiscordChannel } from "@/lib/discord";
 import Toggle from "@/components/form/Toggle";
 import ChannelSelect from "@/components/form/ChannelSelect";
 import SaveButton from "@/components/form/SaveButton";
+import BackgroundUpload from "@/components/form/BackgroundUpload";
 import { saveSuggestionConfig, updateSuggestionStatus, deleteSuggestion, SuggestionConfigInput } from "./actions";
 
 interface SuggestionItem {
@@ -107,6 +108,13 @@ export default function SuggestionsManager({
             />
           </div>
         </div>
+
+        <BackgroundUpload
+          value={config.backgroundImage}
+          onChange={(v) => setConfig({ ...config, backgroundImage: v })}
+          title="اقتراح جديد"
+          subtitle="سيظهر اقتراحك هنا"
+        />
 
         <SaveButton onSave={() => saveSuggestionConfig(guildId, config)} />
       </section>

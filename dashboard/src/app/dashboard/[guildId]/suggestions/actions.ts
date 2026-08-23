@@ -11,6 +11,7 @@ export interface SuggestionConfigInput {
   channelId: string;
   allowVoting: boolean;
   autoThread: boolean;
+  backgroundImage: string;
 }
 
 export async function saveSuggestionConfig(guildId: string, data: SuggestionConfigInput) {
@@ -27,7 +28,8 @@ export async function saveSuggestionConfig(guildId: string, data: SuggestionConf
             channelId: data.channelId || null,
             logChannelId: null,
             allowVoting: data.allowVoting,
-            autoThread: data.autoThread
+            autoThread: data.autoThread,
+            backgroundImage: data.backgroundImage || ""
           }
         }
       },

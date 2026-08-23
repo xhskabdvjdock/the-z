@@ -23,7 +23,8 @@ export default async function SuggestionsPage({ params }: { params: { guildId: s
     enabled: Boolean(suggestionConfig.enabled),
     channelId: suggestionConfig.channelId ?? "",
     allowVoting: suggestionConfig.allowVoting ?? true,
-    autoThread: Boolean(suggestionConfig.autoThread)
+    autoThread: Boolean(suggestionConfig.autoThread),
+    backgroundImage: suggestionConfig.backgroundImage ?? ""
   };
 
   return (
