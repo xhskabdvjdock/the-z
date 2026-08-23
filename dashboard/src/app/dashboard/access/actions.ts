@@ -5,6 +5,7 @@ import { DashboardAccess, OWNER_ID } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireDashboardAccess } from "@/lib/guildAccess";
 import { logAction, logError } from "@/lib/logger";
+import { rateLimitOrThrow } from "@/lib/dashboardRateLimit";
 
 export async function getAccessList(): Promise<string[]> {
   const session = await requireDashboardAccess();
@@ -18,6 +19,7 @@ export async function getAccessList(): Promise<string[]> {
 export async function addAccessId(userId: string) {
   try {
     const session = await requireDashboardAccess();
+    rateLimitOrThrow((session.user as any).id, "access:add");
     await ensureDb();
 
     const trimmed = userId.trim();
@@ -53,6 +55,7 @@ export async function addAccessId(userId: string) {
 export async function removeAccessId(userId: string) {
   try {
     const session = await requireDashboardAccess();
+    rateLimitOrThrow((session.user as any).id, "access:remove");
     await ensureDb();
 
     if (userId === OWNER_ID) throw new Error("لا يمكن إزالة المالك الأساسي من القائمة");

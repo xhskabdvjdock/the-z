@@ -1,6 +1,6 @@
 import { requireSession } from "@/lib/guildAccess";
 import { getManageableGuilds } from "@/lib/discord";
-import GuildCard from "@/components/GuildCard";
+import GuildGrid from "@/components/GuildGrid";
 
 export default async function GuildSelectorPage() {
   const session = await requireSession();
@@ -18,11 +18,7 @@ export default async function GuildSelectorPage() {
           لا توجد سيرفرات تملك فيها صلاحية الإدارة الكاملة.
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {guilds.map((g) => (
-            <GuildCard key={g.id} guild={g} />
-          ))}
-        </div>
+        <GuildGrid guilds={guilds} />
       )}
     </div>
   );

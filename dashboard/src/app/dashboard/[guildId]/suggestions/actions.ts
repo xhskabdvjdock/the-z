@@ -5,6 +5,7 @@ import { GuildConfig, Suggestion } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 import { logAction, logError } from "@/lib/logger";
+import { rateLimitOrThrow } from "@/lib/dashboardRateLimit";
 
 export interface SuggestionConfigInput {
   enabled: boolean;
@@ -17,6 +18,7 @@ export interface SuggestionConfigInput {
 export async function saveSuggestionConfig(guildId: string, data: SuggestionConfigInput) {
   try {
     const session = await requireGuildAdmin(guildId);
+    rateLimitOrThrow((session.user as any).id, "suggestions:save");
     await ensureDb();
 
     await GuildConfig.findOneAndUpdate(
@@ -55,6 +57,7 @@ export async function saveSuggestionConfig(guildId: string, data: SuggestionConf
 export async function updateSuggestionStatus(guildId: string, suggestionId: string, status: string) {
   try {
     const session = await requireGuildAdmin(guildId);
+    rateLimitOrThrow((session.user as any).id, "suggestions:status");
     await ensureDb();
 
     const valid = ["pending", "approved", "rejected", "implemented"];
@@ -86,6 +89,7 @@ export async function updateSuggestionStatus(guildId: string, suggestionId: stri
 export async function deleteSuggestion(guildId: string, suggestionId: string) {
   try {
     const session = await requireGuildAdmin(guildId);
+    rateLimitOrThrow((session.user as any).id, "suggestions:delete");
     await ensureDb();
 
     const suggestion = await Suggestion.findOne({ id: suggestionId, guildId });
