@@ -24,7 +24,14 @@ export default async function SuggestionsPage({ params }: { params: { guildId: s
     channelId: suggestionConfig.channelId ?? "",
     allowVoting: suggestionConfig.allowVoting ?? true,
     autoThread: Boolean(suggestionConfig.autoThread),
-    backgroundImage: suggestionConfig.backgroundImage ?? ""
+    backgroundImage: suggestionConfig.backgroundImage ?? "",
+    imageTitle: suggestionConfig.imageTitle ?? "اقتراح جديد",
+    imageTitleColor: suggestionConfig.imageTitleColor ?? "#5865f2",
+    usernameColor: suggestionConfig.usernameColor ?? "#ffffff",
+    tagColor: suggestionConfig.tagColor ?? "#b9bbbe",
+    contentColor: suggestionConfig.contentColor ?? "#ffffff",
+    footerText: suggestionConfig.footerText ?? "استخدم الأزرار أدناه للتصويت",
+    footerColor: suggestionConfig.footerColor ?? "#b9bbbe"
   };
 
   return (

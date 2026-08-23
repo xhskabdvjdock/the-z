@@ -13,6 +13,13 @@ export interface SuggestionConfigInput {
   allowVoting: boolean;
   autoThread: boolean;
   backgroundImage: string;
+  imageTitle: string;
+  imageTitleColor: string;
+  usernameColor: string;
+  tagColor: string;
+  contentColor: string;
+  footerText: string;
+  footerColor: string;
 }
 
 export async function saveSuggestionConfig(guildId: string, data: SuggestionConfigInput) {
@@ -31,7 +38,14 @@ export async function saveSuggestionConfig(guildId: string, data: SuggestionConf
             logChannelId: null,
             allowVoting: data.allowVoting,
             autoThread: data.autoThread,
-            backgroundImage: data.backgroundImage || ""
+            backgroundImage: data.backgroundImage || "",
+            imageTitle: data.imageTitle || "اقتراح جديد",
+            imageTitleColor: data.imageTitleColor || "#5865f2",
+            usernameColor: data.usernameColor || "#ffffff",
+            tagColor: data.tagColor || "#b9bbbe",
+            contentColor: data.contentColor || "#ffffff",
+            footerText: data.footerText || "استخدم الأزرار أدناه للتصويت",
+            footerColor: data.footerColor || "#b9bbbe"
           }
         }
       },

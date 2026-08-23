@@ -404,6 +404,13 @@ export interface IGuildConfig {
     allowVoting: boolean;
     autoThread: boolean;
     backgroundImage?: string;
+    imageTitle?: string;
+    imageTitleColor?: string;
+    usernameColor?: string;
+    tagColor?: string;
+    contentColor?: string;
+    footerText?: string;
+    footerColor?: string;
   };
 
   /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
@@ -594,7 +601,14 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       logChannelId: null,
       allowVoting: true,
       autoThread: false,
-      backgroundImage: ""
+      backgroundImage: "",
+      imageTitle: "اقتراح جديد",
+      imageTitleColor: "#5865f2",
+      usernameColor: "#ffffff",
+      tagColor: "#b9bbbe",
+      contentColor: "#ffffff",
+      footerText: "استخدم الأزرار أدناه للتصويت",
+      footerColor: "#b9bbbe"
     },
 
     dashboard: {

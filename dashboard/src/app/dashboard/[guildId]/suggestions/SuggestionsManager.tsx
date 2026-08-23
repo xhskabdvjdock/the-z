@@ -109,12 +109,93 @@ export default function SuggestionsManager({
           </div>
         </div>
 
-        <BackgroundUpload
-          value={config.backgroundImage}
-          onChange={(v) => setConfig({ ...config, backgroundImage: v })}
-          title="اقتراح جديد"
-          subtitle="سيظهر اقتراحك هنا"
-        />
+        <div className="flex flex-col gap-3">
+          <h3 className="font-bold">تخصيص صورة الاقتراح</h3>
+          <BackgroundUpload
+            value={config.backgroundImage}
+            onChange={(v) => setConfig({ ...config, backgroundImage: v })}
+            title={config.imageTitle}
+            subtitle="معاينة الخلفية"
+          />
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">عنوان الصورة</label>
+              <input
+                className="input"
+                value={config.imageTitle}
+                onChange={(e) => setConfig({ ...config, imageTitle: e.target.value })}
+                placeholder="اقتراح جديد"
+              />
+            </div>
+            <div>
+              <label className="label">لون العنوان</label>
+              <div className="flex gap-2">
+                <input type="color" value={config.imageTitleColor} onChange={(e) => setConfig({ ...config, imageTitleColor: e.target.value })} className="h-10 w-12 rounded border" />
+                <input className="input flex-1" value={config.imageTitleColor} onChange={(e) => setConfig({ ...config, imageTitleColor: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="label">لون اسم المستخدم</label>
+              <div className="flex gap-2">
+                <input type="color" value={config.usernameColor} onChange={(e) => setConfig({ ...config, usernameColor: e.target.value })} className="h-10 w-12 rounded border" />
+                <input className="input flex-1" value={config.usernameColor} onChange={(e) => setConfig({ ...config, usernameColor: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="label">لون التاج</label>
+              <div className="flex gap-2">
+                <input type="color" value={config.tagColor} onChange={(e) => setConfig({ ...config, tagColor: e.target.value })} className="h-10 w-12 rounded border" />
+                <input className="input flex-1" value={config.tagColor} onChange={(e) => setConfig({ ...config, tagColor: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="label">لون نص الاقتراح</label>
+              <div className="flex gap-2">
+                <input type="color" value={config.contentColor} onChange={(e) => setConfig({ ...config, contentColor: e.target.value })} className="h-10 w-12 rounded border" />
+                <input className="input flex-1" value={config.contentColor} onChange={(e) => setConfig({ ...config, contentColor: e.target.value })} />
+              </div>
+            </div>
+            <div>
+              <label className="label">لون التذييل</label>
+              <div className="flex gap-2">
+                <input type="color" value={config.footerColor} onChange={(e) => setConfig({ ...config, footerColor: e.target.value })} className="h-10 w-12 rounded border" />
+                <input className="input flex-1" value={config.footerColor} onChange={(e) => setConfig({ ...config, footerColor: e.target.value })} />
+              </div>
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label">نص التذييل</label>
+              <input className="input" value={config.footerText} onChange={(e) => setConfig({ ...config, footerText: e.target.value })} placeholder="استخدم الأزرار أدناه للتصويت" />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">معاينة حية للصورة</label>
+            <div
+              className="relative w-full overflow-hidden rounded-xl border border-[#2A2D37] p-6"
+              style={{
+                aspectRatio: "1000 / 500",
+                backgroundImage: config.backgroundImage ? `url("${config.backgroundImage}")` : "linear-gradient(135deg, #1e1b4b 0%, #5865f2 100%)",
+                backgroundSize: "cover",
+                backgroundPosition: "center"
+              }}
+            >
+              <div className="absolute inset-0 bg-black/40" />
+              <div className="relative flex h-full flex-col">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border-2 border-white bg-[#2A2D37] text-xl font-bold text-white">ت</div>
+                  <div>
+                    <p className="text-lg font-bold" style={{ color: config.usernameColor }}>TestUser</p>
+                    <p className="text-sm" style={{ color: config.tagColor }}>TestUser#1234</p>
+                  </div>
+                </div>
+                <p className="mt-4 text-center text-lg font-bold" style={{ color: config.imageTitleColor }}>{config.imageTitle}</p>
+                <p className="mt-2 text-center text-base" style={{ color: config.contentColor }}>هذا مثال لنص الاقتراح سيظهر هنا</p>
+                <div className="mt-auto text-center text-xs" style={{ color: config.footerColor }}>{config.footerText}</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         <SaveButton onSave={() => saveSuggestionConfig(guildId, config)} />
       </section>

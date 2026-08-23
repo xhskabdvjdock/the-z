@@ -58,7 +58,16 @@ export async function handleSuggestionMessage(message: Message): Promise<boolean
         avatarURL: message.author.displayAvatarURL({ extension: "png", size: 256 })
       },
       content,
-      { backgroundUrl: suggestions.backgroundImage }
+      {
+        backgroundUrl: suggestions.backgroundImage,
+        titleText: suggestions.imageTitle,
+        titleColor: suggestions.imageTitleColor,
+        usernameColor: suggestions.usernameColor,
+        tagColor: suggestions.tagColor,
+        contentColor: suggestions.contentColor,
+        footerText: suggestions.footerText,
+        footerColor: suggestions.footerColor
+      }
     );
   } catch (err) {
     console.error("[suggestions] فشل توليد الصورة:", err);

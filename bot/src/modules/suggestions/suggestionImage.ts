@@ -3,6 +3,13 @@ import { ensureFontLoaded } from "../../utils/fonts";
 
 export interface SuggestionImageOptions {
   backgroundUrl?: string;
+  titleText?: string;
+  titleColor?: string;
+  usernameColor?: string;
+  tagColor?: string;
+  contentColor?: string;
+  footerText?: string;
+  footerColor?: string;
 }
 
 /**
@@ -78,23 +85,23 @@ export async function generateSuggestionImage(
 
   // اسم المستخدم
   ctx.textAlign = "left";
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = options.usernameColor || "#ffffff";
   ctx.font = `bold 28px "${fontName}"`;
   ctx.fillText(user.username, avatarX + avatarSize + 20, avatarY + 35);
 
   // التاج
-  ctx.fillStyle = "#b9bbbe";
+  ctx.fillStyle = options.tagColor || "#b9bbbe";
   ctx.font = `18px "${fontName}"`;
   ctx.fillText(user.tag, avatarX + avatarSize + 20, avatarY + 65);
 
   // عنوان الاقتراح
-  ctx.fillStyle = "#5865f2";
+  ctx.fillStyle = options.titleColor || "#5865f2";
   ctx.font = `bold 22px "${fontName}"`;
   ctx.textAlign = "center";
-  ctx.fillText("اقتراح جديد", width / 2, avatarY + avatarSize + 50);
+  ctx.fillText(options.titleText || "اقتراح جديد", width / 2, avatarY + avatarSize + 50);
 
   // نص الاقتراح مع التفاف
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = options.contentColor || "#ffffff";
   ctx.font = `24px "${fontName}"`;
   ctx.textAlign = "center";
 
@@ -136,10 +143,10 @@ export async function generateSuggestionImage(
   ctx.stroke();
 
   // تذييل
-  ctx.fillStyle = "#b9bbbe";
+  ctx.fillStyle = options.footerColor || "#b9bbbe";
   ctx.font = `16px "${fontName}"`;
   ctx.textAlign = "center";
-  ctx.fillText("استخدم الأزرار أدناه للتصويت", width / 2, height - 30);
+  ctx.fillText(options.footerText || "استخدم الأزرار أدناه للتصويت", width / 2, height - 30);
 
   return canvas.encode("png");
 }
