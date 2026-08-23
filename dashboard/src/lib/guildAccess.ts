@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { authOptions } from "./auth";
 import {
   GuildConfig,
+  DashboardAccess,
+  isSnowflakeId,
+  OWNER_ID,
   resolveDashboardSettings,
-  resolveGuildAccessLevel,
-  isSnowflakeId
+  resolveGuildAccessLevel
 } from "@thez/shared";
 import { ensureDb } from "./db";
 import {
@@ -27,6 +29,28 @@ import {
  *  5) الصلاحيات: مالك → Administrator (مع احترام allowAdministrators) → رتب اللوحة
  *  6) أي فشل → إعادة توجيه للوحة
  */
+async function checkDashboardWhitelist(userId: string) {
+  // المالك دائمًا مسموح
+  if (userId === OWNER_ID) return;
+  try {
+    await ensureDb();
+    const doc = await DashboardAccess.findOne({ id: "global" });
+    const allowed = doc?.allowedUserIds ?? [OWNER_ID];
+    // المالك دائمًا ضمن القائمة حتى لو لم يُحفظ
+    const effectiveAllowed = allowed.includes(OWNER_ID) ? allowed : [OWNER_ID, ...allowed];
+    if (!effectiveAllowed.includes(userId)) {
+      console.error(`[guildAccess] المستخدم ${userId} غير مصرح له بالداشبورد`);
+      redirect("/no-access");
+    }
+  } catch (err) {
+    // في حال فشل قراءة القائمة، اسمح للمالك فقط
+    if (userId !== OWNER_ID) {
+      console.error("[guildAccess] فشل فحص القائمة البيضاء:", err);
+      redirect("/no-access");
+    }
+  }
+}
+
 export async function requireGuildAdmin(guildId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.accessToken) {
@@ -43,6 +67,8 @@ export async function requireGuildAdmin(guildId: string) {
     console.error("[guildAccess] معرّف المستخدم غير صالح:", userId);
     redirect("/");
   }
+
+  await checkDashboardWhitelist(userId);
 
   if (!isSnowflakeId(guildId)) {
     console.error("[guildAccess] معرّف السيرفر غير صالح:", guildId);
@@ -100,5 +126,19 @@ export async function requireSession() {
   const session = await getServerSession(authOptions);
   if (!session?.accessToken) redirect("/");
   if ((session as any)?.error === "RefreshFailed") redirect("/login");
+  const userId = (session.user as any)?.id;
+  if (userId && isSnowflakeId(userId)) {
+    await checkDashboardWhitelist(userId);
+  }
+  return session;
+}
+
+export async function requireDashboardAccess() {
+  const session = await getServerSession(authOptions);
+  if (!session?.accessToken) redirect("/");
+  if ((session as any)?.error === "RefreshFailed") redirect("/login");
+  const userId = (session.user as any)?.id;
+  if (!userId || !isSnowflakeId(userId)) redirect("/");
+  await checkDashboardWhitelist(userId);
   return session;
 }

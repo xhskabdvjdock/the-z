@@ -5,6 +5,8 @@ export * from "./models/TempVoiceChannel";
 export * from "./models/LevelUser";
 export * from "./models/Warning";
 export * from "./models/DashboardUser";
+export * from "./models/DashboardAccess";
+export * from "./models/Suggestion";
 export * from "./models/AfkUser";
 export * from "./models/JailUser";
 export * from "./models/ModerationLog";

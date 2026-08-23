@@ -396,6 +396,15 @@ export interface IGuildConfig {
     roles: IReactionRole[];
   };
 
+  /** نظام الاقتراحات والتصويت */
+  suggestions: {
+    enabled: boolean;
+    channelId: string | null;
+    logChannelId: string | null;
+    allowVoting: boolean;
+    autoThread: boolean;
+  };
+
   /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
   dashboard?: IGuildDashboardSettings;
 
@@ -576,6 +585,14 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     reactionRoles: {
       enabled: false,
       roles: []
+    },
+
+    suggestions: {
+      enabled: false,
+      channelId: null,
+      logChannelId: null,
+      allowVoting: true,
+      autoThread: false
     },
 
     dashboard: {

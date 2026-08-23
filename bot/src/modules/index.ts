@@ -12,6 +12,7 @@ import { startMemberCounter } from "./memberCounter/memberCounterManager";
 import { startScheduledMessages } from "./scheduledMessages/scheduledMessagesManager";
 import { registerReactionRoles } from "./reactionRoles/reactionRolesManager";
 import { startIslamicContent } from "./islamicContent/islamicContentManager";
+import { registerSuggestionComponents } from "./suggestions/suggestionManager";
 
 /** نقطة تجميع مركزية: تسجّل كل معالجات الأزرار/القوائم الخاصة بكل موديول، وتشغّل المهام الدورية */
 export function registerAllModules(client: ExtendedClient) {
@@ -20,6 +21,7 @@ export function registerAllModules(client: ExtendedClient) {
   registerColorComponents(componentRouter);
   registerSelfRoleComponents(componentRouter);
   registerCaptchaComponents(componentRouter);
+  registerSuggestionComponents(componentRouter);
   registerReactionRoles(client);
 
   client.once("ready", () => {
