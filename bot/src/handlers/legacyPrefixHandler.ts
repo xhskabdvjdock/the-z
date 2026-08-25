@@ -387,8 +387,6 @@ export async function handleLegacyPrefixCommands(
     if (ch?.isTextBased?.() || ch?.send) {
       await ch.send({ content: `${message.author.toString()} ${targetUser.toString()}`, embeds: [embed] }).catch(() => null);
     }
-    // حذف رسالة الأمر الأصلية لتقليل الفوضى (اختياري)
-    await message.delete().catch(() => null);
     return true;
   }
 
