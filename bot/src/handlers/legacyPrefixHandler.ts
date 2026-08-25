@@ -320,6 +320,78 @@ export async function handleLegacyPrefixCommands(
     return true;
   }
 
+  // ────── ,kiss ─────────────────────────────────────────────────────────────
+  if (content.toLowerCase().startsWith(",kiss")) {
+    let targetUser = message.mentions.users.first() ?? null;
+    let targetMember: GuildMember | null = null;
+
+    // إذا كان رد على رسالة، استخدم صاحب الرسالة المرد عليها
+    if (!targetUser && message.reference?.messageId) {
+      const refMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (refMsg && !refMsg.author.bot) targetUser = refMsg.author;
+    }
+
+    // محاولة جلب بالـ ID من النص
+    if (!targetUser) {
+      const rawId = content.slice(5).trim().split(/\s+/).find((a) => /^\d{17,19}$/.test(a.replace(/[<@!>]/g, "")))?.replace(/[<@!>]/g, "");
+      if (rawId) {
+        try {
+          const fetched = await message.client.users.fetch(rawId);
+          if (fetched && !fetched.bot) targetUser = fetched;
+        } catch {}
+      }
+    }
+
+    if (!targetUser) {
+      await message.reply("منشن شخص أو رد على رسالته لترسل له قبلة. مثال: `,kiss @شخص`");
+      return true;
+    }
+
+    if (targetUser.id === message.author.id) {
+      await message.reply("لا يمكنك إرسال قبلة لنفسك!");
+      return true;
+    }
+
+    // جلب gif من waifu.pics
+    let gifUrl: string | null = null;
+    try {
+      const res = await fetch("https://api.waifu.pics/sfw/kiss", { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = (await res.json()) as { url?: string };
+        gifUrl = data.url ?? null;
+      }
+    } catch {}
+    // fallback لـ nekos.life
+    if (!gifUrl) {
+      try {
+        const res2 = await fetch("https://nekos.life/api/v2/img/kiss", { signal: AbortSignal.timeout(5000) });
+        if (res2.ok) {
+          const data2 = (await res2.json()) as { url?: string };
+          gifUrl = data2.url ?? null;
+        }
+      } catch {}
+    }
+
+    if (!gifUrl) {
+      await message.reply("فشل جلب صورة القبلة، حاول مرة أخرى.");
+      return true;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(config.defaultColor)
+      .setDescription(`**${message.author.toString()}** أرسل قبلة إلى **${targetUser.toString()}** :kiss:`)
+      .setImage(gifUrl)
+      .setFooter({ text: `${message.author.tag} → ${targetUser.tag}` });
+
+    const ch = message.channel as any;
+    if (ch?.isTextBased?.() || ch?.send) {
+      await ch.send({ content: `${message.author.toString()} ${targetUser.toString()}`, embeds: [embed] }).catch(() => null);
+    }
+    // حذف رسالة الأمر الأصلية لتقليل الفوضى (اختياري)
+    await message.delete().catch(() => null);
+    return true;
+  }
+
   // ────── ,unjail ───────────────────────────────────────────────────────────
   if (content.startsWith(",unjail")) {
     const args = content.slice(7).trim().split(/\s+/);
