@@ -379,7 +379,7 @@ export async function handleLegacyPrefixCommands(
 
     const embed = new EmbedBuilder()
       .setColor(config.defaultColor)
-      .setDescription(`**${message.author.toString()}** أرسل قبلة إلى **${targetUser.toString()}** :kiss:`)
+      .setDescription(`**${message.author.toString()}** kissing **${targetUser.toString()}**`)
       .setImage(gifUrl)
       .setFooter({ text: `${message.author.tag} → ${targetUser.tag}` });
 
