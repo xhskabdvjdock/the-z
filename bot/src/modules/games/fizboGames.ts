@@ -19,10 +19,8 @@ const GAME_IMAGES: Record<string, string> = {
 async function generateRouletteImage(): Promise<Buffer> {
   const canvas = createCanvas(600, 400);
   const ctx = canvas.getContext("2d");
-  // خلفية
   ctx.fillStyle = "#1a1a2e";
   ctx.fillRect(0, 0, 600, 400);
-  // عجلة
   const centerX = 200, centerY = 200, radius = 150;
   const colors = ["#ed4245", "#2f3136"];
   for (let i = 0; i < 36; i++) {
@@ -37,7 +35,6 @@ async function generateRouletteImage(): Promise<Buffer> {
     ctx.strokeStyle = "#fff";
     ctx.lineWidth = 1;
     ctx.stroke();
-    // رقم
     if (i % 6 === 0) {
       const angle = (i * 10 - 85) * Math.PI / 180;
       const x = centerX + Math.cos(angle) * (radius - 30);
@@ -48,7 +45,6 @@ async function generateRouletteImage(): Promise<Buffer> {
       ctx.fillText(String(i), x, y);
     }
   }
-  // مركز
   ctx.beginPath();
   ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
   ctx.fillStyle = "#fff";
@@ -57,7 +53,6 @@ async function generateRouletteImage(): Promise<Buffer> {
   ctx.font = "bold 24px sans-serif";
   ctx.textAlign = "center";
   ctx.fillText("ROULETTE", centerX, centerY + 8);
-  // طاولة رهان
   ctx.fillStyle = "#0f3460";
   ctx.fillRect(400, 50, 180, 300);
   ctx.strokeStyle = "#fff";
@@ -69,6 +64,67 @@ async function generateRouletteImage(): Promise<Buffer> {
   ctx.fillText("EVEN | ODD", 490, 120);
   ctx.fillText("1-18 | 19-36", 490, 160);
   return canvas.toBuffer("image/png");
+}
+
+async function generateRouletteGif(winnerName: string): Promise<Buffer> {
+  // @ts-ignore
+  const GIFEncoder = (await import("gif-encoder-2")).default;
+  const canvas = createCanvas(600, 400);
+  const ctx = canvas.getContext("2d") as any;
+  const encoder = new GIFEncoder(600, 400);
+  encoder.setDelay(80);
+  encoder.setRepeat(0);
+  encoder.start();
+  const frames = 24;
+  for (let f = 0; f < frames; f++) {
+    const rotation = (f / frames) * 720; // دورتان
+    ctx.fillStyle = "#1a1a2e";
+    ctx.fillRect(0, 0, 600, 400);
+    const centerX = 300, centerY = 200, radius = 150;
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.translate(-centerX, -centerY);
+    const colors = ["#ed4245", "#2f3136"];
+    for (let i = 0; i < 36; i++) {
+      const startAngle = (i * 10 - 90) * Math.PI / 180;
+      const endAngle = ((i + 1) * 10 - 90) * Math.PI / 180;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+      ctx.closePath();
+      ctx.fillStyle = i === 0 ? "#57f287" : colors[i % 2];
+      ctx.fill();
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 50, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff";
+    ctx.fill();
+    ctx.restore();
+    // مؤشر
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.moveTo(centerX, 30);
+    ctx.lineTo(centerX - 10, 50);
+    ctx.lineTo(centerX + 10, 50);
+    ctx.closePath();
+    ctx.fill();
+    // نص
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 18px sans-serif";
+    ctx.textAlign = "center";
+    if (f === frames - 1) {
+      ctx.fillText(`الفائز: ${winnerName}`, 300, 380);
+    } else {
+      ctx.fillText("تدور...", 300, 380);
+    }
+    encoder.addFrame(ctx as any);
+  }
+  encoder.finish();
+  return encoder.out.getData();
 }
 
 export function registerFizboComponents(router: any) {
@@ -120,28 +176,36 @@ export function registerFizboComponents(router: any) {
     }
 
     if (lobby.gameId === "roulette") {
-      // روليت احترافي
       const buffer = await generateRouletteImage().catch(() => null);
       const attachment = buffer ? new AttachmentBuilder(buffer, { name: "roulette.png" }) : null;
       await interaction.update({
-        embeds: [new EmbedBuilder().setColor(0x2f3136).setTitle("روليت — بدأت!").setDescription(`اللاعبون: ${lobby.players.map((id) => `<@${id}>`).join(", ")}\n\nالعجلة تدور...`).setImage(attachment ? "attachment://roulette.png" : null)],
+        embeds: [new EmbedBuilder().setColor(0x2f3136).setTitle("روليت — بدأت!").setDescription(`اللاعبون: ${lobby.players.map((id) => `<@${id}>`).join(", ")}\n\nالعجلة ستدور لاختيار من يُطرد...`).setImage(attachment ? "attachment://roulette.png" : null)],
         files: attachment ? [attachment] : [],
         components: []
       });
-      await new Promise((r) => setTimeout(r, 3000));
+      await new Promise((r) => setTimeout(r, 2000));
       let remaining = [...lobby.players];
       for (let round = 1; remaining.length > 1; round++) {
         const eliminated = remaining.splice(Math.floor(Math.random() * remaining.length), 1)[0];
-        const embed = new EmbedBuilder()
-          .setColor(0xed4245)
-          .setTitle(`الجولة ${round} — طرد`)
-          .setDescription(`الرقم الفائز: **${Math.floor(Math.random() * 37)}**\nتم طرد <@${eliminated}>\nالمتبقي: ${remaining.map((id) => `<@${id}>`).join(", ")}`)
-          .setThumbnail("https://cdn.discordapp.com/embed/avatars/0.png");
-        await interaction.channel.send({ embeds: [embed] }).catch(() => null);
-        await new Promise((r) => setTimeout(r, 2000));
+        try {
+          const member = await interaction.guild.members.fetch(eliminated).catch(() => null);
+          const name = member?.displayName ?? member?.user.username ?? eliminated;
+          const gifBuffer = await generateRouletteGif(name).catch(() => null);
+          const gifAttachment = gifBuffer ? new AttachmentBuilder(gifBuffer as any, { name: "spin.gif" }) : null;
+          const embed = new EmbedBuilder()
+            .setColor(0xed4245)
+            .setTitle(`الجولة ${round} — العجلة تدور`)
+            .setDescription(`تم طرد <@${eliminated}>`)
+            .setImage(gifAttachment ? "attachment://spin.gif" : null);
+          await interaction.channel.send({ embeds: [embed], files: gifAttachment ? [gifAttachment] : [] }).catch(() => null);
+        } catch {
+          const embed = new EmbedBuilder().setColor(0xed4245).setTitle(`الجولة ${round} — طرد`).setDescription(`تم طرد <@${eliminated}>\nالمتبقي: ${remaining.map((id) => `<@${id}>`).join(", ")}`);
+          await interaction.channel.send({ embeds: [embed] }).catch(() => null);
+        }
+        await new Promise((r) => setTimeout(r, 1500));
       }
       const winner = remaining[0];
-      const winEmbed = new EmbedBuilder().setColor(0x57f287).setTitle("الفائز!").setDescription(`فاز <@${winner}> بالروليت!`).setImage("https://cdn.discordapp.com/embed/avatars/0.png");
+      const winEmbed = new EmbedBuilder().setColor(0x57f287).setTitle("الفائز!").setDescription(`فاز <@${winner}> بالروليت!`);
       await interaction.channel.send({ embeds: [winEmbed] }).catch(() => null);
       endLobby(channelId);
       return;
