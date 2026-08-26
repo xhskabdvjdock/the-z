@@ -182,79 +182,98 @@ export async function handleWheel(channel: any, author: any) {
   await msg.edit({ embeds: [finalEmbed] }).catch(() => null);
 }
 
-// HotXO
+// HotXO - مع مؤقت
 export async function handleHotXO(channel: any, author: any, target?: any) {
-  await handleXO(channel, author, target);
+  if (!target) {
+    await channel.send({ content: "منشن شخص للعب HotXO. مثال: `,hotxo @شخص`" });
+    return;
+  }
+  const embed = new EmbedBuilder().setColor(0xed4245).setTitle("HotXO — ساخن!").setDescription(`الكرة مع <@${target.id}>! لديك 5 ثوانٍ لتمريرها.`);
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:hotxo:pass:${Date.now()}:${target.id}:${author.id}`).setLabel("مرر").setStyle(ButtonStyle.Danger));
+  await channel.send({ content: `<@${author.id}> <@${target.id}>`, embeds: [embed], components: [row] });
 }
 
-// Hide
+// Hide - مع خيارات اختباء
 export async function handleHide(channel: any, author: any) {
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("غميضة").setDescription("اختبأ <@" + author.id + ">! ابحثوا عنه.");
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:hide:${Date.now()}`).setLabel("وجدتك").setStyle(ButtonStyle.Primary));
+  const places = ["خزانة", "تحت السرير", "خلف الباب", "السطح"];
+  const place = places[Math.floor(Math.random() * places.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("غميضة").setDescription(`اختبأ <@${author.id}> في **${place}**! ابحثوا.`);
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    places.map((p) => new ButtonBuilder().setCustomId(`game:hide:${p}:${Date.now()}`).setLabel(p).setStyle(ButtonStyle.Secondary))
+  );
   await channel.send({ embeds: [embed], components: [row] });
 }
 
-// Replica
+// Replica - مع أزرار
 export async function handleReplica(channel: any, author: any) {
   const seq = Array.from({ length: 4 }, () => Math.floor(Math.random() * 4));
   const emojis = ["🔴", "🟢", "🔵", "🟡"];
   const seqStr = seq.map((n) => emojis[n]).join(" ");
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ريبلكا").setDescription(`احفظ التسلسل: ${seqStr}`);
-  await channel.send({ embeds: [embed] });
-  setTimeout(async () => {
-    const askEmbed = new EmbedBuilder().setColor(0x5865f2).setTitle("ريبلكا").setDescription("أعد التسلسل بالكتابة (مثال: 1 2 3 1)");
-    await channel.send({ embeds: [askEmbed] }).catch(() => null);
-  }, 3000);
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ريبلكا").setDescription(`احفظ التسلسل: ${seqStr} — اضغط بنفس الترتيب`);
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    emojis.map((e, i) => new ButtonBuilder().setCustomId(`game:replica:${i}:${seq.join("")}:${Date.now()}`).setLabel(e).setStyle(ButtonStyle.Secondary))
+  );
+  await channel.send({ embeds: [embed], components: [row] });
 }
 
-// Guess
+// Guess - مع تلميحات
 export async function handleGuess(channel: any, author: any) {
   const num = Math.floor(Math.random() * 100) + 1;
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("خمن").setDescription("خمن الرقم من 1 إلى 100");
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("خمن الرقم").setDescription("خمن الرقم من 1 إلى 100 — سأعطيك تلميحًا (أكبر/أصغر)");
   await channel.send({ embeds: [embed] });
-  const filter = (m: any) => !m.author.bot;
+  const filter = (m: any) => !m.author.bot && /^\d+$/.test(m.content);
   const collector = channel.createMessageCollector({ filter, time: 30000 });
   collector.on("collect", (m: any) => {
     const guess = parseInt(m.content, 10);
-    if (isNaN(guess)) return;
     if (guess === num) {
-      channel.send({ content: `صح! الرقم كان ${num} — فاز <@${m.author.id}>!` });
+      channel.send({ embeds: [new EmbedBuilder().setColor(0x57f287).setTitle("صح!").setDescription(`الرقم كان **${num}** — فاز <@${m.author.id}>!`)] });
       collector.stop();
-    } else if (guess < num) m.reply("أكبر!");
-    else m.reply("أصغر!");
+    } else if (guess < num) m.reply("أكبر ⬆️").catch(() => null);
+    else m.reply("أصغر ⬇️").catch(() => null);
+  });
+  collector.on("end", (c: any) => { if (c.size === 0 || !c.some((m: any) => parseInt(m.content, 10) === num)) channel.send({ content: `انتهى الوقت! الرقم كان ${num}` }).catch(() => null); });
+}
+
+// Draw - مع وقت
+export async function handleDraw(channel: any, author: any) {
+  const prompts = ["قطة", "بيت", "شجرة", "سيارة", "قلب", "نجمة", "قمر", "وردة"];
+  const prompt = prompts[Math.floor(Math.random() * prompts.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("رسمة").setDescription(`ارسم: **${prompt}** وأرسل الصورة خلال 60 ثانية`);
+  await channel.send({ embeds: [embed] });
+  const filter = (m: any) => m.attachments.size > 0;
+  const collector = channel.createMessageCollector({ filter, time: 60000, max: 5 });
+  const voters = new Set<string>();
+  collector.on("collect", async (m: any) => {
+    if (voters.has(m.author.id)) return;
+    voters.add(m.author.id);
+    await m.react("👍").catch(() => null);
+    await m.react("👎").catch(() => null);
   });
 }
 
-// Draw
-export async function handleDraw(channel: any, author: any) {
-  const prompts = ["قطة", "بيت", "شجرة", "سيارة", "قلب"];
-  const prompt = prompts[Math.floor(Math.random() * prompts.length)];
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("رسمة").setDescription(`ارسم: **${prompt}** وأرسل الصورة`);
-  await channel.send({ embeds: [embed] });
-}
-
-// Unscramble
+// Unscramble - مع تلميح
 export async function handleUnscramble(channel: any, author: any) {
-  const words = ["مرحبا", "مدرسة", "كتاب", "قلم", "لعبة"];
+  const words = ["مرحبا", "مدرسة", "كتاب", "قلم", "لعبة", "صديق", "عائلة", "مستقبل"];
   const word = words[Math.floor(Math.random() * words.length)];
   const scrambled = word.split("").sort(() => Math.random() - 0.5).join(" ");
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("فكك").setDescription(`فكك: **${scrambled}**`);
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("فكك").setDescription(`فكك: **${scrambled}**\nتلميح: ${word.length} حروف`);
   await channel.send({ embeds: [embed] });
   const filter = (m: any) => m.content === word;
-  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
-  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
-  collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت! الكلمة: ${word}` }); });
+  const collector = channel.createMessageCollector({ filter, time: 20000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ embeds: [new EmbedBuilder().setColor(0x57f287).setTitle("صح!").setDescription(`الكلمة: **${word}** — فاز <@${m.author.id}>!`)] }));
+  collector.on("end", (c: any) => { if (c.size === 0) channel.send({ embeds: [new EmbedBuilder().setColor(0xed4245).setTitle("انتهى الوقت!").setDescription(`الكلمة: **${word}**`)] }).catch(() => null); });
 }
 
-// Merge
+// Merge - مع خيارات
 export async function handleMerge(channel: any, author: any) {
-  const parts = ["ال", "مدر", "سة"];
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ادمج").setDescription(`ادمج: **${parts.join(" + ")}**`);
+  const puzzles = [{ parts: ["ال", "مدر", "سة"], answer: "المدرسة" }, { parts: ["ك", "تا", "ب"], answer: "كتاب" }];
+  const puzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ادمج").setDescription(`ادمج: **${puzzle.parts.join(" + ")}**`);
   await channel.send({ embeds: [embed] });
-  const answer = parts.join("");
-  const filter = (m: any) => m.content === answer;
-  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
-  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+  const filter = (m: any) => m.content === puzzle.answer;
+  const collector = channel.createMessageCollector({ filter, time: 20000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ embeds: [new EmbedBuilder().setColor(0x57f287).setTitle("صح!").setDescription(`**${puzzle.answer}** — فاز <@${m.author.id}>!`)] }));
+  collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت! الإجابة: ${puzzle.answer}` }).catch(() => null); });
 }
 
 // Flags - مع أزرار اختيار
@@ -271,49 +290,53 @@ export async function handleFlags(channel: any, author: any) {
   await channel.send({ embeds: [embed], components: [row] });
 }
 
-// Reverse
+// Reverse - مع أمثلة متنوعة
 export async function handleReverse(channel: any, author: any) {
-  const text = "مرحبا بالعالم";
-  const reversed = text.split("").reverse().join("");
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("اعكس").setDescription(`اعكس: **${reversed}**`);
+  const pairs = [{ rev: "ملاعلا لاب ابحرم", orig: "مرحبا بالعالم" }, { rev: "ةسردم", orig: "مدرسة" }];
+  const pair = pairs[Math.floor(Math.random() * pairs.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("اعكس").setDescription(`اعكس: **${pair.rev}**`);
   await channel.send({ embeds: [embed] });
-  const filter = (m: any) => m.content === text;
-  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
-  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+  const filter = (m: any) => m.content === pair.orig;
+  const collector = channel.createMessageCollector({ filter, time: 20000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ embeds: [new EmbedBuilder().setColor(0x57f287).setTitle("صح!").setDescription(`**${pair.orig}** — فاز <@${m.author.id}>!`)] }));
+  collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت! الإجابة: ${pair.orig}` }).catch(() => null); });
 }
 
-// Letter
+// Letter - مع تحدي
 export async function handleLetter(channel: any, author: any) {
   const letters = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي".split("");
   const letter = letters[Math.floor(Math.random() * letters.length)];
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("حرف").setDescription(`أرسل كلمة تبدأ بحرف **${letter}**`);
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("حرف").setDescription(`أرسل كلمة تبدأ بحرف **${letter}** خلال 15 ثانية`);
   await channel.send({ embeds: [embed] });
-  const filter = (m: any) => m.content.startsWith(letter);
+  const filter = (m: any) => !m.author.bot && m.content.startsWith(letter) && m.content.length > 2;
   const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
-  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+  collector.on("collect", (m: any) => channel.send({ embeds: [new EmbedBuilder().setColor(0x57f287).setTitle("ممتاز!").setDescription(`**${m.content}** تبدأ بـ **${letter}** — فاز <@${m.author.id}>!`)] }));
+  collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت!` }).catch(() => null); });
 }
 
-// Correct
+// Correct - مع خيارات
 export async function handleCorrect(channel: any, author: any) {
-  const wrong = "مرحبا بك في المدرسه";
-  const correct = "مرحبا بك في المدرسة";
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("صحح").setDescription(`صحح: **${wrong}**`);
+  const pairs = [{ wrong: "مرحبا بك في المدرسه", correct: "مرحبا بك في المدرسة" }, { wrong: "انا ذاهب الى المدرسه", correct: "أنا ذاهب إلى المدرسة" }];
+  const pair = pairs[Math.floor(Math.random() * pairs.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("صحح").setDescription(`صحح: **${pair.wrong}**`);
   await channel.send({ embeds: [embed] });
-  const filter = (m: any) => m.content === correct;
-  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
-  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+  const filter = (m: any) => m.content === pair.correct;
+  const collector = channel.createMessageCollector({ filter, time: 20000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ embeds: [new EmbedBuilder().setColor(0x57f287).setTitle("صح!").setDescription(`**${pair.correct}** — فاز <@${m.author.id}>!`)] }));
+  collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت! الصح: ${pair.correct}` }).catch(() => null); });
 }
 
-// Order
+// Order - مع ترتيب
 export async function handleOrder(channel: any, author: any) {
-  const words = ["أنا", "أحب", "البرمجة"];
-  const shuffled = [...words].sort(() => Math.random() - 0.5).join(" ");
+  const puzzles = [{ words: ["أنا", "أحب", "البرمجة"], answer: "أنا أحب البرمجة" }, { words: ["السماء", "زرقاء", "جميلة"], answer: "السماء زرقاء جميلة" }];
+  const puzzle = puzzles[Math.floor(Math.random() * puzzles.length)];
+  const shuffled = [...puzzle.words].sort(() => Math.random() - 0.5).join(" ");
   const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ترتيب").setDescription(`رتب: **${shuffled}**`);
   await channel.send({ embeds: [embed] });
-  const answer = words.join(" ");
-  const filter = (m: any) => m.content === answer;
-  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
-  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+  const filter = (m: any) => m.content === puzzle.answer;
+  const collector = channel.createMessageCollector({ filter, time: 20000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ embeds: [new EmbedBuilder().setColor(0x57f287).setTitle("صح!").setDescription(`**${puzzle.answer}** — فاز <@${m.author.id}>!`)] }));
+  collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت! الإجابة: ${puzzle.answer}` }).catch(() => null); });
 }
 
 // Colors - مع أزرار
