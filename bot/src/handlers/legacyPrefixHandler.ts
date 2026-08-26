@@ -92,37 +92,63 @@ export async function handleLegacyPrefixCommands(
       }
     }
 
-    // المحاولة 2: Fallback MyMemory API
+    // المحاولة 2: Fallback MyMemory API مع إعادة محاولة عند 429
     if (!translated?.trim()) {
-      try {
-        const langPair = isArabic ? "ar|en" : "en|ar";
-        const res = await fetch(
-          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}`,
-          { signal: AbortSignal.timeout(8000) }
-        );
-        if (res.ok) {
-          const contentType = res.headers.get("content-type") ?? "";
-          if (contentType.includes("application/json")) {
-            const data = (await res.json()) as any;
-            const mymem = data?.responseData?.translatedText;
-            if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) {
-              translated = mymem;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const langPair = isArabic ? "ar|en" : "en|ar";
+          const res = await fetch(
+            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}`,
+            { signal: AbortSignal.timeout(8000) }
+          );
+          if (res.ok) {
+            const contentType = res.headers.get("content-type") ?? "";
+            if (contentType.includes("application/json")) {
+              const data = (await res.json()) as any;
+              const mymem = data?.responseData?.translatedText;
+              if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) {
+                translated = mymem;
+                break;
+              }
+            } else {
+              lastError = "خدمة الترجمة مشغولة حاليًا";
+            }
+          } else if (res.status === 429) {
+            lastError = "خدمة الترجمة مشغولة حاليًا";
+            if (attempt === 0) {
+              await new Promise((r) => setTimeout(r, 2000));
+              continue;
             }
           } else {
-            lastError = "خدمة الترجمة مشغولة حاليًا";
+            lastError = `خدمة الترجمة ردت بـ ${res.status}`;
           }
-        } else {
-          lastError = `خدمة الترجمة ردت بـ ${res.status}`;
-        }
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        // تجاهل أخطاء HTML
-        if (msg.includes("Unexpected token") || msg.includes("<html")) {
-          lastError = "خدمة الترجمة مشغولة حاليًا";
-        } else {
-          lastError = msg;
+          break;
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          if (msg.includes("Unexpected token") || msg.includes("<html")) {
+            lastError = "خدمة الترجمة مشغولة حاليًا";
+          } else {
+            lastError = msg;
+          }
+          if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
         }
       }
+    }
+
+    // المحاولة 3: LibreTranslate كـ fallback أخير
+    if (!translated?.trim()) {
+      try {
+        const res = await fetch("https://libretranslate.com/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q: text.slice(0, 500), source: isArabic ? "ar" : "en", target: targetLang, format: "text" }),
+          signal: AbortSignal.timeout(8000)
+        });
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          if (data?.translatedText?.trim()) translated = data.translatedText;
+        }
+      } catch {}
     }
 
     if (!translated?.trim()) {
