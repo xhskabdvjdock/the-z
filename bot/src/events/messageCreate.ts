@@ -10,6 +10,7 @@ import { handleMessageXp } from "../modules/leveling/xpManager";
 import { handleLegacyPrefixCommands } from "../handlers/legacyPrefixHandler";
 import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
 import { sendMediaLog } from "../modules/logging/logger";
+import { handleGifBlock } from "../modules/gifBlock/gifBlock";
 import { AfkUser } from "@thez/shared";
 
 // نظام بسيط لتقليل rate limits من خلال تأخير الردود
@@ -46,6 +47,10 @@ const event: BotEvent = {
     if (wasLegacy) return;
 
     const gConfig = await getGuildConfig(client, message.guild.id);
+
+    // 1.5) التحقق من حظر GIFs
+    const wasGifBlocked = await handleGifBlock(client, message);
+    if (wasGifBlocked) return;
 
     // 2) القنوات المخصصة لنوع معين من المحتوى
     const customChannels = gConfig.logging?.customChannels;

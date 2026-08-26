@@ -396,6 +396,14 @@ export interface IGuildConfig {
     roles: IReactionRole[];
   };
 
+  /** نظام حظر GIFs: حظر روابط GIF محددة مع إجراءات تلقائية */
+  gifBlock: {
+    enabled: boolean;
+    logChannelId?: string;
+    whitelistRoleIds: string[];
+    whitelistChannelIds: string[];
+  };
+
   /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
   dashboard?: IGuildDashboardSettings;
 
@@ -576,6 +584,12 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     reactionRoles: {
       enabled: false,
       roles: []
+    },
+
+    gifBlock: {
+      enabled: false,
+      whitelistRoleIds: [],
+      whitelistChannelIds: []
     },
 
     dashboard: {

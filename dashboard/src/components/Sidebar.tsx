@@ -25,7 +25,8 @@ import {
   Smile,
   CalendarClock,
   LayoutTemplate,
-  BookOpen
+  BookOpen,
+  Image
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -39,6 +40,7 @@ const NAV_ITEMS = [
   { href: "/autoresponse", label: "الردود التلقائية", icon: Bot },
   { href: "/schedules", label: "الرسائل المجدولة", icon: CalendarClock },
   { href: "/islamic", label: "الأذكار والمحتوى الإسلامي", icon: BookOpen },
+  { href: "/gifblock", label: "حظر GIFs", icon: Image },
   { href: "/roles", label: "الرولات والألوان", icon: User },
   { href: "/reaction-roles", label: "رولات الرياكشن", icon: Smile },
   { href: "/leveling", label: "المستويات والخبرة", icon: Zap },
