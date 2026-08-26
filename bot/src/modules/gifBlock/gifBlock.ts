@@ -68,6 +68,7 @@ async function applyGifBlockAction(
   switch (block.action) {
     case "delete":
       await message.delete().catch(() => {});
+      // لا نرسل رسالة إشعار عند الحذف فقط
       break;
 
     case "warn":
@@ -92,8 +93,8 @@ async function applyGifBlockAction(
       break;
   }
 
-  // Send notification message
-  if (message.channel.isTextBased() && 'send' in message.channel) {
+  // Send notification message (only for actions other than delete)
+  if (block.action !== "delete" && message.channel.isTextBased() && 'send' in message.channel) {
     const notification = getActionNotification(block.action, member, block.duration);
     await message.channel.send({ content: notification }).catch(() => {});
   }
