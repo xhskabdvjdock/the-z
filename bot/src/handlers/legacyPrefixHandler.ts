@@ -485,6 +485,12 @@ export async function handleLegacyPrefixCommands(
     const lower = content.toLowerCase();
     for (const [cmd, gameId] of Object.entries(gameMap)) {
       if (lower === `,${cmd}` || lower.startsWith(`,${cmd} `)) {
+        const fizboGames = ["mafia", "roulette", "hide", "chairs", "draw"];
+        if (fizboGames.includes(gameId)) {
+          const { startFizboGame } = await import("../modules/games/fizboGames");
+          await startFizboGame(message.channel as any, gameId, message.author.id, message.guild!.id);
+          return true;
+        }
         const g = await import("../modules/games/gameManager");
         const targetUser = message.mentions.users.first() ?? null;
         const ch = message.channel as any;
@@ -495,14 +501,10 @@ export async function handleLegacyPrefixCommands(
           case "dice": await g.handleDice(ch, message.author); return true;
           case "button": await g.handleButton(ch, message.author); return true;
           case "fast": await g.handleFast(ch, message.author); return true;
-          case "mafia": await g.handleMafia(ch, message.author); return true;
-          case "chairs": await g.handleChairs(ch, message.author); return true;
           case "wheel": await g.handleWheel(ch, message.author); return true;
           case "hotxo": await g.handleHotXO(ch, message.author, targetUser ?? undefined); return true;
-          case "hide": await g.handleHide(ch, message.author); return true;
           case "replica": await g.handleReplica(ch, message.author); return true;
           case "guess": await g.handleGuess(ch, message.author); return true;
-          case "draw": await g.handleDraw(ch, message.author); return true;
           case "unscramble": await g.handleUnscramble(ch, message.author); return true;
           case "merge": await g.handleMerge(ch, message.author); return true;
           case "flags": await g.handleFlags(ch, message.author); return true;

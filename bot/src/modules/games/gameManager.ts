@@ -334,6 +334,11 @@ export function deleteActiveGame(id: string) {
 }
 
 export function registerGameComponents(router: any) {
+  // Fizbo lobby
+  try {
+    const { registerFizboComponents } = require("./fizboGames");
+    registerFizboComponents(router);
+  } catch {}
   // XO
   router.registerButton("game:xo:", async (interaction: any) => {
     const parts = interaction.customId.split(":");

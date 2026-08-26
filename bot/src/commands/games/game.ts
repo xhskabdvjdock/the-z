@@ -42,21 +42,23 @@ const command: BotCommand = {
     const channel = ctx.channel as any;
 
     const g = GM as any;
+    const fizboGames = ["mafia", "roulette", "hide", "chairs", "draw"];
+    if (fizboGames.includes(type)) {
+      const { startFizboGame } = await import("../../modules/games/fizboGames");
+      await startFizboGame(channel, type, ctx.user.id, ctx.guild.id);
+      await ctx.reply({ content: `تم إنشاء لوبي ${type} — انضموا!` });
+      return;
+    }
     const map: Record<string, () => Promise<void>> = {
       xo: () => g.handleXO(channel, ctx.user, targetMember?.user ?? targetUser),
-      roulette: () => g.handleRoulette(channel, ctx.user),
       rps: () => g.handleRPS(channel, ctx.user, targetMember?.user ?? targetUser),
       dice: () => g.handleDice(channel, ctx.user),
       button: () => g.handleButton(channel, ctx.user),
       fast: () => g.handleFast(channel, ctx.user),
-      mafia: () => g.handleMafia(channel, ctx.user),
-      chairs: () => g.handleChairs(channel, ctx.user),
       wheel: () => g.handleWheel(channel, ctx.user),
       hotxo: () => g.handleHotXO(channel, ctx.user, targetMember?.user ?? targetUser),
-      hide: () => g.handleHide(channel, ctx.user),
       replica: () => g.handleReplica(channel, ctx.user),
       guess: () => g.handleGuess(channel, ctx.user),
-      draw: () => g.handleDraw(channel, ctx.user),
       unscramble: () => g.handleUnscramble(channel, ctx.user),
       merge: () => g.handleMerge(channel, ctx.user),
       flags: () => g.handleFlags(channel, ctx.user),
