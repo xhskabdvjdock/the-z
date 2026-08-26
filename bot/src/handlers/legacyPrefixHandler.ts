@@ -84,70 +84,37 @@ export async function handleLegacyPrefixCommands(
       return fetch(url, opts);
     };
 
-    // المحاولة 1: Google API المباشر (عبر Proxy إن وجد)
-    for (let attempt = 0; attempt < 2; attempt++) {
+    // محاولة سريعة بدون تأخير
+    try {
+      const sl = isArabic ? "ar" : "auto";
+      const tl = targetLang;
+      const res = await fetchWithProxy(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text.slice(0, 1000))}`,
+        { signal: AbortSignal.timeout(5000) as any }
+      );
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const gtrans = data?.[0]?.map((x: any) => x[0]).join(" ");
+        if (gtrans?.trim()) translated = gtrans;
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
+    }
+
+    if (!translated?.trim()) {
       try {
-        const sl = isArabic ? "ar" : "auto";
-        const tl = targetLang;
+        const langPair = isArabic ? "ar|en" : "en|ar";
         const res = await fetchWithProxy(
-          `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text.slice(0, 1000))}`,
-          { signal: AbortSignal.timeout(8000) as any }
+          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}&de=a@b.c`,
+          { signal: AbortSignal.timeout(5000) as any }
         );
         if (res.ok) {
           const data = (await res.json()) as any;
-          const gtrans = data?.[0]?.map((x: any) => x[0]).join(" ");
-          if (gtrans?.trim()) {
-            translated = gtrans;
-            break;
-          }
+          const mymem = data?.responseData?.translatedText;
+          if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) translated = mymem;
         }
-        throw new Error("empty translation");
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
-        if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
-      }
-    }
-
-    // المحاولة 2: Fallback MyMemory API مع إعادة محاولة عند 429
-    if (!translated?.trim()) {
-      for (let attempt = 0; attempt < 2; attempt++) {
-        try {
-          const langPair = isArabic ? "ar|en" : "en|ar";
-          const res = await fetchWithProxy(
-            `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}`,
-            { signal: AbortSignal.timeout(8000) as any }
-          );
-          if (res.ok) {
-            const contentType = res.headers.get("content-type") ?? "";
-            if (contentType.includes("application/json")) {
-              const data = (await res.json()) as any;
-              const mymem = data?.responseData?.translatedText;
-              if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) {
-                translated = mymem;
-                break;
-              }
-            } else {
-              lastError = "خدمة الترجمة مشغولة حاليًا";
-            }
-          } else if (res.status === 429) {
-            lastError = "خدمة الترجمة مشغولة حاليًا";
-            if (attempt === 0) {
-              await new Promise((r) => setTimeout(r, 2000));
-              continue;
-            }
-          } else {
-            lastError = `خدمة الترجمة ردت بـ ${res.status}`;
-          }
-          break;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          if (msg.includes("Unexpected token") || msg.includes("<html")) {
-            lastError = "خدمة الترجمة مشغولة حاليًا";
-          } else {
-            lastError = msg;
-          }
-          if (attempt === 0) await new Promise((r) => setTimeout(r, 1000));
-        }
       }
     }
 
@@ -185,15 +152,7 @@ export async function handleLegacyPrefixCommands(
     }
 
     if (!translated?.trim()) {
-      // بدلا من إظهار خطأ، أعد النص الأصلي مع تنبيه
-      await message.reply({
-        embeds: [
-          new EmbedBuilder()
-            .setColor(0xf59e0b)
-            .setDescription(text.slice(0, 4096))
-            .setFooter({ text: "الترجمة غير متاحة حاليًا — نعرض النص الأصلي" })
-        ]
-      });
+      await message.reply(`فشلت الترجمة${lastError ? ` — ${lastError.slice(0, 80)}` : ""}، حاول مرة أخرى`);
       return true;
     }
 
