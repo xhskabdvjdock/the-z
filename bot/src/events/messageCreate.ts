@@ -115,14 +115,14 @@ const event: BotEvent = {
             // يفرض Discord على الـSlash، مطبّق يدويًا هنا للبادئة (لا يفرضه Discord تلقائيًا)
             const discordPerm = verifyCommandPermission(command, message.member!, message.channel);
             if (!discordPerm.allowed) {
-              await message.reply(discordPerm.reason ?? "❌ لا تملك الصلاحيات الكافية.");
+              await message.reply(discordPerm.reason ?? "لا تملك الصلاحيات الكافية.");
               return;
             }
 
             // 4.2) تخصيصات لوحة التحكم (Command Overrides) — نظام موجود لا يتغير
             const permCheck = checkCommandPermission(override, message.member!, message.channelId);
             if (!permCheck.allowed) {
-              await message.reply(permCheck.reason ?? "❌ غير مسموح.");
+              await message.reply(permCheck.reason ?? "غير مسموح.");
               return;
             }
 

@@ -92,7 +92,18 @@ const command: BotCommand = {
 
     await scheduleAutoDelete(reply, ctx.guild.id);
 
-    await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
+    await sendLog(ctx.client, ctx.guild.id, "moderation", embed, undefined, {
+      executorId: ctx.user.id,
+      executorTag: ctx.user.tag,
+      targetId: user.id,
+      targetTag: user.tag,
+      reason: reason,
+      channelId: ctx.channel.id,
+      channelName: ('name' in ctx.channel ? ctx.channel.name : undefined) || undefined,
+      details: {
+        deleteDays: deleteDays
+      }
+    });
   }
 };
 

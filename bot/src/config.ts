@@ -4,7 +4,7 @@ dotenv.config();
 function required(name: string): string {
   const value = process.env[name];
   if (!value) {
-    console.warn(`⚠️  متغير البيئة "${name}" غير موجود في ملف .env`);
+    console.warn(`متغير البيئة "${name}" غير موجود في ملف .env`);
     return "";
   }
   return value;
