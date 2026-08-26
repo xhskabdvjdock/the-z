@@ -15,6 +15,11 @@ const translationCache = new Map<string, { text: string; timestamp: number }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 دقائق
 const CACHE_MAX_ENTRIES = 500;
 
+// حماية من الإغراق — 3 ثواني بين كل ترجمة لنفس المستخدم
+const translateCooldown = new Map<string, number>();
+const TRANSLATE_COOLDOWN_MS = 3000;
+let globalTranslateCooldownUntil = 0;
+
 function cacheSet(key: string, value: { text: string; timestamp: number }): void {
   if (translationCache.size >= CACHE_MAX_ENTRIES) {
     const oldest = translationCache.keys().next().value;
@@ -54,6 +59,21 @@ export async function handleLegacyPrefixCommands(
       return true;
     }
 
+    // حماية من الإغراق
+    const lastTr = translateCooldown.get(message.author.id) ?? 0;
+    const nowCd = Date.now();
+    if (nowCd < globalTranslateCooldownUntil) {
+      const remaining = Math.ceil((globalTranslateCooldownUntil - nowCd) / 1000);
+      await message.reply(`خدمة الترجمة مشغولة حاليًا — حاول بعد ${remaining} ثانية.`);
+      return true;
+    }
+    if (nowCd - lastTr < TRANSLATE_COOLDOWN_MS) {
+      const remaining = Math.ceil((TRANSLATE_COOLDOWN_MS - (nowCd - lastTr)) / 1000);
+      await message.reply(`انتظر ${remaining} ثانية قبل ترجمة أخرى.`);
+      return true;
+    }
+    translateCooldown.set(message.author.id, nowCd);
+
     const isArabic = /[\u0600-\u06FF]/.test(text);
     const targetLang = isArabic ? "en" : "ar";
     const cacheKey = `${text.substring(0, 100)}_${targetLang}`;
@@ -88,6 +108,9 @@ export async function handleLegacyPrefixCommands(
         if (translated?.trim()) break;
       } catch (err) {
         lastError = err instanceof Error ? err.message : String(err);
+        if (lastError.includes("429") || lastError.includes("مشغولة")) {
+          globalTranslateCooldownUntil = Date.now() + 30000;
+        }
         if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
       }
     }
@@ -115,6 +138,7 @@ export async function handleLegacyPrefixCommands(
             }
           } else if (res.status === 429) {
             lastError = "خدمة الترجمة مشغولة حاليًا";
+            globalTranslateCooldownUntil = Date.now() + 30000;
             if (attempt === 0) {
               await new Promise((r) => setTimeout(r, 2000));
               continue;
@@ -135,7 +159,24 @@ export async function handleLegacyPrefixCommands(
       }
     }
 
-    // المحاولة 3: LibreTranslate كـ fallback أخير
+    // المحاولة 3: Google API المباشر
+    if (!translated?.trim()) {
+      try {
+        const sl = isArabic ? "ar" : "en";
+        const tl = targetLang;
+        const res = await fetch(
+          `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text.slice(0, 500))}`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          const gtrans = data?.[0]?.map((x: any) => x[0]).join(" ");
+          if (gtrans?.trim()) translated = gtrans;
+        }
+      } catch {}
+    }
+
+    // المحاولة 4: LibreTranslate كـ fallback أخير
     if (!translated?.trim()) {
       try {
         const res = await fetch("https://libretranslate.com/translate", {
