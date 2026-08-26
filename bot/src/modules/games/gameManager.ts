@@ -131,6 +131,196 @@ export async function handleFast(channel: any, author: any) {
   });
 }
 
+// Mafia
+export async function handleMafia(channel: any, author: any) {
+  const embed = new EmbedBuilder().setColor(0x2f3136).setTitle("مافيا").setDescription("تم توزيع الأدوار في الخاص. اضغط لبدء التصويت.");
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:mafia:vote:${Date.now()}`).setLabel("تصويت").setStyle(ButtonStyle.Primary));
+  await channel.send({ embeds: [embed], components: [row] });
+}
+
+// Chairs
+export async function handleChairs(channel: any, author: any) {
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("كراسي").setDescription("الموسيقى تعمل... اضغط بسرعة عند التوقف!");
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:chairs:${Date.now()}`).setLabel("اجلس").setStyle(ButtonStyle.Success));
+  await channel.send({ embeds: [embed], components: [row] });
+  setTimeout(async () => {
+    const stopEmbed = new EmbedBuilder().setColor(0xed4245).setTitle("توقفت الموسيقى!").setDescription("أسرع من يجلس!");
+    await channel.send({ embeds: [stopEmbed] }).catch(() => null);
+  }, 5000 + Math.random() * 5000);
+}
+
+// Wheel
+export async function handleWheel(channel: any, author: any) {
+  const prizes = ["100 نقطة", "50 نقطة", "حاول مجددا", "200 نقطة", "خسرت"];
+  const prize = prizes[Math.floor(Math.random() * prizes.length)];
+  const embed = new EmbedBuilder().setColor(0xf59e0b).setTitle("عجلة").setDescription(`<@${author.id}> حصل على: **${prize}**`);
+  await channel.send({ embeds: [embed] });
+}
+
+// HotXO
+export async function handleHotXO(channel: any, author: any, target?: any) {
+  await handleXO(channel, author, target);
+}
+
+// Hide
+export async function handleHide(channel: any, author: any) {
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("غميضة").setDescription("اختبأ <@" + author.id + ">! ابحثوا عنه.");
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:hide:${Date.now()}`).setLabel("وجدتك").setStyle(ButtonStyle.Primary));
+  await channel.send({ embeds: [embed], components: [row] });
+}
+
+// Replica
+export async function handleReplica(channel: any, author: any) {
+  const seq = Array.from({ length: 4 }, () => Math.floor(Math.random() * 4));
+  const emojis = ["🔴", "🟢", "🔵", "🟡"];
+  const seqStr = seq.map((n) => emojis[n]).join(" ");
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ريبلكا").setDescription(`احفظ التسلسل: ${seqStr}`);
+  await channel.send({ embeds: [embed] });
+  setTimeout(async () => {
+    const askEmbed = new EmbedBuilder().setColor(0x5865f2).setTitle("ريبلكا").setDescription("أعد التسلسل بالكتابة (مثال: 1 2 3 1)");
+    await channel.send({ embeds: [askEmbed] }).catch(() => null);
+  }, 3000);
+}
+
+// Guess
+export async function handleGuess(channel: any, author: any) {
+  const num = Math.floor(Math.random() * 100) + 1;
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("خمن").setDescription("خمن الرقم من 1 إلى 100");
+  await channel.send({ embeds: [embed] });
+  const filter = (m: any) => !m.author.bot;
+  const collector = channel.createMessageCollector({ filter, time: 30000 });
+  collector.on("collect", (m: any) => {
+    const guess = parseInt(m.content, 10);
+    if (isNaN(guess)) return;
+    if (guess === num) {
+      channel.send({ content: `صح! الرقم كان ${num} — فاز <@${m.author.id}>!` });
+      collector.stop();
+    } else if (guess < num) m.reply("أكبر!");
+    else m.reply("أصغر!");
+  });
+}
+
+// Draw
+export async function handleDraw(channel: any, author: any) {
+  const prompts = ["قطة", "بيت", "شجرة", "سيارة", "قلب"];
+  const prompt = prompts[Math.floor(Math.random() * prompts.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("رسمة").setDescription(`ارسم: **${prompt}** وأرسل الصورة`);
+  await channel.send({ embeds: [embed] });
+}
+
+// Unscramble
+export async function handleUnscramble(channel: any, author: any) {
+  const words = ["مرحبا", "مدرسة", "كتاب", "قلم", "لعبة"];
+  const word = words[Math.floor(Math.random() * words.length)];
+  const scrambled = word.split("").sort(() => Math.random() - 0.5).join(" ");
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("فكك").setDescription(`فكك: **${scrambled}**`);
+  await channel.send({ embeds: [embed] });
+  const filter = (m: any) => m.content === word;
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+  collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت! الكلمة: ${word}` }); });
+}
+
+// Merge
+export async function handleMerge(channel: any, author: any) {
+  const parts = ["ال", "مدر", "سة"];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ادمج").setDescription(`ادمج: **${parts.join(" + ")}**`);
+  await channel.send({ embeds: [embed] });
+  const answer = parts.join("");
+  const filter = (m: any) => m.content === answer;
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+}
+
+// Flags
+export async function handleFlags(channel: any, author: any) {
+  const flags: Record<string, string> = { "🇸🇦": "السعودية", "🇪🇬": "مصر", "🇯🇴": "الأردن", "🇦🇪": "الإمارات" };
+  const keys = Object.keys(flags);
+  const flag = keys[Math.floor(Math.random() * keys.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("اعلام").setDescription(`ما هذا العلم؟ ${flag}`);
+  await channel.send({ embeds: [embed] });
+  const answer = flags[flag];
+  const filter = (m: any) => m.content.includes(answer);
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+}
+
+// Reverse
+export async function handleReverse(channel: any, author: any) {
+  const text = "مرحبا بالعالم";
+  const reversed = text.split("").reverse().join("");
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("اعكس").setDescription(`اعكس: **${reversed}**`);
+  await channel.send({ embeds: [embed] });
+  const filter = (m: any) => m.content === text;
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+}
+
+// Letter
+export async function handleLetter(channel: any, author: any) {
+  const letters = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي".split("");
+  const letter = letters[Math.floor(Math.random() * letters.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("حرف").setDescription(`أرسل كلمة تبدأ بحرف **${letter}**`);
+  await channel.send({ embeds: [embed] });
+  const filter = (m: any) => m.content.startsWith(letter);
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+}
+
+// Correct
+export async function handleCorrect(channel: any, author: any) {
+  const wrong = "مرحبا بك في المدرسه";
+  const correct = "مرحبا بك في المدرسة";
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("صحح").setDescription(`صحح: **${wrong}**`);
+  await channel.send({ embeds: [embed] });
+  const filter = (m: any) => m.content === correct;
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+}
+
+// Order
+export async function handleOrder(channel: any, author: any) {
+  const words = ["أنا", "أحب", "البرمجة"];
+  const shuffled = [...words].sort(() => Math.random() - 0.5).join(" ");
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ترتيب").setDescription(`رتب: **${shuffled}**`);
+  await channel.send({ embeds: [embed] });
+  const answer = words.join(" ");
+  const filter = (m: any) => m.content === answer;
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+}
+
+// Colors
+export async function handleColors(channel: any, author: any) {
+  const colors = ["أحمر", "أزرق", "أخضر", "أصفر"];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("الوان").setDescription(`ما هذا اللون؟ 🟥 🟦 🟩 🟨 → **${color}**؟ اكتب اللون`);
+  await channel.send({ embeds: [embed] });
+  const filter = (m: any) => m.content === color;
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+}
+
+// Emoji
+export async function handleEmoji(channel: any, author: any) {
+  const emojis: Record<string, string> = { "😀": "سعيد", "😢": "حزين", "😡": "غاضب" };
+  const keys = Object.keys(emojis);
+  const emoji = keys[Math.floor(Math.random() * keys.length)];
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("ايموجي").setDescription(`ما معنى ${emoji}؟`);
+  await channel.send({ embeds: [embed] });
+  const answer = emojis[emoji];
+  const filter = (m: any) => m.content.includes(answer);
+  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
+  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+}
+
+// Reveal
+export async function handleReveal(channel: any, author: any) {
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("اكشف").setDescription("اضغط لكشف الصورة");
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:reveal:${Date.now()}`).setLabel("اكشف").setStyle(ButtonStyle.Primary));
+  await channel.send({ embeds: [embed], components: [row] });
+}
+
 export function getActiveGame(id: string) {
   return activeGames.get(id);
 }
@@ -205,4 +395,13 @@ export function registerGameComponents(router: any) {
     const embed = new (await import("discord.js")).EmbedBuilder().setColor(0x57f287).setTitle("زر").setDescription(`فاز <@${interaction.user.id}> لأنه الأسرع!`);
     await interaction.update({ embeds: [embed], components: [] });
   });
+
+  // Generic for simple games
+  const simpleGames = ["mafia", "chairs", "hide", "reveal"];
+  for (const gid of simpleGames) {
+    router.registerButton(`game:${gid}:`, async (interaction: any) => {
+      const embed = new (await import("discord.js")).EmbedBuilder().setColor(0x5865f2).setTitle(gid).setDescription(`تفاعل <@${interaction.user.id}>!`);
+      await interaction.update({ embeds: [embed], components: [] });
+    });
+  }
 }

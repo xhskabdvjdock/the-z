@@ -485,17 +485,34 @@ export async function handleLegacyPrefixCommands(
     const lower = content.toLowerCase();
     for (const [cmd, gameId] of Object.entries(gameMap)) {
       if (lower === `,${cmd}` || lower.startsWith(`,${cmd} `)) {
-        const { handleXO, handleRoulette, handleRPS, handleDice, handleButton, handleFast } = await import("../modules/games/gameManager");
+        const g = await import("../modules/games/gameManager");
         const targetUser = message.mentions.users.first() ?? null;
         const ch = message.channel as any;
         switch (gameId) {
-          case "xo": await handleXO(ch, message.author, targetUser ?? undefined); return true;
-          case "roulette": await handleRoulette(ch, message.author); return true;
-          case "rps": await handleRPS(ch, message.author, targetUser ?? undefined); return true;
-          case "dice": await handleDice(ch, message.author); return true;
-          case "button": await handleButton(ch, message.author); return true;
-          case "fast": await handleFast(ch, message.author); return true;
-          default: await ch.send({ content: `لعبة ${cmd} قيد التطوير حاليًا.` }); return true;
+          case "xo": await g.handleXO(ch, message.author, targetUser ?? undefined); return true;
+          case "roulette": await g.handleRoulette(ch, message.author); return true;
+          case "rps": await g.handleRPS(ch, message.author, targetUser ?? undefined); return true;
+          case "dice": await g.handleDice(ch, message.author); return true;
+          case "button": await g.handleButton(ch, message.author); return true;
+          case "fast": await g.handleFast(ch, message.author); return true;
+          case "mafia": await g.handleMafia(ch, message.author); return true;
+          case "chairs": await g.handleChairs(ch, message.author); return true;
+          case "wheel": await g.handleWheel(ch, message.author); return true;
+          case "hotxo": await g.handleHotXO(ch, message.author, targetUser ?? undefined); return true;
+          case "hide": await g.handleHide(ch, message.author); return true;
+          case "replica": await g.handleReplica(ch, message.author); return true;
+          case "guess": await g.handleGuess(ch, message.author); return true;
+          case "draw": await g.handleDraw(ch, message.author); return true;
+          case "unscramble": await g.handleUnscramble(ch, message.author); return true;
+          case "merge": await g.handleMerge(ch, message.author); return true;
+          case "flags": await g.handleFlags(ch, message.author); return true;
+          case "reverse": await g.handleReverse(ch, message.author); return true;
+          case "letter": await g.handleLetter(ch, message.author); return true;
+          case "correct": await g.handleCorrect(ch, message.author); return true;
+          case "order": await g.handleOrder(ch, message.author); return true;
+          case "colors": await g.handleColors(ch, message.author); return true;
+          case "emoji": await g.handleEmoji(ch, message.author); return true;
+          case "reveal": await g.handleReveal(ch, message.author); return true;
         }
       }
     }

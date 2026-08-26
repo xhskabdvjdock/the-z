@@ -2,7 +2,7 @@ import { EmbedBuilder } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { GAMES_LIST } from "@thez/shared";
-import { handleXO, handleRoulette, handleRPS, handleDice, handleButton, handleFast } from "../../modules/games/gameManager";
+import * as GM from "../../modules/games/gameManager";
 
 const command: BotCommand = {
   name: "game",
@@ -15,7 +15,7 @@ const command: BotCommand = {
       description: "نوع اللعبة",
       type: "string",
       required: true,
-      choices: GAMES_LIST.slice(0, 6).map((g) => ({ name: g.name, value: g.id }))
+      choices: GAMES_LIST.map((g) => ({ name: g.name, value: g.id }))
     },
     {
       name: "user",
@@ -41,33 +41,39 @@ const command: BotCommand = {
 
     const channel = ctx.channel as any;
 
-    switch (type) {
-      case "xo":
-        await handleXO(channel, ctx.user, targetMember?.user ?? targetUser);
-        await ctx.reply({ content: "تم بدء اللعبة!" });
-        break;
-      case "roulette":
-        await handleRoulette(channel, ctx.user);
-        await ctx.reply({ content: "تم بدء الروليت!" });
-        break;
-      case "rps":
-        await handleRPS(channel, ctx.user, targetMember?.user ?? targetUser);
-        await ctx.reply({ content: "تم بدء حجرة ورقة مقص!" });
-        break;
-      case "dice":
-        await handleDice(channel, ctx.user);
-        await ctx.reply({ content: "تم رمي النرد!" });
-        break;
-      case "button":
-        await handleButton(channel, ctx.user);
-        await ctx.reply({ content: "تم بدء لعبة الزر!" });
-        break;
-      case "fast":
-        await handleFast(channel, ctx.user);
-        await ctx.reply({ content: "تم بدء لعبة اسرع!" });
-        break;
-      default:
-        await ctx.reply({ content: "لعبة قيد التطوير حاليًا" });
+    const g = GM as any;
+    const map: Record<string, () => Promise<void>> = {
+      xo: () => g.handleXO(channel, ctx.user, targetMember?.user ?? targetUser),
+      roulette: () => g.handleRoulette(channel, ctx.user),
+      rps: () => g.handleRPS(channel, ctx.user, targetMember?.user ?? targetUser),
+      dice: () => g.handleDice(channel, ctx.user),
+      button: () => g.handleButton(channel, ctx.user),
+      fast: () => g.handleFast(channel, ctx.user),
+      mafia: () => g.handleMafia(channel, ctx.user),
+      chairs: () => g.handleChairs(channel, ctx.user),
+      wheel: () => g.handleWheel(channel, ctx.user),
+      hotxo: () => g.handleHotXO(channel, ctx.user, targetMember?.user ?? targetUser),
+      hide: () => g.handleHide(channel, ctx.user),
+      replica: () => g.handleReplica(channel, ctx.user),
+      guess: () => g.handleGuess(channel, ctx.user),
+      draw: () => g.handleDraw(channel, ctx.user),
+      unscramble: () => g.handleUnscramble(channel, ctx.user),
+      merge: () => g.handleMerge(channel, ctx.user),
+      flags: () => g.handleFlags(channel, ctx.user),
+      reverse: () => g.handleReverse(channel, ctx.user),
+      letter: () => g.handleLetter(channel, ctx.user),
+      correct: () => g.handleCorrect(channel, ctx.user),
+      order: () => g.handleOrder(channel, ctx.user),
+      colors: () => g.handleColors(channel, ctx.user),
+      emoji: () => g.handleEmoji(channel, ctx.user),
+      reveal: () => g.handleReveal(channel, ctx.user)
+    };
+    const fn = map[type];
+    if (fn) {
+      await fn();
+      await ctx.reply({ content: "تم بدء اللعبة!" });
+    } else {
+      await ctx.reply({ content: "لعبة غير معروفة" });
     }
   }
 };
