@@ -185,12 +185,15 @@ export async function handleLegacyPrefixCommands(
     }
 
     if (!translated?.trim()) {
-      const isAutoError = lastError?.includes("ISO 639-1");
-      const isHtmlError = lastError?.includes("Unexpected token") || lastError?.includes("<html");
-      const isBusyError = lastError?.includes("مشغولة") || lastError?.includes("429");
-      if (isAutoError || isHtmlError) lastError = null;
-      const displayError = lastError ? ` — ${lastError.slice(0, 100)}` : isBusyError ? " — الخدمة مشغولة، حاول بعد دقيقة" : "";
-      await message.reply(`فشلت الترجمة${displayError}، حاول مرة أخرى بعد ثوانٍ`);
+      // بدلا من إظهار خطأ، أعد النص الأصلي مع تنبيه
+      await message.reply({
+        embeds: [
+          new EmbedBuilder()
+            .setColor(0xf59e0b)
+            .setDescription(text.slice(0, 4096))
+            .setFooter({ text: "الترجمة غير متاحة حاليًا — نعرض النص الأصلي" })
+        ]
+      });
       return true;
     }
 
