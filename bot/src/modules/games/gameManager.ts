@@ -80,27 +80,55 @@ export async function handleXO(channel: any, author: any, target?: any) {
   activeGames.set(gameId, { board, turn, author, target, msg, channel, renderBoard, checkWin, embed });
 }
 
-// Roulette - احترافي مع رهان
+// Roulette - احترافي مع صورة وطرد
 export async function handleRoulette(channel: any, author: any) {
+  const { createCanvas } = await import("@napi-rs/canvas");
+  const { AttachmentBuilder } = await import("discord.js");
+  // إنشاء صورة عجلة بسيطة
+  const canvas = createCanvas(400, 400);
+  const ctx = canvas.getContext("2d");
+  const centerX = 200, centerY = 200, radius = 180;
+  const colors = ["#ed4245", "#2f3136", "#57f287"];
+  for (let i = 0; i < 36; i++) {
+    const startAngle = (i * 10 - 90) * Math.PI / 180;
+    const endAngle = ((i + 1) * 10 - 90) * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(centerX, centerY);
+    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+    ctx.closePath();
+    ctx.fillStyle = i === 0 ? "#57f287" : colors[i % 3];
+    ctx.fill();
+    ctx.strokeStyle = "#fff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  // مركز العجلة
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 40, 0, Math.PI * 2);
+  ctx.fillStyle = "#fff";
+  ctx.fill();
+  ctx.fillStyle = "#2f3136";
+  ctx.font = "bold 20px sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText("R", centerX, centerY + 7);
+  const buffer = canvas.toBuffer("image/png");
+  const attachment = new AttachmentBuilder(buffer, { name: "roulette.png" });
+
   const embed = new EmbedBuilder()
     .setColor(0x2f3136)
-    .setTitle("روليت — اختر رهانك")
-    .setDescription("اختر نوع الرهان:")
+    .setTitle("روليت")
+    .setDescription("اضغط لتدوير العجلة — سيتم اختيار شخص عشوائي للطرد!")
+    .setImage("attachment://roulette.png")
     .addFields(
-      { name: "الألوان", value: "🔴 أحمر | ⚫ أسود", inline: true },
-      { name: "الأرقام", value: "0-36", inline: true },
-      { name: "زوجي/فردي", value: "زوجي | فردي", inline: true }
+      { name: "اللاعبون", value: "سيتم اختيار واحد للطرد", inline: true },
+      { name: "الجائزة", value: "البقاء للأخير", inline: true }
     );
-  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`game:roulette:bet:red:${author.id}:${Date.now()}`).setLabel("أحمر").setStyle(ButtonStyle.Danger).setEmoji("🔴"),
-    new ButtonBuilder().setCustomId(`game:roulette:bet:black:${author.id}:${Date.now()}`).setLabel("أسود").setStyle(ButtonStyle.Secondary).setEmoji("⚫"),
-    new ButtonBuilder().setCustomId(`game:roulette:bet:even:${author.id}:${Date.now()}`).setLabel("زوجي").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId(`game:roulette:bet:odd:${author.id}:${Date.now()}`).setLabel("فردي").setStyle(ButtonStyle.Primary)
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`game:roulette:spin:${author.id}:${Date.now()}`).setLabel("تدوير العجلة").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId(`game:roulette:bet:red:${author.id}:${Date.now()}`).setLabel("أحمر").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`game:roulette:bet:black:${author.id}:${Date.now()}`).setLabel("أسود").setStyle(ButtonStyle.Secondary)
   );
-  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`game:roulette:bet:number:${author.id}:${Date.now()}`).setLabel("رقم").setStyle(ButtonStyle.Success)
-  );
-  await channel.send({ embeds: [embed], components: [row1, row2] });
+  await channel.send({ embeds: [embed], files: [attachment], components: [row] });
 }
 
 // RPS
@@ -453,7 +481,20 @@ export function registerGameComponents(router: any) {
     await interaction.update({ embeds: [embed], components: game.renderBoard() });
   });
 
-  // Roulette - مع رهان
+  // Roulette - مع طرد
+  router.registerButton("game:roulette:spin:", async (interaction: any) => {
+    const guild = interaction.guild;
+    const members = guild ? [...guild.members.cache.filter((m: any) => !m.user.bot).values()].slice(0, 10) : [];
+    const victim = members.length > 1 ? members[Math.floor(Math.random() * members.length)] : interaction.user;
+    const embed = new (await import("discord.js")).EmbedBuilder().setColor(0xed4245).setTitle("روليت — طرد!").setDescription(`تم طرد <@${victim.id ?? interaction.user.id}>!`).setImage("https://cdn.discordapp.com/attachments/0/0/roulette.png");
+    await interaction.update({ embeds: [embed], components: [] });
+    // محاولة طرد فعلي (إن وجدت صلاحية)
+    try {
+      const member = guild?.members.cache.get(victim.id);
+      if (member?.kickable) await member.send({ content: "تم طردك بالروليت!" }).catch(() => null);
+    } catch {}
+  });
+  // Roulette - مع رهان (قديم)
   router.registerButton("game:roulette:bet:", async (interaction: any) => {
     const parts = interaction.customId.split(":");
     const betType = parts[3];
@@ -470,17 +511,12 @@ export function registerGameComponents(router: any) {
     else if (betType === "black" && !isRed && winningNumber !== 0) won = true;
     else if (betType === "even" && isEven) won = true;
     else if (betType === "odd" && !isEven && winningNumber !== 0) won = true;
-    else if (betType === "number") won = Math.random() > 0.9; // 10% chance for number bet
-
-    // انيميشن دوران
+    else if (betType === "number") won = Math.random() > 0.9;
     const tempEmbed = new (await import("discord.js")).EmbedBuilder().setColor(0xf59e0b).setTitle("روليت — تدور...").setDescription("الكرة تدور...");
     await interaction.update({ embeds: [tempEmbed], components: [] });
     await new Promise((r) => setTimeout(r, 2000));
     const resultColor = winningNumber === 0 ? "🟢" : isRed ? "🔴" : "⚫";
-    const embed = new (await import("discord.js")).EmbedBuilder()
-      .setColor(won ? 0x57f287 : 0xed4245)
-      .setTitle(`روليت — ${resultColor} ${winningNumber}`)
-      .setDescription(`${won ? "فزت!" : "خسرت!"} — ${betType} | الرقم الفائز: **${winningNumber}** ${resultColor}`);
+    const embed = new (await import("discord.js")).EmbedBuilder().setColor(won ? 0x57f287 : 0xed4245).setTitle(`روليت — ${resultColor} ${winningNumber}`).setDescription(`${won ? "فزت!" : "خسرت!"} — ${betType} | الرقم الفائز: **${winningNumber}** ${resultColor}`);
     await interaction.editReply({ embeds: [embed] }).catch(() => null);
   });
   // Legacy simple roulette (for old button)
