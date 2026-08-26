@@ -1,82 +1,41 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } from "discord.js";
 import { BotCommand } from "../../types/command";
-import { getGuildConfig } from "../../utils/guildConfig";
-import { GAMES_LIST } from "@thez/shared";
-import * as GM from "../../modules/games/gameManager";
+import { gameRegistry } from "../../modules/games/core/GameRegistry";
 
 const command: BotCommand = {
   name: "game",
-  description: "بدء لعبة",
+  description: "عرض مركز الألعاب",
   category: "أدوات",
   guildOnly: true,
-  options: [
-    {
-      name: "type",
-      description: "نوع اللعبة",
-      type: "string",
-      required: true,
-      choices: GAMES_LIST.map((g) => ({ name: g.name, value: g.id }))
-    },
-    {
-      name: "user",
-      description: "الشخص للعب معه (لبعض الألعاب)",
-      type: "user",
-      required: false
-    }
-  ],
   async run(ctx) {
-    const type = ctx.getString("type")!;
-    const targetUser = await ctx.getUser("user");
-    let targetMember = null;
-    if (targetUser) {
-      targetMember = await ctx.guild.members.fetch(targetUser.id).catch(() => null);
-    }
+    const allGames = gameRegistry.getAll();
+    const multiplayer = allGames.filter((g) => g.category === "جماعية");
+    const singleplayer = allGames.filter((g) => g.category === "فردية");
 
-    const gConfig = await getGuildConfig(ctx.client, ctx.guild.id);
-    const gameCfg = (gConfig as any).games?.games?.[type];
-    if (gameCfg && !gameCfg.enabled) {
-      await ctx.reply({ content: "هذه اللعبة معطلة في هذا السيرفر." });
-      return;
-    }
+    const embed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle("مركز الألعاب")
+      .setDescription("اختر لعبة من القائمة أو استخدم الأوامر المباشرة")
+      .addFields(
+        { name: `ألعاب جماعية (${multiplayer.length})`, value: multiplayer.map((g: any) => `**${g.name}** — ${g.description} (\`,${g.id}\`)`).join("\n"), inline: false },
+        { name: `ألعاب فردية (${singleplayer.length})`, value: singleplayer.map((g: any) => `**${g.name}** — ${g.description} (\`,${g.id}\`)`).join("\n"), inline: false }
+      )
+      .setFooter({ text: "استخدم ,roulette أو ,xo ... لبدء لعبة" });
 
-    const channel = ctx.channel as any;
+    const row = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId("game:center:select")
+        .setPlaceholder("اختر لعبة لعرض التفاصيل")
+        .addOptions(
+          allGames.slice(0, 25).map((g) => ({
+            label: g.name,
+            description: g.description.slice(0, 50),
+            value: g.id
+          }))
+        )
+    );
 
-    const g = GM as any;
-    const fizboGames = ["mafia", "roulette", "hide", "chairs", "draw"];
-    if (fizboGames.includes(type)) {
-      const { startFizboGame } = await import("../../modules/games/fizboGames");
-      await startFizboGame(channel, type, ctx.user.id, ctx.guild.id);
-      await ctx.reply({ content: `تم إنشاء لوبي ${type} — انضموا!` });
-      return;
-    }
-    const map: Record<string, () => Promise<void>> = {
-      xo: () => g.handleXO(channel, ctx.user, targetMember?.user ?? targetUser),
-      rps: () => g.handleRPS(channel, ctx.user, targetMember?.user ?? targetUser),
-      dice: () => g.handleDice(channel, ctx.user),
-      button: () => g.handleButton(channel, ctx.user),
-      fast: () => g.handleFast(channel, ctx.user),
-      wheel: () => g.handleWheel(channel, ctx.user),
-      hotxo: () => g.handleHotXO(channel, ctx.user, targetMember?.user ?? targetUser),
-      replica: () => g.handleReplica(channel, ctx.user),
-      guess: () => g.handleGuess(channel, ctx.user),
-      unscramble: () => g.handleUnscramble(channel, ctx.user),
-      merge: () => g.handleMerge(channel, ctx.user),
-      flags: () => g.handleFlags(channel, ctx.user),
-      reverse: () => g.handleReverse(channel, ctx.user),
-      letter: () => g.handleLetter(channel, ctx.user),
-      correct: () => g.handleCorrect(channel, ctx.user),
-      order: () => g.handleOrder(channel, ctx.user),
-      colors: () => g.handleColors(channel, ctx.user),
-      emoji: () => g.handleEmoji(channel, ctx.user),
-      reveal: () => g.handleReveal(channel, ctx.user)
-    };
-    const fn = map[type];
-    if (fn) {
-      await fn();
-      await ctx.reply({ content: "تم بدء اللعبة!" });
-    } else {
-      await ctx.reply({ content: "لعبة غير معروفة" });
-    }
+    await ctx.reply({ embeds: [embed], components: [row] });
   }
 };
 

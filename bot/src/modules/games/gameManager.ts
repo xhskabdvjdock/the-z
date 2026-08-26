@@ -443,6 +443,10 @@ export function deleteActiveGame(id: string) {
 }
 
 export function registerGameComponents(router: any) {
+  try {
+    const { registerGameCenterComponents } = require("./core/GameCenter");
+    registerGameCenterComponents(router);
+  } catch {}
   // Fizbo lobby
   try {
     const { registerFizboComponents } = require("./fizboGames");
