@@ -158,6 +158,16 @@ export function registerFizboComponents(router: any) {
     }
   });
 
+  router.registerButton("fizbo:cancel:", async (interaction: any) => {
+    const channelId = interaction.customId.split(":")[2];
+    const { cancelLobby } = await import("./fizboLobby");
+    if (cancelLobby(channelId, interaction.user.id)) {
+      await interaction.update({ content: "تم إلغاء اللوبي.", embeds: [], components: [] });
+    } else {
+      await interaction.reply({ content: "المضيف فقط يمكنه الإلغاء.", ephemeral: true });
+    }
+  });
+
   router.registerButton("fizbo:start:", async (interaction: any) => {
     const channelId = interaction.customId.split(":")[2];
     const lobby = getLobby(channelId);

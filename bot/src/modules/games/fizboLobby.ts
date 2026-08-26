@@ -6,9 +6,10 @@ export interface FizboLobby {
   gameId: string;
   hostId: string;
   players: string[];
-  state: "waiting" | "playing" | "finished";
+  state: "waiting" | "starting" | "playing" | "finished";
   messageId?: string;
   createdAt: number;
+  startedAt?: number;
 }
 
 const lobbies = new Map<string, FizboLobby>(); // key: channelId
@@ -78,8 +79,16 @@ export function buildLobbyRow(lobby: FizboLobby): ActionRowBuilder<ButtonBuilder
     row.addComponents(
       new ButtonBuilder().setCustomId(`fizbo:join:${lobby.channelId}`).setLabel("انضمام").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`fizbo:leave:${lobby.channelId}`).setLabel("خروج").setStyle(ButtonStyle.Secondary),
-      new ButtonBuilder().setCustomId(`fizbo:start:${lobby.channelId}`).setLabel("بدء").setStyle(ButtonStyle.Primary)
+      new ButtonBuilder().setCustomId(`fizbo:start:${lobby.channelId}`).setLabel("بدء").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId(`fizbo:cancel:${lobby.channelId}`).setLabel("إلغاء").setStyle(ButtonStyle.Danger)
     );
   }
   return row;
+}
+
+export function cancelLobby(channelId: string, userId: string): boolean {
+  const lobby = lobbies.get(channelId);
+  if (!lobby || lobby.state !== "waiting" || lobby.hostId !== userId) return false;
+  lobbies.delete(channelId);
+  return true;
 }
