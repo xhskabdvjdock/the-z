@@ -173,22 +173,12 @@ export async function handleFast(channel: any, author: any) {
   });
 }
 
-// Mafia - متقدم
+// Mafia - متكامل
 export async function handleMafia(channel: any, author: any) {
-  const embed = new EmbedBuilder().setColor(0x2f3136).setTitle("مافيا").setDescription("تم توزيع الأدوار في الخاص.\n\nالليل يحل... المافيا تختار ضحيتها.");
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`game:mafia:night:${Date.now()}`).setLabel("الليل").setStyle(ButtonStyle.Secondary).setDisabled(true),
-    new ButtonBuilder().setCustomId(`game:mafia:vote:${Date.now()}`).setLabel("تصويت النهار").setStyle(ButtonStyle.Primary)
-  );
-  const msg = await channel.send({ embeds: [embed], components: [row] });
-  // بعد 10 ثواني يبدأ النهار والتصويت
-  setTimeout(async () => {
-    const dayEmbed = new EmbedBuilder().setColor(0xf59e0b).setTitle("مافيا — النهار").setDescription("ناقشوا وصوتوا على من تعتقدون أنه المافيا!");
-    const voteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder().setCustomId(`game:mafia:dayvote:${Date.now()}`).setLabel("تصويت").setStyle(ButtonStyle.Danger)
-    );
-    await channel.send({ embeds: [dayEmbed], components: [voteRow] }).catch(() => null);
-  }, 10000);
+  const { startMafiaGame } = await import("./mafia");
+  // جمع اللاعبين من اللوبي إن وجد، أو solo
+  const players = [author.id];
+  await startMafiaGame(channel, players);
 }
 
 // Chairs - متقدم مع عد تنازلي
