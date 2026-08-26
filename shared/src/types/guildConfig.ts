@@ -293,6 +293,12 @@ export interface IGuildConfig {
       channels?: string;
       other?: string;
       invites?: string;
+      gifblock?: string;
+      suggestions?: string;
+      access?: string;
+      leveling?: string;
+      jail?: string;
+      reactionroles?: string;
     } & Record<string, string | undefined>;
     customChannels: {
       messages?: string[];

@@ -1,7 +1,8 @@
-import { Message, GuildMember } from "discord.js";
+import { Message, GuildMember, EmbedBuilder } from "discord.js";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { GifBlock } from "@thez/shared";
+import { sendLog } from "../logging/logger";
 
 export async function handleGifBlock(client: ExtendedClient, message: Message): Promise<boolean> {
   if (!message.guild) return false;
@@ -35,6 +36,33 @@ export async function handleGifBlock(client: ExtendedClient, message: Message): 
 
   if (!blockedGif) return false;
 
+  // Log the action
+  const embed = new EmbedBuilder()
+    .setTitle("حظر GIF")
+    .setColor(0xff6b6b)
+    .setDescription(`تم حذف رابط GIF محظور`)
+    .addFields(
+      { name: "المستخدم", value: `${member.user.tag} (${member.id})` },
+      { name: "الرابط المحظور", value: blockedGif.url },
+      { name: "الإجراء", value: blockedGif.action },
+      { name: "القناة", value: `<#${message.channelId}>` }
+    )
+    .setTimestamp();
+
+  await sendLog(client, message.guild.id, "gifblock", embed, undefined, {
+    executorId: client.user?.id,
+    executorTag: client.user?.tag,
+    targetId: message.author.id,
+    targetTag: message.author.tag,
+    reason: blockedGif.reason,
+    channelId: message.channelId,
+    channelName: ('name' in message.channel ? message.channel.name : undefined) || undefined,
+    details: {
+      blockedUrl: blockedGif.url,
+      action: blockedGif.action
+    }
+  });
+
   // Apply the configured action
   await applyGifBlockAction(client, message, blockedGif, gConfig.gifBlock.logChannelId);
 
@@ -49,20 +77,6 @@ async function applyGifBlockAction(
 ): Promise<void> {
   const member = message.member as GuildMember;
   if (!member) return;
-
-  // Log the action
-  if (logChannelId) {
-    const logChannel = message.guild?.channels.cache.get(logChannelId);
-    if (logChannel?.isTextBased()) {
-      await logChannel.send({
-        content: `🚫 **GIF Block Triggered**\n` +
-                 `User: ${member.user.tag} (${member.id})\n` +
-                 `Blocked URL: ${block.url}\n` +
-                 `Action: ${block.action}\n` +
-                 `Channel: ${message.channel}`
-      }).catch(() => {});
-    }
-  }
 
   // Apply the action
   switch (block.action) {
@@ -103,13 +117,13 @@ async function applyGifBlockAction(
 function getActionNotification(action: string, member: GuildMember, duration?: number): string {
   switch (action) {
     case "delete":
-      return `� ${member}، تم حذف رابط GIF المحظور`;
+      return `${member}، تم حذف رابط GIF المحظور`;
     case "warn":
-      return `⚠️ ${member}، تم تحذيرك بسبب إرسال GIF محظور`;
+      return `${member}، تم تحذيرك بسبب إرسال GIF محظور`;
     case "mute":
-      return `🔇 ${member}، تم كتمك لمدة ${duration || 10} دقيقة بسبب إرسال GIF محظور`;
+      return `${member}، تم كتمك لمدة ${duration || 10} دقيقة بسبب إرسال GIF محظور`;
     case "kick":
-      return `👢 ${member.user.tag}، تم طردك بسبب إرسال GIF محظور`;
+      return `${member.user.tag}، تم طردك بسبب إرسال GIF محظور`;
     case "ban":
       return `🔨 ${member.user.tag}، تم حظرك بسبب إرسال GIF محظور`;
     default:

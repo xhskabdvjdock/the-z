@@ -1,8 +1,7 @@
 import { BaseMessageOptions, EmbedBuilder } from "discord.js";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
-import { config as botConfig } from "../../config";
-import { logError } from "../../utils/logger";
+import { LogEntry } from "@thez/shared";
 
 export type LogChannelKey =
   | "moderation"
@@ -16,19 +15,47 @@ export type LogChannelKey =
   | "channels"
   | "other"
   | "invites"
+  | "gifblock"
+  | "suggestions"
+  | "access"
+  | "leveling"
+  | "jail"
+  | "reactionroles"
   | string;
 
 /** ذاكرة مؤقتة بسيطة لتقليل تكرار السجلات نفسها */
 const logCache = new Map<string, number>();
 const LOG_CACHE_TTL = 10000; // 10 ثواني
 
-/** يرسل تضمين (Embed) جاهز لروم اللوق المخصص لهذا النوع من الأحداث */
+/** يرسل تضمين (Embed) محسّن مع معلومات كاملة */
 export async function sendLog(
   client: ExtendedClient,
   guildId: string,
   key: LogChannelKey,
   embed: EmbedBuilder,
-  extra?: BaseMessageOptions
+  extra?: BaseMessageOptions,
+  options?: {
+    // من قام بالإجراء
+    executorId?: string;
+    executorTag?: string;
+    // من تأثر بالإجراء
+    targetId?: string;
+    targetTag?: string;
+    // تفاصيل الإجراء
+    reason?: string;
+    duration?: string;
+    channelId?: string;
+    channelName?: string;
+    roleId?: string;
+    roleName?: string;
+    messageId?: string;
+    messageUrl?: string;
+    // حالة قبل وبعد
+    before?: any;
+    after?: any;
+    // تفاصيل إضافية
+    details?: any;
+  }
 ) {
   try {
     const gConfig = await getGuildConfig(client, guildId);
@@ -58,8 +85,34 @@ export async function sendLog(
     const channel = await client.channels.fetch(channelId).catch(() => null);
     if (!channel || !channel.isTextBased()) return;
 
-    if (!embed.data.color) embed.setColor(botConfig.defaultColor);
+    // تحسين الـ embed
+    if (!embed.data.color) embed.setColor(Number(gConfig.embedColor) || 0x5865f2);
     if (!embed.data.timestamp) embed.setTimestamp();
+
+    // حفظ السجل في قاعدة البيانات مع تفاصيل كاملة
+    if (options) {
+      await LogEntry.create({
+        guildId,
+        type: key as any,
+        action: embed.data.title || "Unknown",
+        executorId: options.executorId,
+        executorTag: options.executorTag,
+        targetId: options.targetId,
+        targetTag: options.targetTag,
+        reason: options.reason,
+        duration: options.duration,
+        channelId: options.channelId,
+        channelName: options.channelName,
+        roleId: options.roleId,
+        roleName: options.roleName,
+        messageId: options.messageId,
+        messageUrl: options.messageUrl,
+        before: options.before,
+        after: options.after,
+        details: options.details,
+        createdAt: new Date()
+      }).catch(() => {});
+    }
 
     // استخدام retry للتعامل مع rate limits
     await client.withRetry(async () => {
@@ -73,7 +126,7 @@ export async function sendLog(
       console.warn('[Log] Rate limit hit, logging suppressed temporarily');
       return;
     }
-    logError("send-log", err);
+    console.error('[Log] Error sending log:', err);
   }
 }
 

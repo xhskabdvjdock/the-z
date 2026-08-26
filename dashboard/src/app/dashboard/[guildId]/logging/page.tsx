@@ -24,7 +24,14 @@ export default async function LoggingPage({ params }: { params: { guildId: strin
       server: config?.logging?.channels?.server ?? "",
       roles: config?.logging?.channels?.roles ?? "",
       channels: config?.logging?.channels?.channels ?? "",
-      other: config?.logging?.channels?.other ?? ""
+      other: config?.logging?.channels?.other ?? "",
+      invites: config?.logging?.channels?.invites ?? "",
+      gifblock: config?.logging?.channels?.gifblock ?? "",
+      suggestions: config?.logging?.channels?.suggestions ?? "",
+      access: config?.logging?.channels?.access ?? "",
+      leveling: config?.logging?.channels?.leveling ?? "",
+      jail: config?.logging?.channels?.jail ?? "",
+      reactionroles: config?.logging?.channels?.reactionroles ?? ""
     },
     customChannels: {
       messages: Array.isArray(config?.logging?.customChannels?.messages) ? config.logging.customChannels.messages : [],

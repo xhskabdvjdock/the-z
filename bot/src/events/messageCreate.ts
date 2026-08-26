@@ -120,7 +120,7 @@ const event: BotEvent = {
             // يفرض Discord على الـSlash، مطبّق يدويًا هنا للبادئة (لا يفرضه Discord تلقائيًا)
             const discordPerm = verifyCommandPermission(command, message.member!, message.channel);
             if (!discordPerm.allowed) {
-              await message.reply(discordPerm.reason ?? "❌ لا تملك الصلاحيات الكافية.");
+              await message.reply(discordPerm.reason ?? "لا تملك الصلاحيات الكافية.");
               return;
             }
 

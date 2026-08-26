@@ -81,7 +81,16 @@ const command: BotCommand = {
       reason,
       durationMinutes: duration
     });
-    await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
+    await sendLog(ctx.client, ctx.guild.id, "moderation", embed, undefined, {
+      executorId: ctx.user.id,
+      executorTag: ctx.user.tag,
+      targetId: target.id,
+      targetTag: target.user.tag,
+      reason: reason,
+      duration: `${duration} دقيقة`,
+      channelId: ctx.channel.id,
+      channelName: ('name' in ctx.channel ? ctx.channel.name : undefined) || undefined
+    });
   }
 };
 

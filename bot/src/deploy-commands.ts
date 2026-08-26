@@ -30,11 +30,11 @@ async function buildShared() {
     const sharedDist = path.join(sharedPath, "dist");
     // مدمج مسبقًا في الصورة — لا نعيد البناء كل إقلاع
     if (fs.existsSync(path.join(sharedDist, "index.js"))) return;
-    console.log("🔨 Building @thez/shared package...");
+    console.log("Building @thez/shared package...");
     await execAsync("npm run build", { cwd: sharedPath });
-    console.log("✅ @thez/shared built successfully");
+    console.log("@thez/shared built successfully");
   } catch (error) {
-    console.error("❌ Failed to build @thez/shared:", error);
+    console.error("Failed to build @thez/shared:", error);
     throw error;
   }
 }
@@ -49,30 +49,30 @@ async function main() {
   await buildShared();
 
   // تشخيص متغيرات البيئة
-  console.log("🔍 تشخيص متغيرات البيئة:");
+  console.log("تشخيص متغيرات البيئة:");
   console.log(`   - DISCORD_TOKEN موجود: ${!!process.env.DISCORD_TOKEN}`);
   console.log(`   - DISCORD_BOT_TOKEN موجود: ${!!process.env.DISCORD_BOT_TOKEN}`);
   console.log(`   - DISCORD_CLIENT_ID موجود: ${!!process.env.DISCORD_CLIENT_ID}`);
   console.log(`   - DEV_GUILD_ID موجود: ${!!process.env.DEV_GUILD_ID}`);
-  
+
   if (!config.token) {
-    console.error("❌ Discord Token غير موجود - لا يمكن نشر الأوامر");
+    console.error("Discord Token غير موجود - لا يمكن نشر الأوامر");
     process.exit(1);
   }
-  
+
   console.log(`   - Token المستخدم: ${config.token.substring(0, 10)}... (طول: ${config.token.length})`);
 
   const dir = commandsDir();
-  console.log("📁 Looking for commands in:", dir);
+  console.log("Looking for commands in:", dir);
   const files = walk(dir);
-  console.log("📄 Found files:", files);
+  console.log("Found files:", files);
   const payload: unknown[] = [];
 
   for (const file of files) {
     const imported = require(file);
     const command: BotCommand = imported.default ?? imported;
     if (!command?.name) continue;
-    console.log(`➕ Adding command: ${command.name}`);
+    console.log(`Adding command: ${command.name}`);
     payload.push(buildSlashCommandJSON(command));
   }
 
@@ -83,12 +83,12 @@ async function main() {
       const imported = require(file);
       const contextMenu = imported.default ?? imported;
       if (!contextMenu?.name) continue;
-      console.log(`➕ Adding context menu: ${contextMenu.name}`);
+      console.log(`Adding context menu: ${contextMenu.name}`);
       payload.push(buildContextMenuJSON(contextMenu));
     }
   }
 
-  console.log(`📤 Deploying ${payload.length} commands...`);
+  console.log(`Deploying ${payload.length} commands...`);
   const startTime = Date.now();
   const rest = new REST({
     retries: 3,
@@ -99,53 +99,53 @@ async function main() {
   // إذا لم يوجد DEV_GUILD_ID، استخدم نشر عالمي مع timeout أطول
   const isGlobal = !config.devGuildId;
   if (isGlobal) {
-    console.log("⚠️ نشر عالمي - قد يستغرق عدة دقائق");
-    console.log("💡 لإلغاء النشر العالمي السريع، استخدم DEV_GUILD_ID في Render environment variables");
+    console.log("نشر عالمي - قد يستغرق عدة دقائق");
+    console.log("لإلغاء النشر العالمي السريع، استخدم DEV_GUILD_ID في Render environment variables");
   }
 
   // Retry logic with exponential backoff for rate limits
   const maxRetries = isGlobal ? 2 : 5; // أقل محاولات للنشر العالمي
   let attempt = 0;
-  
+
   while (attempt < maxRetries) {
     try {
-      console.log(`🔄 محاولة نشر #${attempt + 1}/${maxRetries}...`);
-      
+      console.log(`محاولة نشر #${attempt + 1}/${maxRetries}...`);
+
       if (config.devGuildId) {
-        console.log(`🎯 نشر إلى سيرفر التطوير: ${config.devGuildId}`);
+        console.log(`نشر إلى سيرفر التطوير: ${config.devGuildId}`);
         await rest.put(Routes.applicationGuildCommands(config.clientId, config.devGuildId), {
           body: payload
         });
-        console.log(`✅ تم تسجيل ${payload.length} أمر على سيرفر التطوير.`);
+        console.log(`تم تسجيل ${payload.length} أمر على سيرفر التطوير.`);
       } else {
-        console.log(`🌐 نشر عالمي (global commands)`);
+        console.log(`نشر عالمي (global commands)`);
         await rest.put(Routes.applicationCommands(config.clientId), { body: payload });
-        console.log(`✅ تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
+        console.log(`تم تسجيل ${payload.length} أمر عالمياً (قد يستغرق تفعيلها حتى ساعة).`);
       }
-      console.log(`⏱️ استغرق نشر الأوامر ${((Date.now() - startTime) / 1000).toFixed(1)} ثانية`);
+      console.log(`استغرق نشر الأوامر ${((Date.now() - startTime) / 1000).toFixed(1)} ثانية`);
       process.exit(0);
     } catch (error: any) {
       attempt++;
-      console.error(`❌ فشل المحاولة #${attempt}:`, error.message);
-      
+      console.error(`فشل المحاولة #${attempt}:`, error.message);
+
       if (error.code === 50001 || error.message?.includes('Rate limit') || error.message?.includes('429')) {
         const retryAfter = error.retryAfter || 60; // default 60 seconds
-        console.warn(`⚠️ Rate limit hit. Retry in ${retryAfter} seconds (attempt ${attempt}/${maxRetries})`);
-        
+        console.warn(`Rate limit hit. Retry in ${retryAfter} seconds (attempt ${attempt}/${maxRetries})`);
+
         if (attempt >= maxRetries) {
-          console.error("❌ فشل نشر الأوامر: تم تجاوز الحد الأقصى للمحاولات بسبب rate limit.");
-          console.error("💡 حاول مرة أخرى بعد حوالي 21 يوم (حسب Discord).");
-          console.error("💡 أو استخدم DEV_GUILD_ID للنشر على سيرفر واحد فقط (أسرع بدون rate limits).");
+          console.error("فشل نشر الأوامر: تم تجاوز الحد الأقصى للمحاولات بسبب rate limit.");
+          console.error("حاول مرة أخرى بعد حوالي 21 يوم (حسب Discord).");
+          console.error("أو استخدم DEV_GUILD_ID للنشر على سيرفر واحد فقط (أسرع بدون rate limits).");
           process.exit(1);
         }
-        
+
         // Wait for retry after seconds (convert to ms)
-        console.log(`⏳ انتظار ${retryAfter} ثانية قبل المحاولة التالية...`);
+        console.log(`انتظار ${retryAfter} ثانية قبل المحاولة التالية...`);
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
         continue;
       }
-      
-      console.error("❌ فشل نشر الأوامر:", error);
+
+      console.error("فشل نشر الأوامر:", error);
       process.exit(1);
     }
   }
@@ -154,6 +154,6 @@ async function main() {
 main()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error("❌ فشل نشر الأوامر:", error);
+    console.error("فشل نشر الأوامر:", error);
     process.exit(1);
   });
