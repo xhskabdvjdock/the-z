@@ -464,6 +464,43 @@ export async function handleLegacyPrefixCommands(
     return true;
   }
 
+  // ────── ألعاب جماعية/فردية ───────────────────────────────────────────────
+  const gConfigForGames = await getGuildConfig(client, message.guild!.id).catch(() => null);
+  const gamesEnabled = (gConfigForGames as any)?.games?.enabled !== false;
+  if (gamesEnabled) {
+    const gameMap: Record<string, string> = {};
+    const gamesCfg = (gConfigForGames as any)?.games?.games ?? {};
+    for (const [id, cfg] of Object.entries(gamesCfg as any)) {
+      const c = cfg as any;
+      if (c?.enabled !== false) gameMap[(c.command || id).toLowerCase()] = id;
+    }
+    // افتراضي
+    if (!gameMap["xo"]) gameMap["xo"] = "xo";
+    if (!gameMap["roulette"]) gameMap["roulette"] = "roulette";
+    if (!gameMap["rps"]) gameMap["rps"] = "rps";
+    if (!gameMap["dice"]) gameMap["dice"] = "dice";
+    if (!gameMap["button"]) gameMap["button"] = "button";
+    if (!gameMap["fast"]) gameMap["fast"] = "fast";
+
+    const lower = content.toLowerCase();
+    for (const [cmd, gameId] of Object.entries(gameMap)) {
+      if (lower === `,${cmd}` || lower.startsWith(`,${cmd} `)) {
+        const { handleXO, handleRoulette, handleRPS, handleDice, handleButton, handleFast } = await import("../modules/games/gameManager");
+        const targetUser = message.mentions.users.first() ?? null;
+        const ch = message.channel as any;
+        switch (gameId) {
+          case "xo": await handleXO(ch, message.author, targetUser ?? undefined); return true;
+          case "roulette": await handleRoulette(ch, message.author); return true;
+          case "rps": await handleRPS(ch, message.author, targetUser ?? undefined); return true;
+          case "dice": await handleDice(ch, message.author); return true;
+          case "button": await handleButton(ch, message.author); return true;
+          case "fast": await handleFast(ch, message.author); return true;
+          default: await ch.send({ content: `لعبة ${cmd} قيد التطوير حاليًا.` }); return true;
+        }
+      }
+    }
+  }
+
   // ────── ,slap ─────────────────────────────────────────────────────────────
   if (content.toLowerCase().startsWith(",slap")) {
     let targetUser = message.mentions.users.first() ?? null;

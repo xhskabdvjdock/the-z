@@ -13,6 +13,7 @@ import { startScheduledMessages } from "./scheduledMessages/scheduledMessagesMan
 import { registerReactionRoles } from "./reactionRoles/reactionRolesManager";
 import { startIslamicContent } from "./islamicContent/islamicContentManager";
 import { registerSuggestionComponents } from "./suggestions/suggestionManager";
+import { registerGameComponents } from "./games/gameManager";
 
 /** نقطة تجميع مركزية: تسجّل كل معالجات الأزرار/القوائم الخاصة بكل موديول، وتشغّل المهام الدورية */
 export function registerAllModules(client: ExtendedClient) {
@@ -22,6 +23,7 @@ export function registerAllModules(client: ExtendedClient) {
   registerSelfRoleComponents(componentRouter);
   registerCaptchaComponents(componentRouter);
   registerSuggestionComponents(componentRouter);
+  registerGameComponents(componentRouter);
   registerReactionRoles(client);
 
   client.once("ready", () => {

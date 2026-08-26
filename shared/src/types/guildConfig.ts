@@ -413,6 +413,12 @@ export interface IGuildConfig {
     footerColor?: string;
   };
 
+  /** نظام الألعاب */
+  games: {
+    enabled: boolean;
+    games: Record<string, { enabled: boolean; command: string }>;
+  };
+
   /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
   dashboard?: IGuildDashboardSettings;
 
@@ -609,6 +615,36 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       contentColor: "#ffffff",
       footerText: "استخدم الأزرار أدناه للتصويت",
       footerColor: "#b9bbbe"
+    },
+
+    games: {
+      enabled: true,
+      games: {
+        roulette: { enabled: true, command: "roulette" },
+        xo: { enabled: true, command: "xo" },
+        mafia: { enabled: true, command: "mafia" },
+        chairs: { enabled: true, command: "chairs" },
+        rps: { enabled: true, command: "rps" },
+        dice: { enabled: true, command: "dice" },
+        wheel: { enabled: true, command: "wheel" },
+        hotxo: { enabled: true, command: "hotxo" },
+        hide: { enabled: true, command: "hide" },
+        replica: { enabled: true, command: "replica" },
+        guess: { enabled: true, command: "guess" },
+        draw: { enabled: true, command: "draw" },
+        button: { enabled: true, command: "button" },
+        fast: { enabled: true, command: "fast" },
+        unscramble: { enabled: true, command: "unscramble" },
+        merge: { enabled: true, command: "merge" },
+        flags: { enabled: true, command: "flags" },
+        reverse: { enabled: true, command: "reverse" },
+        letter: { enabled: true, command: "letter" },
+        correct: { enabled: true, command: "correct" },
+        order: { enabled: true, command: "order" },
+        colors: { enabled: true, command: "colors" },
+        emoji: { enabled: true, command: "emoji" },
+        reveal: { enabled: true, command: "reveal" }
+      }
     },
 
     dashboard: {

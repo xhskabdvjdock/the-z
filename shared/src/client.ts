@@ -15,3 +15,4 @@ export * from "./utils/validate";
 export * from "./constants/commands";
 export * from "./constants/colorTemplates";
 export * from "./constants/islamic";
+export * from "./constants/games";
