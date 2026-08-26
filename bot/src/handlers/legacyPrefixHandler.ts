@@ -79,7 +79,7 @@ export async function handleLegacyPrefixCommands(
         const chunks = text.length > 1000 ? text.match(/.{1,1000}/g) ?? [text] : [text];
         const results: string[] = [];
         for (const chunk of chunks) {
-          const res = await translate(chunk, { to: targetLang, from: isArabic ? "ar" : "auto" });
+          const res = await translate(chunk, { to: targetLang, ...(isArabic ? { from: "ar" } : {}) });
           if (res?.trim()) results.push(res);
           else throw new Error("empty translation");
           if (chunks.length > 1) await new Promise((r) => setTimeout(r, 200));
@@ -113,7 +113,9 @@ export async function handleLegacyPrefixCommands(
     }
 
     if (!translated?.trim()) {
-      await message.reply(`فشلت الترجمة${lastError ? ` — ${lastError.slice(0, 100)}` : ""}، حاول مرة أخرى بعد ثوانٍ`);
+      const isAutoError = lastError?.includes("ISO 639-1");
+      const displayError = isAutoError ? "" : lastError ? ` — ${lastError.slice(0, 100)}` : "";
+      await message.reply(`فشلت الترجمة${displayError}، حاول مرة أخرى بعد ثوانٍ`);
       return true;
     }
 
