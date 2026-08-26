@@ -28,8 +28,7 @@ import {
   LayoutTemplate,
   BookOpen,
   Lightbulb,
-  KeyRound,
-  Gamepad2
+  KeyRound
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -44,7 +43,6 @@ const NAV_ITEMS = [
   { href: "/schedules", label: "الرسائل المجدولة", icon: CalendarClock },
   { href: "/islamic", label: "الأذكار والمحتوى الإسلامي", icon: BookOpen },
   { href: "/suggestions", label: "الاقتراحات", icon: Lightbulb },
-  { href: "/games", label: "الألعاب", icon: Gamepad2 },
   { href: "/access", label: "إدارة الوصول", icon: KeyRound },
   { href: "/roles", label: "الرولات والألوان", icon: User },
   { href: "/reaction-roles", label: "رولات الرياكشن", icon: Smile },

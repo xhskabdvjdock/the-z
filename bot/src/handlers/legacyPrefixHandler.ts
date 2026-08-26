@@ -464,62 +464,6 @@ export async function handleLegacyPrefixCommands(
     return true;
   }
 
-  // ────── ألعاب جماعية/فردية ───────────────────────────────────────────────
-  const gConfigForGames = await getGuildConfig(client, message.guild!.id).catch(() => null);
-  const gamesEnabled = (gConfigForGames as any)?.games?.enabled !== false;
-  if (gamesEnabled) {
-    const gameMap: Record<string, string> = {};
-    const gamesCfg = (gConfigForGames as any)?.games?.games ?? {};
-    for (const [id, cfg] of Object.entries(gamesCfg as any)) {
-      const c = cfg as any;
-      if (c?.enabled !== false) gameMap[(c.command || id).toLowerCase()] = id;
-    }
-    // افتراضي
-    if (!gameMap["xo"]) gameMap["xo"] = "xo";
-    if (!gameMap["roulette"]) gameMap["roulette"] = "roulette";
-    if (!gameMap["rps"]) gameMap["rps"] = "rps";
-    if (!gameMap["dice"]) gameMap["dice"] = "dice";
-    if (!gameMap["button"]) gameMap["button"] = "button";
-    if (!gameMap["fast"]) gameMap["fast"] = "fast";
-
-    const lower = content.toLowerCase();
-    for (const [cmd, gameId] of Object.entries(gameMap)) {
-      if (lower === `,${cmd}` || lower.startsWith(`,${cmd} `)) {
-        const fizboGames = ["mafia", "roulette", "hide", "chairs", "draw"];
-        if (fizboGames.includes(gameId)) {
-          const { startFizboGame } = await import("../modules/games/fizboGames");
-          await startFizboGame(message.channel as any, gameId, message.author.id, message.guild!.id);
-          return true;
-        }
-        const g = await import("../modules/games/gameManager");
-        const targetUser = message.mentions.users.first() ?? null;
-        const ch = message.channel as any;
-        switch (gameId) {
-          case "xo": await g.handleXO(ch, message.author, targetUser ?? undefined); return true;
-          case "roulette": await g.handleRoulette(ch, message.author); return true;
-          case "rps": await g.handleRPS(ch, message.author, targetUser ?? undefined); return true;
-          case "dice": await g.handleDice(ch, message.author); return true;
-          case "button": await g.handleButton(ch, message.author); return true;
-          case "fast": await g.handleFast(ch, message.author); return true;
-          case "wheel": await g.handleWheel(ch, message.author); return true;
-          case "hotxo": await g.handleHotXO(ch, message.author, targetUser ?? undefined); return true;
-          case "replica": await g.handleReplica(ch, message.author); return true;
-          case "guess": await g.handleGuess(ch, message.author); return true;
-          case "unscramble": await g.handleUnscramble(ch, message.author); return true;
-          case "merge": await g.handleMerge(ch, message.author); return true;
-          case "flags": await g.handleFlags(ch, message.author); return true;
-          case "reverse": await g.handleReverse(ch, message.author); return true;
-          case "letter": await g.handleLetter(ch, message.author); return true;
-          case "correct": await g.handleCorrect(ch, message.author); return true;
-          case "order": await g.handleOrder(ch, message.author); return true;
-          case "colors": await g.handleColors(ch, message.author); return true;
-          case "emoji": await g.handleEmoji(ch, message.author); return true;
-          case "reveal": await g.handleReveal(ch, message.author); return true;
-        }
-      }
-    }
-  }
-
   // ────── ,slap ─────────────────────────────────────────────────────────────
   if (content.toLowerCase().startsWith(",slap")) {
     let targetUser = message.mentions.users.first() ?? null;
