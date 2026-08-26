@@ -68,26 +68,61 @@ export async function handleLegacyPrefixCommands(
       return true;
     }
 
-    try {
-      const translated = await translate(text, {
-        to: targetLang,
-        from: isArabic ? "ar" : "auto"
-      });
+    // محاولة ترجمة مع إعادة محاولة و fallback
+    let translated: string | null = null;
+    let lastError: string | null = null;
 
-      if (!translated?.trim()) {
-        await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
-        return true;
+    // المحاولة 1: Google Translate مع إعادة محاولة
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        // تقسيم النصوص الطويلة
+        const chunks = text.length > 1000 ? text.match(/.{1,1000}/g) ?? [text] : [text];
+        const results: string[] = [];
+        for (const chunk of chunks) {
+          const res = await translate(chunk, { to: targetLang, from: isArabic ? "ar" : "auto" });
+          if (res?.trim()) results.push(res);
+          else throw new Error("empty translation");
+          if (chunks.length > 1) await new Promise((r) => setTimeout(r, 200));
+        }
+        translated = results.join(" ");
+        if (translated?.trim()) break;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 800));
       }
-
-      const finalText = translated.length > 4096 ? translated.substring(0, 4093) + "..." : translated;
-      cacheSet(cacheKey, { text: translated, timestamp: now });
-
-      await message.reply({
-        embeds: [new EmbedBuilder().setColor(config.defaultColor).setDescription(finalText)]
-      });
-    } catch {
-      await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
     }
+
+    // المحاولة 2: Fallback MyMemory API
+    if (!translated?.trim()) {
+      try {
+        const langPair = isArabic ? "ar|en" : "en|ar";
+        const res = await fetch(
+          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}`,
+          { signal: AbortSignal.timeout(8000) }
+        );
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          const mymem = data?.responseData?.translatedText;
+          if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) {
+            translated = mymem;
+          }
+        }
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+      }
+    }
+
+    if (!translated?.trim()) {
+      await message.reply(`فشلت الترجمة${lastError ? ` — ${lastError.slice(0, 100)}` : ""}، حاول مرة أخرى بعد ثوانٍ`);
+      return true;
+    }
+
+    const finalText = translated.length > 4096 ? translated.substring(0, 4093) + "..." : translated;
+    cacheSet(cacheKey, { text: translated, timestamp: now });
+
+    await message.reply({
+      embeds: [new EmbedBuilder().setColor(config.defaultColor).setDescription(finalText)]
+    });
     return true;
   }
 
