@@ -80,13 +80,27 @@ export async function handleXO(channel: any, author: any, target?: any) {
   activeGames.set(gameId, { board, turn, author, target, msg, channel, renderBoard, checkWin, embed });
 }
 
-// Roulette
+// Roulette - احترافي مع رهان
 export async function handleRoulette(channel: any, author: any) {
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("روليت").setDescription("اضغط لتدوير");
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    new ButtonBuilder().setCustomId(`game:roulette:${Date.now()}`).setLabel("تدوير").setStyle(ButtonStyle.Primary)
+  const embed = new EmbedBuilder()
+    .setColor(0x2f3136)
+    .setTitle("روليت — اختر رهانك")
+    .setDescription("اختر نوع الرهان:")
+    .addFields(
+      { name: "الألوان", value: "🔴 أحمر | ⚫ أسود", inline: true },
+      { name: "الأرقام", value: "0-36", inline: true },
+      { name: "زوجي/فردي", value: "زوجي | فردي", inline: true }
+    );
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`game:roulette:bet:red:${author.id}:${Date.now()}`).setLabel("أحمر").setStyle(ButtonStyle.Danger).setEmoji("🔴"),
+    new ButtonBuilder().setCustomId(`game:roulette:bet:black:${author.id}:${Date.now()}`).setLabel("أسود").setStyle(ButtonStyle.Secondary).setEmoji("⚫"),
+    new ButtonBuilder().setCustomId(`game:roulette:bet:even:${author.id}:${Date.now()}`).setLabel("زوجي").setStyle(ButtonStyle.Primary),
+    new ButtonBuilder().setCustomId(`game:roulette:bet:odd:${author.id}:${Date.now()}`).setLabel("فردي").setStyle(ButtonStyle.Primary)
   );
-  await channel.send({ embeds: [embed], components: [row] });
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`game:roulette:bet:number:${author.id}:${Date.now()}`).setLabel("رقم").setStyle(ButtonStyle.Success)
+  );
+  await channel.send({ embeds: [embed], components: [row1, row2] });
 }
 
 // RPS
@@ -234,13 +248,13 @@ export async function handleGuess(channel: any, author: any) {
   collector.on("end", (c: any) => { if (c.size === 0 || !c.some((m: any) => parseInt(m.content, 10) === num)) channel.send({ content: `انتهى الوقت! الرقم كان ${num}` }).catch(() => null); });
 }
 
-// Draw - مع وقت
+// Draw - مع وقت وصورة
 export async function handleDraw(channel: any, author: any) {
   const prompts = ["قطة", "بيت", "شجرة", "سيارة", "قلب", "نجمة", "قمر", "وردة"];
   const prompt = prompts[Math.floor(Math.random() * prompts.length)];
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("رسمة").setDescription(`ارسم: **${prompt}** وأرسل الصورة خلال 60 ثانية`);
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("رسمة").setDescription(`ارسم: **${prompt}**\nأرسل الصورة خلال 60 ثانية — سيتم التصويت عليها!`).setFooter({ text: "الأكثر تصويتًا يفوز" });
   await channel.send({ embeds: [embed] });
-  const filter = (m: any) => m.attachments.size > 0;
+  const filter = (m: any) => m.attachments.size > 0 && m.content.includes(prompt) || m.attachments.size > 0;
   const collector = channel.createMessageCollector({ filter, time: 60000, max: 5 });
   const voters = new Set<string>();
   collector.on("collect", async (m: any) => {
@@ -248,6 +262,9 @@ export async function handleDraw(channel: any, author: any) {
     voters.add(m.author.id);
     await m.react("👍").catch(() => null);
     await m.react("👎").catch(() => null);
+  });
+  collector.on("end", () => {
+    channel.send({ embeds: [new EmbedBuilder().setColor(0x5865f2).setTitle("انتهى وقت الرسم!").setDescription("صوتوا على الرسومات بـ 👍👎")] }).catch(() => null);
   });
 }
 
@@ -276,14 +293,14 @@ export async function handleMerge(channel: any, author: any) {
   collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت! الإجابة: ${puzzle.answer}` }).catch(() => null); });
 }
 
-// Flags - مع أزرار اختيار
+// Flags - مع أزرار وصورة
 export async function handleFlags(channel: any, author: any) {
   const flags: Record<string, string> = { "🇸🇦": "السعودية", "🇪🇬": "مصر", "🇯🇴": "الأردن", "🇦🇪": "الإمارات", "🇲🇦": "المغرب", "🇱🇧": "لبنان" };
   const keys = Object.keys(flags);
   const flag = keys[Math.floor(Math.random() * keys.length)];
   const correct = flags[flag];
   const options = [...new Set([correct, ...Object.values(flags).sort(() => Math.random() - 0.5).slice(0, 3)])].sort(() => Math.random() - 0.5);
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("اعلام").setDescription(`ما هذا العلم؟ ${flag}`);
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("اعلام").setDescription(`ما هذا العلم؟\n\n# ${flag}`).setFooter({ text: "اختر الإجابة الصحيحة" });
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
     options.map((opt) => new ButtonBuilder().setCustomId(`game:flags:${opt}:${correct}:${Date.now()}`).setLabel(opt).setStyle(ButtonStyle.Secondary))
   );
@@ -339,16 +356,30 @@ export async function handleOrder(channel: any, author: any) {
   collector.on("end", (c: any) => { if (c.size === 0) channel.send({ content: `انتهى الوقت! الإجابة: ${puzzle.answer}` }).catch(() => null); });
 }
 
-// Colors - مع أزرار
+// Colors - مع صورة لون
 export async function handleColors(channel: any, author: any) {
-  const colors: Record<string, number> = { "أحمر": 0xed4245, "أزرق": 0x3498db, "أخضر": 0x57f287, "أصفر": 0xf1c40f, "بنفسجي": 0x9b59b6 };
+  const colors: Record<string, { hex: string; value: number }> = {
+    "أحمر": { hex: "#ed4245", value: 0xed4245 },
+    "أزرق": { hex: "#3498db", value: 0x3498db },
+    "أخضر": { hex: "#57f287", value: 0x57f287 },
+    "أصفر": { hex: "#f1c40f", value: 0xf1c40f },
+    "بنفسجي": { hex: "#9b59b6", value: 0x9b59b6 }
+  };
   const keys = Object.keys(colors);
   const color = keys[Math.floor(Math.random() * keys.length)];
-  const embed = new EmbedBuilder().setColor(colors[color]).setTitle("الوان").setDescription(`ما هذا اللون؟`);
+  const { createCanvas } = await import("@napi-rs/canvas");
+  const canvas = createCanvas(200, 200);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = colors[color].hex;
+  ctx.fillRect(0, 0, 200, 200);
+  const buffer = canvas.toBuffer("image/png");
+  const { AttachmentBuilder } = await import("discord.js");
+  const attachment = new AttachmentBuilder(buffer, { name: "color.png" });
+  const embed = new EmbedBuilder().setColor(colors[color].value).setTitle("الوان").setDescription(`ما هذا اللون؟`).setImage("attachment://color.png");
   const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-    keys.map((c) => new ButtonBuilder().setCustomId(`game:colors:${c}:${color}:${Date.now()}`).setLabel(c).setStyle(c === color ? ButtonStyle.Primary : ButtonStyle.Secondary))
+    keys.map((c) => new ButtonBuilder().setCustomId(`game:colors:${c}:${color}:${Date.now()}`).setLabel(c).setStyle(ButtonStyle.Secondary))
   );
-  await channel.send({ embeds: [embed], components: [row] });
+  await channel.send({ embeds: [embed], files: [attachment], components: [row] });
 }
 
 // Emoji
@@ -422,8 +453,39 @@ export function registerGameComponents(router: any) {
     await interaction.update({ embeds: [embed], components: game.renderBoard() });
   });
 
-  // Roulette
+  // Roulette - مع رهان
+  router.registerButton("game:roulette:bet:", async (interaction: any) => {
+    const parts = interaction.customId.split(":");
+    const betType = parts[3];
+    const authorId = parts[4];
+    if (interaction.user.id !== authorId) {
+      await interaction.reply({ content: "هذا الرهان ليس لك!", ephemeral: true });
+      return;
+    }
+    const winningNumber = Math.floor(Math.random() * 37);
+    const isRed = [1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36].includes(winningNumber);
+    const isEven = winningNumber !== 0 && winningNumber % 2 === 0;
+    let won = false;
+    if (betType === "red" && isRed) won = true;
+    else if (betType === "black" && !isRed && winningNumber !== 0) won = true;
+    else if (betType === "even" && isEven) won = true;
+    else if (betType === "odd" && !isEven && winningNumber !== 0) won = true;
+    else if (betType === "number") won = Math.random() > 0.9; // 10% chance for number bet
+
+    // انيميشن دوران
+    const tempEmbed = new (await import("discord.js")).EmbedBuilder().setColor(0xf59e0b).setTitle("روليت — تدور...").setDescription("الكرة تدور...");
+    await interaction.update({ embeds: [tempEmbed], components: [] });
+    await new Promise((r) => setTimeout(r, 2000));
+    const resultColor = winningNumber === 0 ? "🟢" : isRed ? "🔴" : "⚫";
+    const embed = new (await import("discord.js")).EmbedBuilder()
+      .setColor(won ? 0x57f287 : 0xed4245)
+      .setTitle(`روليت — ${resultColor} ${winningNumber}`)
+      .setDescription(`${won ? "فزت!" : "خسرت!"} — ${betType} | الرقم الفائز: **${winningNumber}** ${resultColor}`);
+    await interaction.editReply({ embeds: [embed] }).catch(() => null);
+  });
+  // Legacy simple roulette (for old button)
   router.registerButton("game:roulette:", async (interaction: any) => {
+    if (interaction.customId.includes(":bet:")) return; // تجاهل، تم التعامل أعلاه
     const result = Math.random() > 0.5 ? "فزت!" : "خسرت!";
     const embed = new (await import("discord.js")).EmbedBuilder().setColor(result === "فزت!" ? 0x57f287 : 0xed4245).setTitle("روليت").setDescription(`<@${interaction.user.id}> ${result}`);
     await interaction.update({ embeds: [embed], components: [] });
