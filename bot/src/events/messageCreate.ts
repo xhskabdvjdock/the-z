@@ -8,6 +8,7 @@ import { handleAutoMod } from "../modules/automod/automod";
 import { handleAutoResponse } from "../modules/autoResponse/autoResponse";
 import { handleMessageXp } from "../modules/leveling/xpManager";
 import { handleLegacyPrefixCommands } from "../handlers/legacyPrefixHandler";
+import { handleSuggestionMessage } from "../modules/suggestions/suggestionListener";
 import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
 import { sendMediaLog } from "../modules/logging/logger";
 import { handleGifBlock } from "../modules/gifBlock/gifBlock";
@@ -48,7 +49,11 @@ const event: BotEvent = {
 
     const gConfig = await getGuildConfig(client, message.guild.id);
 
-    // 1.5) التحقق من حظر GIFs
+    // 1.5) نظام الاقتراحات — تحويل رسائل قناة الاقتراحات إلى صور
+    const wasSuggestion = await handleSuggestionMessage(message);
+    if (wasSuggestion) return;
+
+    // 1.6) التحقق من حظر GIFs
     const wasGifBlocked = await handleGifBlock(client, message);
     if (wasGifBlocked) return;
 

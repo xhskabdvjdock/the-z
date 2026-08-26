@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 const MAX_FILE_SIZE = 3 * 1024 * 1024;
 
@@ -20,6 +20,15 @@ export default function BackgroundUpload({
   subtitle: string;
 }) {
   const [error, setError] = useState<string>("");
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  // debounce للمعاينة لتقليل إعادة الرسم عند الكتابة
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedValue(value), 300);
+    return () => clearTimeout(t);
+  }, [value]);
+
+  const isLargeBase64 = value.startsWith("data:") && value.length > 500 * 1024;
 
   const handleFile = (file: File | undefined) => {
     setError("");
@@ -40,11 +49,13 @@ export default function BackgroundUpload({
     reader.readAsDataURL(file);
   };
 
-  const backgroundStyle: React.CSSProperties = value
-    ? { backgroundImage: `url("${value}")`, backgroundSize: "cover", backgroundPosition: "center" }
-    : {
-        backgroundImage: "linear-gradient(135deg, #1e1b4b 0%, #5865f2 100%)"
-      };
+  const backgroundStyle: React.CSSProperties = useMemo(
+    () =>
+      debouncedValue
+        ? { backgroundImage: `url("${debouncedValue}")`, backgroundSize: "cover", backgroundPosition: "center" }
+        : { backgroundImage: "linear-gradient(135deg, #1e1b4b 0%, #5865f2 100%)" },
+    [debouncedValue]
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -86,6 +97,7 @@ export default function BackgroundUpload({
       </div>
 
       {error && <p className="text-sm text-[#F87171]">{error}</p>}
+      {isLargeBase64 && <p className="text-sm text-[#F59E0B]">الصورة كبيرة كـ Base64 — يفضل استخدام رابط مباشر لتوفير المساحة</p>}
 
       <div>
         <label className="label">معاينة حية</label>

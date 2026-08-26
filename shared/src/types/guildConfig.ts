@@ -404,6 +404,23 @@ export interface IGuildConfig {
     whitelistChannelIds: string[];
   };
 
+  /** نظام الاقتراحات والتصويت */
+  suggestions: {
+    enabled: boolean;
+    channelId: string | null;
+    logChannelId: string | null;
+    allowVoting: boolean;
+    autoThread: boolean;
+    backgroundImage?: string;
+    imageTitle?: string;
+    imageTitleColor?: string;
+    usernameColor?: string;
+    tagColor?: string;
+    contentColor?: string;
+    footerText?: string;
+    footerColor?: string;
+  };
+
   /** إعدادات صلاحيات لوحة التحكم (اختيارية — تُقرأ بالقيم الافتراضية عند غيابها) */
   dashboard?: IGuildDashboardSettings;
 
@@ -590,6 +607,22 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       enabled: false,
       whitelistRoleIds: [],
       whitelistChannelIds: []
+    },
+
+    suggestions: {
+      enabled: false,
+      channelId: null,
+      logChannelId: null,
+      allowVoting: true,
+      autoThread: false,
+      backgroundImage: "",
+      imageTitle: "اقتراح جديد",
+      imageTitleColor: "#5865f2",
+      usernameColor: "#ffffff",
+      tagColor: "#b9bbbe",
+      contentColor: "#ffffff",
+      footerText: "استخدم الأزرار أدناه للتصويت",
+      footerColor: "#b9bbbe"
     },
 
     dashboard: {

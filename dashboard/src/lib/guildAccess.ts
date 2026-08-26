@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { authOptions } from "./auth";
 import {
   GuildConfig,
+  DashboardAccess,
+  isSnowflakeId,
+  OWNER_ID,
   resolveDashboardSettings,
-  resolveGuildAccessLevel,
-  isSnowflakeId
+  resolveGuildAccessLevel
 } from "@thez/shared";
 import { ensureDb } from "./db";
 import {
@@ -14,6 +16,14 @@ import {
   getUserGuilds,
   hasAdminPermission
 } from "./discord";
+
+// كاش للوصول — 10 ثواني لتقليل ضغط Discord API
+const accessCache = new Map<string, { expiresAt: number }>();
+const ACCESS_CACHE_TTL = 10 * 1000;
+
+// كاش للقائمة البيضاء — 30 ثانية
+let whitelistCache: { data: string[]; expiresAt: number } | null = null;
+const WHITELIST_CACHE_TTL = 30 * 1000;
 
 /**
  * نقطة الحماية الوحيدة لصفحات/إجراءات اللوحة (Server Actions) داخل /dashboard/[guildId]/*.
@@ -27,6 +37,39 @@ import {
  *  5) الصلاحيات: مالك → Administrator (مع احترام allowAdministrators) → رتب اللوحة
  *  6) أي فشل → إعادة توجيه للوحة
  */
+async function checkDashboardWhitelist(userId: string) {
+  if (userId === OWNER_ID) return;
+  // كاش
+  if (whitelistCache && Date.now() < whitelistCache.expiresAt) {
+    if (!whitelistCache.data.includes(userId)) {
+      console.error(`[guildAccess] المستخدم ${userId} غير مصرح له بالداشبورد (كاش)`);
+      redirect("/no-access");
+    }
+    return;
+  }
+  try {
+    await ensureDb();
+    const doc = await DashboardAccess.findOne({ id: "global" });
+    const allowed = doc?.allowedUserIds ?? [OWNER_ID];
+    const effectiveAllowed = allowed.includes(OWNER_ID) ? allowed : [OWNER_ID, ...allowed];
+    whitelistCache = { data: effectiveAllowed, expiresAt: Date.now() + WHITELIST_CACHE_TTL };
+    if (!effectiveAllowed.includes(userId)) {
+      console.error(`[guildAccess] المستخدم ${userId} غير مصرح له بالداشبورد`);
+      redirect("/no-access");
+    }
+  } catch (err) {
+    if (userId !== OWNER_ID) {
+      console.error("[guildAccess] فشل فحص القائمة البيضاء:", err);
+      redirect("/no-access");
+    }
+  }
+}
+
+export function clearAccessCache() {
+  accessCache.clear();
+  whitelistCache = null;
+}
+
 export async function requireGuildAdmin(guildId: string) {
   const session = await getServerSession(authOptions);
   if (!session?.accessToken) {
@@ -42,6 +85,15 @@ export async function requireGuildAdmin(guildId: string) {
   if (!userId || !isSnowflakeId(userId)) {
     console.error("[guildAccess] معرّف المستخدم غير صالح:", userId);
     redirect("/");
+  }
+
+  await checkDashboardWhitelist(userId);
+
+  // كاش للوصول الناجح — 10 ثواني
+  const cacheKey = `${userId}:${guildId}`;
+  const cachedAccess = accessCache.get(cacheKey);
+  if (cachedAccess && Date.now() < cachedAccess.expiresAt) {
+    return session;
   }
 
   if (!isSnowflakeId(guildId)) {
@@ -88,6 +140,9 @@ export async function requireGuildAdmin(guildId: string) {
       );
       redirect("/dashboard");
     }
+
+    // نجاح — خزّن في الكاش
+    accessCache.set(cacheKey, { expiresAt: Date.now() + ACCESS_CACHE_TTL });
   } catch (err) {
     console.error("[guildAccess] خطأ أثناء الفحص:", err);
     redirect("/dashboard");
@@ -100,5 +155,19 @@ export async function requireSession() {
   const session = await getServerSession(authOptions);
   if (!session?.accessToken) redirect("/");
   if ((session as any)?.error === "RefreshFailed") redirect("/login");
+  const userId = (session.user as any)?.id;
+  if (userId && isSnowflakeId(userId)) {
+    await checkDashboardWhitelist(userId);
+  }
+  return session;
+}
+
+export async function requireDashboardAccess() {
+  const session = await getServerSession(authOptions);
+  if (!session?.accessToken) redirect("/");
+  if ((session as any)?.error === "RefreshFailed") redirect("/login");
+  const userId = (session.user as any)?.id;
+  if (!userId || !isSnowflakeId(userId)) redirect("/");
+  await checkDashboardWhitelist(userId);
   return session;
 }

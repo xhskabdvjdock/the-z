@@ -15,13 +15,13 @@ export default async function GuildLayout({
   const guild = await getGuildInfo(params.guildId);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-center gap-4">
-        <Link href="/dashboard" className="btn-secondary !px-3 !py-1.5 text-sm">
+    <div className="mx-auto w-full max-w-[1600px] px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mb-8 flex items-center gap-4">
+        <Link href="/dashboard" className="btn-secondary !px-4 !py-2 text-sm">
           ← السيرفرات
         </Link>
         {guild && (
-          <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-[#121318] border border-[#2A2D37]">
+          <div className="flex items-center gap-3 px-5 py-3 rounded-xl bg-[#121318] border border-[#2A2D37] shadow-sm">
             {guild.icon ? (
               <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-lg">
                 <Image
@@ -42,8 +42,8 @@ export default async function GuildLayout({
         )}
       </div>
 
-      <div className="flex flex-col gap-6 lg:flex-row">
-        <div className="lg:w-64 flex-shrink-0">
+      <div className="flex flex-col gap-8 lg:flex-row lg:gap-8">
+        <div className="lg:w-72 flex-shrink-0">
           <Sidebar guildId={params.guildId} />
         </div>
         <div className="min-w-0 flex-1">{children}</div>

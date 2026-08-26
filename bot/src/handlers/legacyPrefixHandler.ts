@@ -68,26 +68,100 @@ export async function handleLegacyPrefixCommands(
       return true;
     }
 
-    try {
-      const translated = await translate(text, {
-        to: targetLang,
-        from: isArabic ? "ar" : "auto"
-      });
+    // محاولة ترجمة مع إعادة محاولة و fallback — استخدام Google API المباشر كـ أساسي (أكثر موثوقية)
+    let translated: string | null = null;
+    let lastError: string | null = null;
 
-      if (!translated?.trim()) {
-        await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
-        return true;
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.DISCORD_PROXY;
+    const fetchWithProxy = (url: string, opts: RequestInit = {}) => {
+      if (proxyUrl) {
+        try {
+          // @ts-ignore
+          const { HttpsProxyAgent } = require("https-proxy-agent");
+          (opts as any).agent = new HttpsProxyAgent(proxyUrl);
+        } catch {}
       }
+      return fetch(url, opts);
+    };
 
-      const finalText = translated.length > 4096 ? translated.substring(0, 4093) + "..." : translated;
-      cacheSet(cacheKey, { text: translated, timestamp: now });
-
-      await message.reply({
-        embeds: [new EmbedBuilder().setColor(config.defaultColor).setDescription(finalText)]
-      });
-    } catch {
-      await message.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
+    // محاولة سريعة بدون تأخير
+    try {
+      const sl = isArabic ? "ar" : "auto";
+      const tl = targetLang;
+      const res = await fetchWithProxy(
+        `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text.slice(0, 1000))}`,
+        { signal: AbortSignal.timeout(5000) as any }
+      );
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const gtrans = data?.[0]?.map((x: any) => x[0]).join(" ");
+        if (gtrans?.trim()) translated = gtrans;
+      }
+    } catch (err) {
+      lastError = err instanceof Error ? err.message : String(err);
     }
+
+    if (!translated?.trim()) {
+      try {
+        const langPair = isArabic ? "ar|en" : "en|ar";
+        const res = await fetchWithProxy(
+          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}&de=a@b.c`,
+          { signal: AbortSignal.timeout(5000) as any }
+        );
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          const mymem = data?.responseData?.translatedText;
+          if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) translated = mymem;
+        }
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+      }
+    }
+
+    // المحاولة 3: Google API المباشر (مرة ثانية)
+    if (!translated?.trim()) {
+      try {
+        const sl = isArabic ? "ar" : "en";
+        const tl = targetLang;
+        const res = await fetchWithProxy(
+          `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text.slice(0, 500))}`,
+          { signal: AbortSignal.timeout(8000) as any }
+        );
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          const gtrans = data?.[0]?.map((x: any) => x[0]).join(" ");
+          if (gtrans?.trim()) translated = gtrans;
+        }
+      } catch {}
+    }
+
+    // المحاولة 4: LibreTranslate كـ fallback أخير
+    if (!translated?.trim()) {
+      try {
+        const res = await fetchWithProxy("https://libretranslate.com/translate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q: text.slice(0, 500), source: isArabic ? "ar" : "en", target: targetLang, format: "text" }),
+          signal: AbortSignal.timeout(8000)
+        });
+        if (res.ok) {
+          const data = (await res.json()) as any;
+          if (data?.translatedText?.trim()) translated = data.translatedText;
+        }
+      } catch {}
+    }
+
+    if (!translated?.trim()) {
+      await message.reply(`فشلت الترجمة${lastError ? ` — ${lastError.slice(0, 80)}` : ""}، حاول مرة أخرى`);
+      return true;
+    }
+
+    const finalText = translated.length > 4096 ? translated.substring(0, 4093) + "..." : translated;
+    cacheSet(cacheKey, { text: translated, timestamp: now });
+
+    await message.reply({
+      embeds: [new EmbedBuilder().setColor(config.defaultColor).setDescription(finalText)]
+    });
     return true;
   }
 
@@ -317,6 +391,178 @@ export async function handleLegacyPrefixCommands(
       reason: "prefix jail",
       ...(durationMinutes > 0 ? { durationMinutes } : {})
     });
+    return true;
+  }
+
+  // ────── ,kiss ─────────────────────────────────────────────────────────────
+  if (content.toLowerCase().startsWith(",kiss")) {
+    let targetUser = message.mentions.users.first() ?? null;
+    let targetMember: GuildMember | null = null;
+
+    // إذا كان رد على رسالة، استخدم صاحب الرسالة المرد عليها
+    if (!targetUser && message.reference?.messageId) {
+      const refMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (refMsg && !refMsg.author.bot) targetUser = refMsg.author;
+    }
+
+    // محاولة جلب بالـ ID من النص
+    if (!targetUser) {
+      const rawId = content.slice(5).trim().split(/\s+/).find((a) => /^\d{17,19}$/.test(a.replace(/[<@!>]/g, "")))?.replace(/[<@!>]/g, "");
+      if (rawId) {
+        try {
+          const fetched = await message.client.users.fetch(rawId);
+          if (fetched && !fetched.bot) targetUser = fetched;
+        } catch {}
+      }
+    }
+
+    if (!targetUser) {
+      await message.reply("منشن شخص أو رد على رسالته لترسل له قبلة. مثال: `,kiss @شخص`");
+      return true;
+    }
+
+    if (targetUser.id === message.author.id) {
+      await message.reply("لا يمكنك إرسال قبلة لنفسك!");
+      return true;
+    }
+
+    // جلب gif من waifu.pics
+    let gifUrl: string | null = null;
+    try {
+      const res = await fetch("https://api.waifu.pics/sfw/kiss", { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = (await res.json()) as { url?: string };
+        gifUrl = data.url ?? null;
+      }
+    } catch {}
+    // fallback لـ nekos.life
+    if (!gifUrl) {
+      try {
+        const res2 = await fetch("https://nekos.life/api/v2/img/kiss", { signal: AbortSignal.timeout(5000) });
+        if (res2.ok) {
+          const data2 = (await res2.json()) as { url?: string };
+          gifUrl = data2.url ?? null;
+        }
+      } catch {}
+    }
+
+    if (!gifUrl) {
+      await message.reply("فشل جلب صورة القبلة، حاول مرة أخرى.");
+      return true;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(config.defaultColor)
+      .setDescription(`**${message.author.toString()}** kissing **${targetUser.toString()}**`)
+      .setImage(gifUrl)
+      .setFooter({ text: `${message.author.tag} → ${targetUser.tag}` });
+
+    const ch = message.channel as any;
+    if (ch?.isTextBased?.() || ch?.send) {
+      await ch.send({ content: `${message.author.toString()} ${targetUser.toString()}`, embeds: [embed] }).catch(() => null);
+    }
+    return true;
+  }
+
+  // ────── ,slap ─────────────────────────────────────────────────────────────
+  if (content.toLowerCase().startsWith(",slap")) {
+    let targetUser = message.mentions.users.first() ?? null;
+    if (!targetUser && message.reference?.messageId) {
+      const refMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (refMsg && !refMsg.author.bot) targetUser = refMsg.author;
+    }
+    if (!targetUser) {
+      const rawId = content.slice(5).trim().split(/\s+/).find((a) => /^\d{17,19}$/.test(a.replace(/[<@!>]/g, "")))?.replace(/[<@!>]/g, "");
+      if (rawId) {
+        try {
+          const fetched = await message.client.users.fetch(rawId);
+          if (fetched && !fetched.bot) targetUser = fetched;
+        } catch {}
+      }
+    }
+    if (!targetUser) {
+      await message.reply("منشن شخص أو رد على رسالته. مثال: `,slap @شخص`");
+      return true;
+    }
+    if (targetUser.id === message.author.id) {
+      await message.reply("لا يمكنك ضرب نفسك!");
+      return true;
+    }
+    let gifUrl: string | null = null;
+    try {
+      const res = await fetch("https://api.waifu.pics/sfw/slap", { signal: AbortSignal.timeout(5000) });
+      if (res.ok) gifUrl = ((await res.json()) as any).url ?? null;
+    } catch {}
+    if (!gifUrl) {
+      try {
+        const res2 = await fetch("https://nekos.life/api/v2/img/slap", { signal: AbortSignal.timeout(5000) });
+        if (res2.ok) gifUrl = ((await res2.json()) as any).url ?? null;
+      } catch {}
+    }
+    if (!gifUrl) {
+      await message.reply("فشل جلب الصورة، حاول مرة أخرى.");
+      return true;
+    }
+    const embed = new EmbedBuilder()
+      .setColor(config.defaultColor)
+      .setDescription(`**${message.author.toString()}** slapping **${targetUser.toString()}**`)
+      .setImage(gifUrl)
+      .setFooter({ text: `${message.author.tag} → ${targetUser.tag}` });
+    const ch2 = message.channel as any;
+    if (ch2?.isTextBased?.() || ch2?.send) {
+      await ch2.send({ content: `${message.author.toString()} ${targetUser.toString()}`, embeds: [embed] }).catch(() => null);
+    }
+    return true;
+  }
+
+  // ────── ,hug ─────────────────────────────────────────────────────────────
+  if (content.toLowerCase().startsWith(",hug")) {
+    let targetUser = message.mentions.users.first() ?? null;
+    if (!targetUser && message.reference?.messageId) {
+      const refMsg = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
+      if (refMsg && !refMsg.author.bot) targetUser = refMsg.author;
+    }
+    if (!targetUser) {
+      const rawId = content.slice(4).trim().split(/\s+/).find((a) => /^\d{17,19}$/.test(a.replace(/[<@!>]/g, "")))?.replace(/[<@!>]/g, "");
+      if (rawId) {
+        try {
+          const fetched = await message.client.users.fetch(rawId);
+          if (fetched && !fetched.bot) targetUser = fetched;
+        } catch {}
+      }
+    }
+    if (!targetUser) {
+      await message.reply("منشن شخص أو رد على رسالته. مثال: `,hug @شخص`");
+      return true;
+    }
+    if (targetUser.id === message.author.id) {
+      await message.reply("لا يمكنك حضن نفسك!");
+      return true;
+    }
+    let gifUrl: string | null = null;
+    try {
+      const res = await fetch("https://api.waifu.pics/sfw/hug", { signal: AbortSignal.timeout(5000) });
+      if (res.ok) gifUrl = ((await res.json()) as any).url ?? null;
+    } catch {}
+    if (!gifUrl) {
+      try {
+        const res2 = await fetch("https://nekos.life/api/v2/img/hug", { signal: AbortSignal.timeout(5000) });
+        if (res2.ok) gifUrl = ((await res2.json()) as any).url ?? null;
+      } catch {}
+    }
+    if (!gifUrl) {
+      await message.reply("فشل جلب الصورة، حاول مرة أخرى.");
+      return true;
+    }
+    const embed = new EmbedBuilder()
+      .setColor(config.defaultColor)
+      .setDescription(`**${message.author.toString()}** hugging **${targetUser.toString()}**`)
+      .setImage(gifUrl)
+      .setFooter({ text: `${message.author.tag} → ${targetUser.tag}` });
+    const ch3 = message.channel as any;
+    if (ch3?.isTextBased?.() || ch3?.send) {
+      await ch3.send({ content: `${message.author.toString()} ${targetUser.toString()}`, embeds: [embed] }).catch(() => null);
+    }
     return true;
   }
 

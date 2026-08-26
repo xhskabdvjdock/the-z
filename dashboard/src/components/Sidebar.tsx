@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useMemo } from "react";
 import { 
   LayoutDashboard, 
   Ticket, 
@@ -26,7 +27,9 @@ import {
   CalendarClock,
   LayoutTemplate,
   BookOpen,
-  Image
+  Image,
+  Lightbulb,
+  KeyRound
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -41,6 +44,8 @@ const NAV_ITEMS = [
   { href: "/schedules", label: "الرسائل المجدولة", icon: CalendarClock },
   { href: "/islamic", label: "الأذكار والمحتوى الإسلامي", icon: BookOpen },
   { href: "/gifblock", label: "حظر GIFs", icon: Image },
+  { href: "/suggestions", label: "الاقتراحات", icon: Lightbulb },
+  { href: "/access", label: "إدارة الوصول", icon: KeyRound },
   { href: "/roles", label: "الرولات والألوان", icon: User },
   { href: "/reaction-roles", label: "رولات الرياكشن", icon: Smile },
   { href: "/leveling", label: "المستويات والخبرة", icon: Zap },
@@ -59,10 +64,20 @@ const NAV_ITEMS = [
 export default function Sidebar({ guildId }: { guildId: string }) {
   const pathname = usePathname();
   const base = `/dashboard/${guildId}`;
+  const [open, setOpen] = useState(false);
+
+  const nav = useMemo(() => NAV_ITEMS, []);
 
   return (
-    <nav className="card flex flex-col gap-1">
-      {NAV_ITEMS.map((item) => {
+    <>
+      <button
+        onClick={() => setOpen(!open)}
+        className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg border border-[#2A2D37] bg-[#1A1C23] px-4 py-2.5 text-sm font-medium text-[#F0F0F0] lg:hidden"
+      >
+        {open ? "إخفاء القائمة" : "القائمة"}
+      </button>
+      <nav className={`card flex-col gap-1 ${open ? "flex" : "hidden lg:flex"}`}>
+        {nav.map((item) => {
         const href = `${base}${item.href}`;
         const active = pathname === href;
         const Icon = item.icon;
@@ -70,6 +85,7 @@ export default function Sidebar({ guildId }: { guildId: string }) {
           <Link
             key={item.href}
             href={href}
+            onClick={() => setOpen(false)}
             className={`flex items-center gap-3 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
               active
                 ? "bg-[#5865F2] text-white"
@@ -80,7 +96,8 @@ export default function Sidebar({ guildId }: { guildId: string }) {
             <span className="whitespace-nowrap">{item.label}</span>
           </Link>
         );
-      })}
-    </nav>
+        })}
+      </nav>
+    </>
   );
 }

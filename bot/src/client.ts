@@ -2,6 +2,8 @@ import { Client, Collection, GatewayIntentBits, Partials, REST } from "discord.j
 import { createCooldownStore, CooldownStore } from "@thez/shared";
 import { BotCommand } from "./types/command";
 import { BotContextMenu } from "./types/contextMenu";
+// @ts-ignore - optional dependency for Render proxy
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 export class ExtendedClient extends Client {
   commands: Collection<string, BotCommand> = new Collection();
@@ -22,6 +24,10 @@ export class ExtendedClient extends Client {
   rest: REST;
 
   constructor() {
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.DISCORD_PROXY;
+    const proxyAgent = proxyUrl ? new HttpsProxyAgent(proxyUrl as string) : undefined;
+    if (proxyAgent) console.log(`[SYSTEM] 🌐 Proxy enabled: ${(proxyUrl as string).replace(/:[^:@]*@/, ':***@')}`);
+
     super({
       intents: [
         GatewayIntentBits.Guilds,
@@ -34,10 +40,15 @@ export class ExtendedClient extends Client {
         GatewayIntentBits.GuildPresences
       ],
       partials: [Partials.Message, Partials.Channel, Partials.Reaction, Partials.GuildMember],
+      // Proxy للـ Gateway عبر Render (لتجاوز حظر IP)
+      ws: proxyAgent ? { agent: proxyAgent } as any : undefined,
       // تجمع undici الافتراضي في @discordjs/rest يعلّق الطلبات على Render —
       // استخدام fetch الأصلي لكل طلب (بدون keep-alive) يجعل الفشل مرئيًا وفوريًا
       rest: {
-        makeRequest: (url: string, init: RequestInit) => fetch(url, init),
+        makeRequest: (url: string, init: RequestInit) => {
+          if (proxyAgent && init) (init as any).agent = proxyAgent;
+          return fetch(url, init);
+        },
         retries: 0,
         timeout: 15_000,
         rejectOnRateLimit: () => true

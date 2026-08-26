@@ -173,24 +173,40 @@ export async function getGuildInfo(guildId: string) {
   return res.json();
 }
 
+// كاش للقنوات والرتب — 30 ثانية لتقليل ضغط Discord API
+const channelsCache = new Map<string, { data: DiscordChannel[]; expiresAt: number }>();
+const rolesCache = new Map<string, { data: DiscordRole[]; expiresAt: number }>();
+const CHANNELS_CACHE_TTL = 30 * 1000;
+const ROLES_CACHE_TTL = 30 * 1000;
+
 export async function getGuildChannels(guildId: string): Promise<DiscordChannel[]> {
+  const cached = channelsCache.get(guildId);
+  if (cached && Date.now() < cached.expiresAt) return cached.data;
+
   const res = await fetch(`${API_BASE}/guilds/${guildId}/channels`, {
     headers: botHeaders(),
-    next: { revalidate: 30 }
+    cache: "no-store"
   });
-  if (!res.ok) return [];
+  if (!res.ok) return cached?.data ?? [];
   const channels: DiscordChannel[] = await res.json();
-  return channels.sort((a, b) => a.position - b.position);
+  const sorted = channels.sort((a, b) => a.position - b.position);
+  channelsCache.set(guildId, { data: sorted, expiresAt: Date.now() + CHANNELS_CACHE_TTL });
+  return sorted;
 }
 
 export async function getGuildRoles(guildId: string): Promise<DiscordRole[]> {
+  const cached = rolesCache.get(guildId);
+  if (cached && Date.now() < cached.expiresAt) return cached.data;
+
   const res = await fetch(`${API_BASE}/guilds/${guildId}/roles`, {
     headers: botHeaders(),
-    next: { revalidate: 30 }
+    cache: "no-store"
   });
-  if (!res.ok) return [];
+  if (!res.ok) return cached?.data ?? [];
   const roles: DiscordRole[] = await res.json();
-  return roles.sort((a, b) => b.position - a.position);
+  const sorted = roles.sort((a, b) => b.position - a.position);
+  rolesCache.set(guildId, { data: sorted, expiresAt: Date.now() + ROLES_CACHE_TTL });
+  return sorted;
 }
 
 /** إنشاء رتبة جديدة في السيرفر (يتطلب صلاحية Manage Roles في البوت) */

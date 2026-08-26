@@ -44,10 +44,10 @@ export function schedulerCount(): number {
 export function ensureScheduler(
   client: ExtendedClient,
   guildId: string,
-  config: IIslamicContent
+  config: IIslamicContent | undefined | null
 ): void {
   stopIslamicScheduler(guildId);
-  if (!config.enabled || !config.channelId) return;
+  if (!config?.enabled || !config?.channelId) return;
 
   const nextAt = config.nextRunAt ? new Date(config.nextRunAt).getTime() : Date.now();
   const delayMs = Math.max(1_000, nextAt - Date.now());
@@ -74,9 +74,9 @@ export async function restartIslamicScheduler(
 async function runForGuild(client: ExtendedClient, guildId: string): Promise<void> {
   try {
     const gConfig = await getGuildConfig(client, guildId);
-    const config = gConfig.islamicContent;
+    const config = gConfig.islamicContent as IIslamicContent | undefined;
 
-    if (!config.enabled || !config.channelId) {
+    if (!config?.enabled || !config?.channelId) {
       stopIslamicScheduler(guildId);
       return;
     }

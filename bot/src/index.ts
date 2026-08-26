@@ -7,6 +7,8 @@ import { loadEvents } from "./handlers/eventHandler";
 import { registerAllModules } from "./modules";
 import { logError, logInfo, sanitizeError } from "./utils/logger";
 import dns from "node:dns";
+// @ts-ignore - optional dependency for Render proxy
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 // Render قد يعيد DNS بترتيب IPv6 أولًا مع عدم توفر IPv6 فعلي — اجبار IPv4
 dns.setDefaultResultOrder("ipv4first");
@@ -62,10 +64,13 @@ async function bootstrap() {
   // تشخيص الاتصال بـ Discord API قبل محاولة تسجيل الدخول
   logInfo("startup", "🔍 تشخيص الاتصال بـ Discord API...");
   try {
-    const response = await fetch("https://discord.com/api/v10/gateway", {
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.DISCORD_PROXY;
+    const fetchOpts: RequestInit & { agent?: any } = {
       method: "GET",
       signal: AbortSignal.timeout(15_000)
-    });
+    };
+    if (proxyUrl) (fetchOpts as any).agent = new HttpsProxyAgent(proxyUrl);
+    const response = await fetch("https://discord.com/api/v10/gateway", fetchOpts);
     if (response.ok) {
       const data = await response.json() as { url?: string };
       logInfo("startup", `✅ Discord API قابل للوصول - Gateway URL: ${data.url?.substring(0, 30)}...`);
@@ -155,7 +160,9 @@ async function bootstrap() {
         }
       }
       
-      const retryDelay = Math.min(30 + (loginAttempt * 10), 60); // زيادة تدريجية للانتظار
+      const isRateLimited = /429|rate limit|Cloudflare|Attention Required/i.test((err as Error)?.message ?? "") || (err as any)?.status === 429;
+      const retryDelay = isRateLimited ? 300 : Math.min(30 + (loginAttempt * 10), 60); // 5 دقائق عند 429
+      if (isRateLimited) logInfo("startup", "⏳ تم تقييد المعدل (429) — انتظار 5 دقائق لتهدئة الحظر...");
       logInfo(
         "startup",
         `⚠️ المحاولة #${loginAttempt} فشلت — تنظيف وإعادة المحاولة بعد ${retryDelay} ثانية...`
