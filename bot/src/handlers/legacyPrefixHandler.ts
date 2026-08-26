@@ -72,14 +72,26 @@ export async function handleLegacyPrefixCommands(
     let translated: string | null = null;
     let lastError: string | null = null;
 
-    // المحاولة 1: Google API المباشر
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.DISCORD_PROXY;
+    const fetchWithProxy = (url: string, opts: RequestInit = {}) => {
+      if (proxyUrl) {
+        try {
+          // @ts-ignore
+          const { HttpsProxyAgent } = require("https-proxy-agent");
+          (opts as any).agent = new HttpsProxyAgent(proxyUrl);
+        } catch {}
+      }
+      return fetch(url, opts);
+    };
+
+    // المحاولة 1: Google API المباشر (عبر Proxy إن وجد)
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const sl = isArabic ? "ar" : "auto";
         const tl = targetLang;
-        const res = await fetch(
+        const res = await fetchWithProxy(
           `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text.slice(0, 1000))}`,
-          { signal: AbortSignal.timeout(8000) }
+          { signal: AbortSignal.timeout(8000) as any }
         );
         if (res.ok) {
           const data = (await res.json()) as any;
@@ -101,9 +113,9 @@ export async function handleLegacyPrefixCommands(
       for (let attempt = 0; attempt < 2; attempt++) {
         try {
           const langPair = isArabic ? "ar|en" : "en|ar";
-          const res = await fetch(
+          const res = await fetchWithProxy(
             `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}`,
-            { signal: AbortSignal.timeout(8000) }
+            { signal: AbortSignal.timeout(8000) as any }
           );
           if (res.ok) {
             const contentType = res.headers.get("content-type") ?? "";
@@ -139,14 +151,14 @@ export async function handleLegacyPrefixCommands(
       }
     }
 
-    // المحاولة 3: Google API المباشر
+    // المحاولة 3: Google API المباشر (مرة ثانية)
     if (!translated?.trim()) {
       try {
         const sl = isArabic ? "ar" : "en";
         const tl = targetLang;
-        const res = await fetch(
+        const res = await fetchWithProxy(
           `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sl}&tl=${tl}&dt=t&q=${encodeURIComponent(text.slice(0, 500))}`,
-          { signal: AbortSignal.timeout(8000) }
+          { signal: AbortSignal.timeout(8000) as any }
         );
         if (res.ok) {
           const data = (await res.json()) as any;
@@ -159,7 +171,7 @@ export async function handleLegacyPrefixCommands(
     // المحاولة 4: LibreTranslate كـ fallback أخير
     if (!translated?.trim()) {
       try {
-        const res = await fetch("https://libretranslate.com/translate", {
+        const res = await fetchWithProxy("https://libretranslate.com/translate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ q: text.slice(0, 500), source: isArabic ? "ar" : "en", target: targetLang, format: "text" }),
