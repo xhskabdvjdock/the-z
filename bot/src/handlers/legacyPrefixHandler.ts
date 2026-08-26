@@ -101,20 +101,36 @@ export async function handleLegacyPrefixCommands(
           { signal: AbortSignal.timeout(8000) }
         );
         if (res.ok) {
-          const data = (await res.json()) as any;
-          const mymem = data?.responseData?.translatedText;
-          if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) {
-            translated = mymem;
+          const contentType = res.headers.get("content-type") ?? "";
+          if (contentType.includes("application/json")) {
+            const data = (await res.json()) as any;
+            const mymem = data?.responseData?.translatedText;
+            if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) {
+              translated = mymem;
+            }
+          } else {
+            lastError = "خدمة الترجمة مشغولة حاليًا";
           }
+        } else {
+          lastError = `خدمة الترجمة ردت بـ ${res.status}`;
         }
       } catch (err) {
-        lastError = err instanceof Error ? err.message : String(err);
+        const msg = err instanceof Error ? err.message : String(err);
+        // تجاهل أخطاء HTML
+        if (msg.includes("Unexpected token") || msg.includes("<html")) {
+          lastError = "خدمة الترجمة مشغولة حاليًا";
+        } else {
+          lastError = msg;
+        }
       }
     }
 
     if (!translated?.trim()) {
       const isAutoError = lastError?.includes("ISO 639-1");
-      const displayError = isAutoError ? "" : lastError ? ` — ${lastError.slice(0, 100)}` : "";
+      const isHtmlError = lastError?.includes("Unexpected token") || lastError?.includes("<html");
+      const isBusyError = lastError?.includes("مشغولة") || lastError?.includes("429");
+      if (isAutoError || isHtmlError) lastError = null;
+      const displayError = lastError ? ` — ${lastError.slice(0, 100)}` : isBusyError ? " — الخدمة مشغولة، حاول بعد دقيقة" : "";
       await message.reply(`فشلت الترجمة${displayError}، حاول مرة أخرى بعد ثوانٍ`);
       return true;
     }
