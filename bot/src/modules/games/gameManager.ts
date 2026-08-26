@@ -131,30 +131,55 @@ export async function handleFast(channel: any, author: any) {
   });
 }
 
-// Mafia
+// Mafia - متقدم
 export async function handleMafia(channel: any, author: any) {
-  const embed = new EmbedBuilder().setColor(0x2f3136).setTitle("مافيا").setDescription("تم توزيع الأدوار في الخاص. اضغط لبدء التصويت.");
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:mafia:vote:${Date.now()}`).setLabel("تصويت").setStyle(ButtonStyle.Primary));
-  await channel.send({ embeds: [embed], components: [row] });
-}
-
-// Chairs
-export async function handleChairs(channel: any, author: any) {
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("كراسي").setDescription("الموسيقى تعمل... اضغط بسرعة عند التوقف!");
-  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:chairs:${Date.now()}`).setLabel("اجلس").setStyle(ButtonStyle.Success));
-  await channel.send({ embeds: [embed], components: [row] });
+  const embed = new EmbedBuilder().setColor(0x2f3136).setTitle("مافيا").setDescription("تم توزيع الأدوار في الخاص.\n\nالليل يحل... المافيا تختار ضحيتها.");
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId(`game:mafia:night:${Date.now()}`).setLabel("الليل").setStyle(ButtonStyle.Secondary).setDisabled(true),
+    new ButtonBuilder().setCustomId(`game:mafia:vote:${Date.now()}`).setLabel("تصويت النهار").setStyle(ButtonStyle.Primary)
+  );
+  const msg = await channel.send({ embeds: [embed], components: [row] });
+  // بعد 10 ثواني يبدأ النهار والتصويت
   setTimeout(async () => {
-    const stopEmbed = new EmbedBuilder().setColor(0xed4245).setTitle("توقفت الموسيقى!").setDescription("أسرع من يجلس!");
-    await channel.send({ embeds: [stopEmbed] }).catch(() => null);
-  }, 5000 + Math.random() * 5000);
+    const dayEmbed = new EmbedBuilder().setColor(0xf59e0b).setTitle("مافيا — النهار").setDescription("ناقشوا وصوتوا على من تعتقدون أنه المافيا!");
+    const voteRow = new ActionRowBuilder<ButtonBuilder>().addComponents(
+      new ButtonBuilder().setCustomId(`game:mafia:dayvote:${Date.now()}`).setLabel("تصويت").setStyle(ButtonStyle.Danger)
+    );
+    await channel.send({ embeds: [dayEmbed], components: [voteRow] }).catch(() => null);
+  }, 10000);
 }
 
-// Wheel
+// Chairs - متقدم مع عد تنازلي
+export async function handleChairs(channel: any, author: any) {
+  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("كراسي — الموسيقى تعمل").setDescription("استعد... الموسيقى ستتوقف قريبًا!");
+  const msg = await channel.send({ embeds: [embed] });
+  const delay = 5000 + Math.floor(Math.random() * 5000);
+  setTimeout(async () => {
+    const stopEmbed = new EmbedBuilder().setColor(0xed4245).setTitle("توقفت الموسيقى!").setDescription("اضغط بسرعة!");
+    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(new ButtonBuilder().setCustomId(`game:chairs:seat:${Date.now()}`).setLabel("اجلس!").setStyle(ButtonStyle.Success));
+    await channel.send({ embeds: [stopEmbed], components: [row] }).catch(() => null);
+    // إغلاق بعد 3 ثواني
+    setTimeout(async () => {
+      await channel.send({ embeds: [new EmbedBuilder().setColor(0x2f3136).setTitle("انتهى!").setDescription("تم إقصاء الأبطأ.")] }).catch(() => null);
+    }, 3000);
+  }, delay);
+}
+
+// Wheel - مع انيميشن
 export async function handleWheel(channel: any, author: any) {
-  const prizes = ["100 نقطة", "50 نقطة", "حاول مجددا", "200 نقطة", "خسرت"];
+  const prizes = ["100 نقطة", "50 نقطة", "حاول مجددا", "200 نقطة", "خسرت", "500 نقطة"];
+  const embed = new EmbedBuilder().setColor(0xf59e0b).setTitle("عجلة — تدور...").setDescription("انتظر...");
+  const msg = await channel.send({ embeds: [embed] });
+  // انيميشن دوران
+  for (let i = 0; i < 3; i++) {
+    await new Promise((r) => setTimeout(r, 800));
+    const tempPrize = prizes[Math.floor(Math.random() * prizes.length)];
+    const tempEmbed = new EmbedBuilder().setColor(0xf59e0b).setTitle("عجلة — تدور...").setDescription(`**${tempPrize}**`);
+    await msg.edit({ embeds: [tempEmbed] }).catch(() => null);
+  }
   const prize = prizes[Math.floor(Math.random() * prizes.length)];
-  const embed = new EmbedBuilder().setColor(0xf59e0b).setTitle("عجلة").setDescription(`<@${author.id}> حصل على: **${prize}**`);
-  await channel.send({ embeds: [embed] });
+  const finalEmbed = new EmbedBuilder().setColor(prize.includes("حاول") || prize.includes("خسرت") ? 0xed4245 : 0x57f287).setTitle("عجلة — النتيجة").setDescription(`<@${author.id}> حصل على: **${prize}**`);
+  await msg.edit({ embeds: [finalEmbed] }).catch(() => null);
 }
 
 // HotXO
@@ -232,17 +257,18 @@ export async function handleMerge(channel: any, author: any) {
   collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
 }
 
-// Flags
+// Flags - مع أزرار اختيار
 export async function handleFlags(channel: any, author: any) {
-  const flags: Record<string, string> = { "🇸🇦": "السعودية", "🇪🇬": "مصر", "🇯🇴": "الأردن", "🇦🇪": "الإمارات" };
+  const flags: Record<string, string> = { "🇸🇦": "السعودية", "🇪🇬": "مصر", "🇯🇴": "الأردن", "🇦🇪": "الإمارات", "🇲🇦": "المغرب", "🇱🇧": "لبنان" };
   const keys = Object.keys(flags);
   const flag = keys[Math.floor(Math.random() * keys.length)];
+  const correct = flags[flag];
+  const options = [...new Set([correct, ...Object.values(flags).sort(() => Math.random() - 0.5).slice(0, 3)])].sort(() => Math.random() - 0.5);
   const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("اعلام").setDescription(`ما هذا العلم؟ ${flag}`);
-  await channel.send({ embeds: [embed] });
-  const answer = flags[flag];
-  const filter = (m: any) => m.content.includes(answer);
-  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
-  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    options.map((opt) => new ButtonBuilder().setCustomId(`game:flags:${opt}:${correct}:${Date.now()}`).setLabel(opt).setStyle(ButtonStyle.Secondary))
+  );
+  await channel.send({ embeds: [embed], components: [row] });
 }
 
 // Reverse
@@ -290,15 +316,16 @@ export async function handleOrder(channel: any, author: any) {
   collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
 }
 
-// Colors
+// Colors - مع أزرار
 export async function handleColors(channel: any, author: any) {
-  const colors = ["أحمر", "أزرق", "أخضر", "أصفر"];
-  const color = colors[Math.floor(Math.random() * colors.length)];
-  const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("الوان").setDescription(`ما هذا اللون؟ 🟥 🟦 🟩 🟨 → **${color}**؟ اكتب اللون`);
-  await channel.send({ embeds: [embed] });
-  const filter = (m: any) => m.content === color;
-  const collector = channel.createMessageCollector({ filter, time: 15000, max: 1 });
-  collector.on("collect", (m: any) => channel.send({ content: `صح! فاز <@${m.author.id}>!` }));
+  const colors: Record<string, number> = { "أحمر": 0xed4245, "أزرق": 0x3498db, "أخضر": 0x57f287, "أصفر": 0xf1c40f, "بنفسجي": 0x9b59b6 };
+  const keys = Object.keys(colors);
+  const color = keys[Math.floor(Math.random() * keys.length)];
+  const embed = new EmbedBuilder().setColor(colors[color]).setTitle("الوان").setDescription(`ما هذا اللون؟`);
+  const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    keys.map((c) => new ButtonBuilder().setCustomId(`game:colors:${c}:${color}:${Date.now()}`).setLabel(c).setStyle(c === color ? ButtonStyle.Primary : ButtonStyle.Secondary))
+  );
+  await channel.send({ embeds: [embed], components: [row] });
 }
 
 // Emoji
@@ -398,6 +425,24 @@ export function registerGameComponents(router: any) {
   // Button
   router.registerButton("game:button:", async (interaction: any) => {
     const embed = new (await import("discord.js")).EmbedBuilder().setColor(0x57f287).setTitle("زر").setDescription(`فاز <@${interaction.user.id}> لأنه الأسرع!`);
+    await interaction.update({ embeds: [embed], components: [] });
+  });
+
+  // Flags & Colors
+  router.registerButton("game:flags:", async (interaction: any) => {
+    const parts = interaction.customId.split(":");
+    const chosen = parts[2];
+    const correct = parts[3];
+    const result = chosen === correct ? "صح!" : `خطأ! الصح: ${correct}`;
+    const embed = new (await import("discord.js")).EmbedBuilder().setColor(chosen === correct ? 0x57f287 : 0xed4245).setTitle("اعلام").setDescription(`${result} — اخترت ${chosen}`);
+    await interaction.update({ embeds: [embed], components: [] });
+  });
+  router.registerButton("game:colors:", async (interaction: any) => {
+    const parts = interaction.customId.split(":");
+    const chosen = parts[2];
+    const correct = parts[3];
+    const result = chosen === correct ? "صح!" : `خطأ! الصح: ${correct}`;
+    const embed = new (await import("discord.js")).EmbedBuilder().setColor(chosen === correct ? 0x57f287 : 0xed4245).setTitle("الوان").setDescription(result);
     await interaction.update({ embeds: [embed], components: [] });
   });
 
