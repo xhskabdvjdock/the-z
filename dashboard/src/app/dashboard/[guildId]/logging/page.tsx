@@ -26,7 +26,6 @@ export default async function LoggingPage({ params }: { params: { guildId: strin
       channels: config?.logging?.channels?.channels ?? "",
       other: config?.logging?.channels?.other ?? "",
       invites: config?.logging?.channels?.invites ?? "",
-      gifblock: config?.logging?.channels?.gifblock ?? "",
       suggestions: config?.logging?.channels?.suggestions ?? "",
       access: config?.logging?.channels?.access ?? "",
       leveling: config?.logging?.channels?.leveling ?? "",

@@ -17,7 +17,6 @@ export type LogChannelKey =
   | "channels"
   | "other"
   | "invites"
-  | "gifblock"
   | "suggestions"
   | "access"
   | "leveling"

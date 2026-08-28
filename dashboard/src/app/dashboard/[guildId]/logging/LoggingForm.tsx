@@ -7,7 +7,7 @@ import Toggle from "@/components/form/Toggle";
 import ChannelSelect from "@/components/form/ChannelSelect";
 import SaveButton from "@/components/form/SaveButton";
 import { saveLoggingConfig } from "./actions";
-import { Shield, Users, MessageSquare, Mic, Zap, FileText, Server, User, Hash, List, ExternalLink, Image, Lightbulb, KeyRound, Smile, UserX, Folder } from "lucide-react";
+import { Shield, Users, MessageSquare, Mic, Zap, FileText, Server, User, Hash, List, ExternalLink, Lightbulb, KeyRound, Smile, UserX, Folder } from "lucide-react";
 
 const ICONS: Record<string, React.ElementType> = {
   Shield,
@@ -21,7 +21,6 @@ const ICONS: Record<string, React.ElementType> = {
   Hash,
   List,
   ExternalLink,
-  Image,
   Lightbulb,
   KeyRound,
   Smile,
@@ -45,7 +44,6 @@ const CHANNEL_FIELDS: { key: LoggingChannelKey; label: string; icon: keyof typeo
   { key: "channels", label: "الرومات", icon: "Hash" },
   { key: "other", label: "أخرى", icon: "List" },
   { key: "invites", label: "الدعوات", icon: "ExternalLink" },
-  { key: "gifblock", label: "حظر GIFs", icon: "Image" },
   { key: "suggestions", label: "الاقتراحات", icon: "Lightbulb" },
   { key: "access", label: "إدارة الوصول", icon: "KeyRound" },
   { key: "leveling", label: "المستويات", icon: "Zap" },

@@ -3,7 +3,7 @@ import { Collection } from "../db/collection";
 export interface ILogEntry {
   _id?: string;
   guildId: string;
-  type: "moderation" | "members" | "messages" | "voice" | "actions" | "files" | "server" | "roles" | "channels" | "other" | "invites" | "gifblock" | "suggestions" | "access" | "leveling" | "jail" | "reactionroles";
+  type: "moderation" | "members" | "messages" | "voice" | "actions" | "files" | "server" | "roles" | "channels" | "other" | "invites" | "suggestions" | "access" | "leveling" | "jail" | "reactionroles";
   action: string;
   // من قام بالإجراء
   executorId?: string;

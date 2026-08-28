@@ -52,7 +52,6 @@ export default function LogsViewer({ guildId }: { guildId: string }) {
       channels: "الرومات",
       other: "أخرى",
       invites: "الدعوات",
-      gifblock: "حظر GIFs",
       suggestions: "الاقتراحات",
       access: "إدارة الوصول",
       leveling: "المستويات",
@@ -91,7 +90,6 @@ export default function LogsViewer({ guildId }: { guildId: string }) {
           <option value="moderation">الإشراف</option>
           <option value="members">الأعضاء</option>
           <option value="messages">الرسائل</option>
-          <option value="gifblock">حظر GIFs</option>
           <option value="suggestions">الاقتراحات</option>
           <option value="access">إدارة الوصول</option>
           <option value="leveling">المستويات</option>
