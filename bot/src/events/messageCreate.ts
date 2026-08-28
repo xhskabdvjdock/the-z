@@ -127,7 +127,7 @@ const event: BotEvent = {
             // 4.2) تخصيصات لوحة التحكم (Command Overrides) — نظام موجود لا يتغير
             const permCheck = checkCommandPermission(override, message.member!, message.channelId);
             if (!permCheck.allowed) {
-              await message.reply(permCheck.reason ?? "❌ غير مسموح.");
+              await message.reply(permCheck.reason ?? "غير مسموح.");
               return;
             }
 

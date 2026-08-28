@@ -11,5 +11,4 @@ export * from "./models/JailUser";
 export * from "./models/ModerationLog";
 export * from "./models/ActionLog";
 export * from "./models/ServerTemplate";
-export * from "./models/GifBlock";
 export * from "./models/LogEntry";

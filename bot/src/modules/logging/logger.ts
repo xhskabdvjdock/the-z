@@ -1,6 +1,8 @@
 import { BaseMessageOptions, EmbedBuilder } from "discord.js";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
+import { config as botConfig } from "../../config";
+import { logError } from "../../utils/logger";
 import { LogEntry } from "@thez/shared";
 
 export type LogChannelKey =
@@ -86,7 +88,7 @@ export async function sendLog(
     if (!channel || !channel.isTextBased()) return;
 
     // تحسين الـ embed
-    if (!embed.data.color) embed.setColor(Number(gConfig.embedColor) || 0x5865f2);
+    if (!embed.data.color) embed.setColor(botConfig.defaultColor);
     if (!embed.data.timestamp) embed.setTimestamp();
 
     // حفظ السجل في قاعدة البيانات مع تفاصيل كاملة
