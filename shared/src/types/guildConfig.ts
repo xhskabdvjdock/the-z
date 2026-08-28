@@ -293,6 +293,7 @@ export interface IGuildConfig {
       channels?: string;
       other?: string;
       invites?: string;
+      gifblock?: string;
       suggestions?: string;
       access?: string;
       leveling?: string;
@@ -399,6 +400,14 @@ export interface IGuildConfig {
     title?: string;
     description?: string;
     roles: IReactionRole[];
+  };
+
+  /** نظام حظر GIFs: حظر روابط GIF محددة مع إجراءات تلقائية */
+  gifBlock: {
+    enabled: boolean;
+    logChannelId?: string;
+    whitelistRoleIds: string[];
+    whitelistChannelIds: string[];
   };
 
   /** نظام الاقتراحات والتصويت */
@@ -598,6 +607,12 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     reactionRoles: {
       enabled: false,
       roles: []
+    },
+
+    gifBlock: {
+      enabled: false,
+      whitelistRoleIds: [],
+      whitelistChannelIds: []
     },
 
     suggestions: {

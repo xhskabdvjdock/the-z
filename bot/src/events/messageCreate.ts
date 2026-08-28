@@ -11,6 +11,7 @@ import { handleLegacyPrefixCommands } from "../handlers/legacyPrefixHandler";
 import { handleSuggestionMessage } from "../modules/suggestions/suggestionListener";
 import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
 import { sendMediaLog } from "../modules/logging/logger";
+import { handleGifBlock } from "../modules/gifBlock/gifBlock";
 import { AfkUser } from "@thez/shared";
 
 // نظام بسيط لتقليل rate limits من خلال تأخير الردود
@@ -51,6 +52,10 @@ const event: BotEvent = {
     // 1.5) نظام الاقتراحات — تحويل رسائل قناة الاقتراحات إلى صور
     const wasSuggestion = await handleSuggestionMessage(message);
     if (wasSuggestion) return;
+
+    // 1.6) التحقق من حظر GIFs
+    const wasGifBlocked = await handleGifBlock(client, message);
+    if (wasGifBlocked) return;
 
     // 2) القنوات المخصصة لنوع معين من المحتوى
     const customChannels = gConfig.logging?.customChannels;
