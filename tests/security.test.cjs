@@ -16,15 +16,17 @@ const BAN_PERM = 1n << 2n; // BanMembers
 
 // ---------- أدوات مصغّرة لتشكيل سياق أمر وهمي ----------
 function makeTarget(overrides = {}) {
+  const baseId = overrides.id ?? "222222222222222222";
   return {
-    id: "222222222222222222",
-    user: { tag: "target" },
+    id: baseId,
+    user: { id: baseId, tag: "target", ...(overrides.user ?? {}) },
     roles: { highest: { position: 1 } },
     bannable: true,
     kickable: true,
     ban: async () => {},
     kick: async () => {},
-    ...overrides
+    ...overrides,
+    user: { id: baseId, tag: "target", ...(overrides.user ?? {}) }
   };
 }
 
@@ -34,7 +36,9 @@ function makeCtx(target, memberOverrides = {}, reply = () => ({ delete: async ()
     guild: { id: "333333333333333333", ownerId: "444444444444444444" },
     member: { id: "111111111111111111", roles: { highest: { position: 5 } }, ...memberOverrides },
     getMember: async () => target,
+    getUser: async () => target?.user ?? null,
     getString: () => null,
+    getInteger: () => null,
     reply
   };
 }
