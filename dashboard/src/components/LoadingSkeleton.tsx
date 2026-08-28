@@ -18,12 +18,7 @@ interface LoadingSkeletonProps {
 }
 
 function SkeletonBlock({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={`animate-pulse rounded bg-gradient-to-r from-[#1e2130] via-[#2a2d3e] to-[#1e2130] bg-[length:400%_100%] ${className}`}
-      style={{ animation: "skeleton-shimmer 1.5s ease-in-out infinite" }}
-    />
-  );
+  return <div className={`rounded bg-[#1e2130] ${className}`} />;
 }
 
 export default function LoadingSkeleton({
