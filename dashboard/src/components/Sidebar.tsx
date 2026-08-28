@@ -27,6 +27,7 @@ import {
   CalendarClock,
   LayoutTemplate,
   BookOpen,
+  Image,
   Lightbulb,
   KeyRound
 } from "lucide-react";
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { href: "/autoresponse", label: "الردود التلقائية", icon: Bot },
   { href: "/schedules", label: "الرسائل المجدولة", icon: CalendarClock },
   { href: "/islamic", label: "الأذكار والمحتوى الإسلامي", icon: BookOpen },
+  { href: "/gifblock", label: "حظر GIFs", icon: Image },
   { href: "/suggestions", label: "الاقتراحات", icon: Lightbulb },
   { href: "/access", label: "إدارة الوصول", icon: KeyRound },
   { href: "/roles", label: "الرولات والألوان", icon: User },

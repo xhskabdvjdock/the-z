@@ -87,6 +87,7 @@ export async function sendLog(
     const channel = await client.channels.fetch(channelId).catch(() => null);
     if (!channel || !channel.isTextBased()) return;
 
+    // تحسين الـ embed
     if (!embed.data.color) embed.setColor(botConfig.defaultColor);
     if (!embed.data.timestamp) embed.setTimestamp();
 
@@ -127,7 +128,7 @@ export async function sendLog(
       console.warn('[Log] Rate limit hit, logging suppressed temporarily');
       return;
     }
-    logError("send-log", err);
+    console.error('[Log] Error sending log:', err);
   }
 }
 

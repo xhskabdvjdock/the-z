@@ -138,7 +138,7 @@ async function main() {
           console.error("أو استخدم DEV_GUILD_ID للنشر على سيرفر واحد فقط (أسرع بدون rate limits).");
           process.exit(1);
         }
-        
+
         // Wait for retry after seconds (convert to ms)
         console.log(`انتظار ${retryAfter} ثانية قبل المحاولة التالية...`);
         await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));

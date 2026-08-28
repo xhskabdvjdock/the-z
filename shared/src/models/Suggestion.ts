@@ -1,51 +1,27 @@
 import { Collection } from "../db/collection";
 
-export type SuggestionStatus = "pending" | "approved" | "rejected" | "implemented";
-
 export interface ISuggestion {
-  id: string;
+  _id?: string;
   guildId: string;
   userId: string;
-  userName: string;
-  userAvatar?: string;
+  messageId: string;
+  channelId: string;
   content: string;
-  status: SuggestionStatus;
-  upvotes: string[]; // userIds
-  downvotes: string[]; // userIds
-  channelId?: string;
-  messageId?: string;
-  createdAt: string;
-  updatedAt: string;
+  imageUrl?: string;
+  upvotes?: string[];
+  downvotes?: string[];
+  votes?: {
+    userId: string;
+    vote: "up" | "down";
+  }[];
+  status: "pending" | "approved" | "rejected";
+  createdAt: Date;
 }
 
-export const Suggestion = new Collection<ISuggestion>("suggestions", "id", () => ({
-  id: "",
-  guildId: "",
-  userId: "",
-  userName: "",
-  content: "",
-  status: "pending",
+export const Suggestion = new Collection<ISuggestion>("suggestions", "guildId", () => ({
   upvotes: [],
   downvotes: [],
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString()
+  votes: [],
+  status: "pending",
+  createdAt: new Date()
 }));
-
-export interface ISuggestionConfig {
-  enabled: boolean;
-  channelId: string | null;
-  logChannelId: string | null;
-  allowVoting: boolean;
-  autoThread: boolean;
-  minVotesForApproval?: number;
-}
-
-export function createDefaultSuggestionConfig(): ISuggestionConfig {
-  return {
-    enabled: false,
-    channelId: null,
-    logChannelId: null,
-    allowVoting: true,
-    autoThread: false
-  };
-}
