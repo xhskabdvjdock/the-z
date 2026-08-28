@@ -8,6 +8,8 @@ export interface ITicket {
   ownerId: string;
   number: number;
   status: "open" | "closed";
+  priority?: "low" | "medium" | "high" | "urgent";
+  templateId?: string;
   claimedBy?: string;
   addedUserIds: string[];
   answers: { question: string; answer: string }[];
