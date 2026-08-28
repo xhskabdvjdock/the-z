@@ -45,6 +45,8 @@ const NAV_ITEMS = [
   { href: "/islamic", label: "الأذكار والمحتوى الإسلامي", icon: BookOpen },
   { href: "/gifblock", label: "حظر GIFs", icon: Image },
   { href: "/suggestions", label: "الاقتراحات", icon: Lightbulb },
+  { href: "/notifications", label: "الإشعارات", icon: MessageSquare },
+  { href: "/advanced", label: "متقدم", icon: Settings },
   { href: "/access", label: "إدارة الوصول", icon: KeyRound },
   { href: "/roles", label: "الرولات والألوان", icon: User },
   { href: "/reaction-roles", label: "رولات الرياكشن", icon: Smile },
