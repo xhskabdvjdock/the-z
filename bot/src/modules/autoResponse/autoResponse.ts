@@ -43,6 +43,8 @@ function buildContext(message: Message): VariableContext {
   };
 }
 
+const autoResponseCooldown = new Map<string, number>();
+
 /** يفحص الردود التلقائية المفعّلة، ويرسل رد عشوائي من الردود المتاحة. يعيد true إن تم الرد */
 export async function handleAutoResponse(
   client: ExtendedClient,
@@ -55,6 +57,21 @@ export async function handleAutoResponse(
     if (!response.enabled) continue;
     if (response.channelIds?.length && !response.channelIds.includes(message.channelId)) continue;
     if (!isMatch(message.content, response)) continue;
+    if (response.ignoreBots === false && message.author.bot) continue;
+
+    // تحقق من الرتب المطلوبة
+    if (response.requiredRoleIds?.length) {
+      const member = message.member ?? (await message.guild?.members.fetch(message.author.id).catch(() => null));
+      if (!member || !response.requiredRoleIds.some((id) => member.roles.cache.has(id))) continue;
+    }
+
+    // تحقق من الكولداون
+    if (response.cooldownSeconds) {
+      const key = `${message.guild!.id}:${response.id}:${message.author.id}`;
+      const last = autoResponseCooldown.get(key) ?? 0;
+      if (Date.now() - last < response.cooldownSeconds * 1000) continue;
+      autoResponseCooldown.set(key, Date.now());
+    }
 
     if (response.deleteTrigger) {
       await message.delete().catch(() => null);
@@ -62,7 +79,6 @@ export async function handleAutoResponse(
 
     const ctx = buildContext(message);
     
-    // Handle both old response field and new responses array for backward compatibility
     const responseMessages = response.responses || (response.response ? [response.response] : []);
 
     if (responseMessages.length > 0) {

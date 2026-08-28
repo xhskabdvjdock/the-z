@@ -96,6 +96,9 @@ export interface IAutoResponse {
   channelIds: string[];
   enabled: boolean;
   deleteTrigger: boolean;
+  cooldownSeconds?: number;
+  requiredRoleIds?: string[];
+  ignoreBots?: boolean;
 }
 
 export interface ISelfRoleOption {

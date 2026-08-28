@@ -30,9 +30,13 @@ async function processGuild(client: ExtendedClient, guildId: string): Promise<vo
     const payload = buildPayload(msg);
     const hasContent = msg.content?.trim() || msg.embed?.enabled;
     if (hasContent) {
-      const channel = await client.channels.fetch(msg.channelId).catch(() => null);
-      if (channel?.isTextBased()) {
-        await (channel as any).send(payload).catch(() => null);
+      try {
+        const channel = await client.channels.fetch(msg.channelId).catch(() => null);
+        if (channel?.isTextBased()) {
+          await (channel as any).send(payload);
+        }
+      } catch (err) {
+        logError("scheduled-messages/send", err);
       }
     }
 

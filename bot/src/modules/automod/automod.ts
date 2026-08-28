@@ -109,10 +109,11 @@ export async function handleAutoMod(
   }
 
   if (!violation && automod.badWords?.length) {
-    const tokens = content.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+    const normalizedContent = content.toLowerCase().replace(/[\u064B-\u065F\u0670]/g, "").replace(/[^\p{L}\p{N}]+/gu, " ");
+    const tokens = normalizedContent.split(/\s+/).filter(Boolean);
     const matched = automod.badWords.some((word) => {
-      const normalized = word?.trim().toLowerCase();
-      return normalized && tokens.includes(normalized);
+      const normalized = word?.trim().toLowerCase().replace(/[\u064B-\u065F\u0670]/g, "");
+      return normalized && (tokens.includes(normalized) || normalizedContent.includes(normalized));
     });
     if (matched) violation = "badWords";
   }
