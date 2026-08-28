@@ -40,53 +40,22 @@ export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      // هنا ستجلب البيانات من الـ API
-      // مؤقتاً سأستخدم بيانات وهمية
-      const mockStats: StatCard[] = [
-        {
-          title: "إجمالي الأعضاء",
-          value: "12,456",
-          change: "+234 (1.9%)",
-          icon: Users,
-          color: "success"
-        },
-        {
-          title: "الرسائل اليوم",
-          value: "2,847",
-          change: "+156 (5.8%)",
-          icon: MessageSquare,
-          color: "info"
-        },
-        {
-          title: "إجراءات الإشراف",
-          value: "45",
-          change: "-12 (21%)",
-          icon: Shield,
-          color: "warning"
-        },
-        {
-          title: "النشاط الصوتي",
-          value: "342h",
-          change: "+45h (15%)",
-          icon: Clock,
-          color: "success"
-        }
+      const res = await fetch(`/api/stats/${guildId}?range=${timeRange}`);
+      if (!res.ok) throw new Error("Failed to fetch");
+      const data = await res.json();
+      const realStats: StatCard[] = [
+        { title: "إجمالي الأعضاء", value: data.memberCount ?? 0, change: "", icon: Users, color: "success" },
+        { title: "الرسائل (7 أيام)", value: data.totalMessages ?? 0, change: "", icon: MessageSquare, color: "info" },
+        { title: "إجراءات الإشراف", value: data.moderationActions ?? 0, change: "", icon: Shield, color: "warning" },
+        { title: "تذاكر مفتوحة", value: data.ticketsOpen ?? 0, change: "", icon: Activity, color: "success" }
       ];
-
-      const mockActivity: ActivityData[] = [
-        { date: "2026-08-22", messages: 2450, joins: 45, leaves: 12 },
-        { date: "2026-08-23", messages: 2580, joins: 52, leaves: 15 },
-        { date: "2026-08-24", messages: 2720, joins: 38, leaves: 20 },
-        { date: "2026-08-25", messages: 2650, joins: 41, leaves: 18 },
-        { date: "2026-08-26", messages: 2847, joins: 56, leaves: 14 },
-        { date: "2026-08-27", messages: 2910, joins: 62, leaves: 16 },
-        { date: "2026-08-28", messages: 3020, joins: 48, leaves: 19 }
-      ];
-
-      setStats(mockStats);
-      setActivityData(mockActivity);
+      setStats(realStats);
+      setActivityData(data.activity ?? []);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
+      // fallback to empty
+      setStats([]);
+      setActivityData([]);
     } finally {
       setLoading(false);
     }
