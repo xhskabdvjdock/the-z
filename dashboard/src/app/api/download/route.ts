@@ -53,11 +53,16 @@ async function getVideoUrl(url: string): Promise<string | null> {
     console.log("[download] btch failed:", String(err).slice(0, 120));
   }
 
-  // المحاولة 1.5: Instagram — تحقق إذا كان خاصًا
-  if (urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) {
-    // إذا فشلت كل المحاولات السابقة وكان الرابط يحتوي على stkn، فهو خاص
-    if (url.includes("stkn=") || url.includes("share")) {
-      console.log("[download] Instagram private/share link detected, may require login");
+  // المحاولة 1.5: yt-dlp للانستا كاحتياطي
+  if ((urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) && !urlToTry.includes("?__a=")) {
+    try {
+      const { create } = await import("yt-dlp-exec");
+      const ytdlp = create("yt-dlp");
+      const out = (await (ytdlp as any)(urlToTry, { getUrl: true, format: "best[ext=mp4]/best", noWarnings: true } as any)) as unknown as string;
+      const v = typeof out === "string" ? out.trim() : String(out ?? "").trim();
+      if (v && v.startsWith("http")) return v;
+    } catch (err) {
+      console.log("[download] yt-dlp insta failed:", String(err).slice(0, 80));
     }
   }
 
