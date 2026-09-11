@@ -5,32 +5,37 @@ async function downloadTikTok(url: string): Promise<string | null> {
   try {
     const res = await fetch("https://www.tikwm.com/api/", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "User-Agent": "Mozilla/5.0" },
       body: JSON.stringify({ url }),
       signal: AbortSignal.timeout(10000)
     });
     if (!res.ok) return null;
     const data = (await res.json()) as any;
-    return data?.data?.play ?? data?.data?.hdplay ?? null;
+    return data?.data?.play ?? data?.data?.hdplay ?? data?.data?.wmplay ?? null;
   } catch {
     return null;
   }
 }
 
 async function downloadViaCobalt(url: string): Promise<string | null> {
-  try {
-    const res = await fetch("https://api.cobalt.tools/api/json", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ url }),
-      signal: AbortSignal.timeout(12000)
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as any;
-    return data?.url ?? data?.picker?.[0]?.url ?? null;
-  } catch {
-    return null;
+  const endpoints = ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json", "https://api.cobalt.tools/"];
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "Mozilla/5.0" },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(12000)
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as any;
+      const videoUrl = data?.url ?? data?.picker?.[0]?.url ?? null;
+      if (videoUrl) return videoUrl;
+    } catch {
+      continue;
+    }
   }
+  return null;
 }
 
 async function getVideoUrl(url: string): Promise<string | null> {
@@ -75,27 +80,42 @@ const command: BotCommand = {
       return;
     }
 
-    await ctx.reply({ content: "جاري التحميل..." });
+    // defer لتجنب timeout
+    if (ctx.isSlash && ctx.interaction && !ctx.interaction.deferred) {
+      await ctx.interaction.deferReply().catch(() => null);
+    } else {
+      await ctx.reply({ content: "جاري التحميل..." });
+    }
 
     const videoUrl = await getVideoUrl(url);
     if (!videoUrl) {
-      await ctx.reply({ content: "فشل التحميل — تأكد أن الرابط صحيح والفيديو عام." });
+      const msg = "فشل التحميل — تأكد أن الرابط صحيح والفيديو عام. جرب رابط آخر.";
+      if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: msg }).catch(() => null);
+      else await ctx.reply({ content: msg });
       return;
     }
 
     try {
-      const res = await fetch(videoUrl, { signal: AbortSignal.timeout(30000) });
+      const res = await fetch(videoUrl, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(30000) });
       if (!res.ok) throw new Error("fetch failed");
       const buffer = Buffer.from(await res.arrayBuffer());
       if (buffer.length > 25 * 1024 * 1024) {
-        await ctx.reply({ content: "الفيديو كبير جدًا (أكثر من 25MB)." });
+        const msg = "الفيديو كبير جدًا (أكثر من 25MB). جرب رابط مباشر: " + videoUrl.slice(0, 300);
+        if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: msg }).catch(() => null);
+        else await ctx.reply({ content: msg });
         return;
       }
       const attachment = new AttachmentBuilder(buffer, { name: "video.mp4" });
       const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("تم التحميل").setDescription(`[رابط أصلي](${url})`);
-      await ctx.reply({ embeds: [embed], files: [attachment] });
+      if (ctx.isSlash && ctx.interaction?.deferred) {
+        await ctx.interaction.editReply({ embeds: [embed], files: [attachment] }).catch(() => null);
+      } else {
+        await ctx.reply({ embeds: [embed], files: [attachment] });
+      }
     } catch (err) {
-      await ctx.reply({ content: `فشل إرسال الفيديو — جرب رابط مباشر: ${videoUrl.slice(0, 400)}` });
+      const fallback = `فشل إرسال الفيديو — جرب رابط مباشر: ${videoUrl.slice(0, 400)}`;
+      if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: fallback }).catch(() => null);
+      else await ctx.reply({ content: fallback });
     }
   }
 };
