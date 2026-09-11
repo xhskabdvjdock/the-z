@@ -68,8 +68,21 @@ export async function handleLegacyPrefixCommands(
     let translated: string | null = null;
     let lastError: string | null = null;
 
-    // استخدام bing-translate-api
+    const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.DISCORD_PROXY;
+    const fetchWithProxy = (url: string, opts: RequestInit = {}) => {
+      if (proxyUrl) {
+        try {
+          // @ts-ignore
+          const { HttpsProxyAgent } = require("https-proxy-agent");
+          (opts as any).agent = new HttpsProxyAgent(proxyUrl);
+        } catch {}
+      }
+      return fetch(url, opts);
+    };
+
+    // استخدام bing-translate-api (يحترم Proxy عبر env)
     try {
+      if (proxyUrl) process.env.HTTPS_PROXY = proxyUrl;
       const { translate: bingTranslate } = await import("bing-translate-api");
       const result = await bingTranslate(text.slice(0, 1000), isArabic ? "ar" : null, targetLang);
       if (result?.translation?.trim()) translated = result.translation;
@@ -77,11 +90,11 @@ export async function handleLegacyPrefixCommands(
       lastError = err instanceof Error ? err.message : String(err);
     }
 
-    // Fallback MyMemory إذا فشل Bing
+    // Fallback MyMemory عبر Proxy
     if (!translated?.trim()) {
       try {
         const langPair = isArabic ? "ar|en" : "en|ar";
-        const res = await fetch(
+        const res = await fetchWithProxy(
           `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}&de=a@b.c`,
           { signal: AbortSignal.timeout(5000) as any }
         );

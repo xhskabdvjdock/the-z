@@ -22,6 +22,43 @@ async function getVideoViaYtDlp(url: string): Promise<string | null> {
   }
 }
 
+async function getVideoViaFallback(url: string): Promise<string | null> {
+  // TikTok fallback
+  if (url.includes("tiktok.com")) {
+    try {
+      const res = await fetch("https://www.tikwm.com/api/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const v = data?.data?.play ?? data?.data?.hdplay;
+        if (v) return v;
+      }
+    } catch {}
+  }
+  // Cobalt fallback
+  for (const endpoint of ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json"]) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as any;
+      const v = data?.url ?? data?.picker?.[0]?.url;
+      if (v) return v;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 const command: BotCommand = {
   name: "dw",
   description: "تحميل فيديو من رابط (تيك توك/انستا/تويتر) — يعمل في الخاص فقط",
@@ -62,7 +99,8 @@ const command: BotCommand = {
       await ctx.reply({ content: "جاري التحميل..." });
     }
 
-    const videoUrl = await getVideoViaYtDlp(url);
+    let videoUrl = await getVideoViaYtDlp(url);
+    if (!videoUrl) videoUrl = await getVideoViaFallback(url);
     if (!videoUrl) {
       const msg = "فشل التحميل — تأكد أن الرابط صحيح والفيديو عام. جرب رابط آخر.";
       if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: msg }).catch(() => null);
