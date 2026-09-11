@@ -20,5 +20,6 @@ export const config = {
   dashboardUrl: process.env.DASHBOARD_URL ?? "http://localhost:3000",
   defaultColor: 0x5865f2,
   tmdbApiKey: process.env.TMDB_API_KEY || "8bc7ad43539a30944f55acd11eb0dac4",
-  omdbApiKey: process.env.OMDB_API_KEY || "ae5025e2"
+  omdbApiKey: process.env.OMDB_API_KEY || "ae5025e2",
+  deeplApiKey: process.env.DEEPL_API_KEY || "0fa31c01-dc64-41b5-a318-b487fbfc2396:fx"
 };

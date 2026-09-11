@@ -80,17 +80,42 @@ export async function handleLegacyPrefixCommands(
       return fetch(url, opts);
     };
 
-    // استخدام bing-translate-api (يحترم Proxy عبر env)
+    // DeepL كأساسي (جودة ممتازة + 500K مجاني)
     try {
-      if (proxyUrl) process.env.HTTPS_PROXY = proxyUrl;
-      const { translate: bingTranslate } = await import("bing-translate-api");
-      const result = await bingTranslate(text.slice(0, 1000), isArabic ? "ar" : null, targetLang);
-      if (result?.translation?.trim()) translated = result.translation;
+      const isFreeKey = config.deeplApiKey.endsWith(":fx");
+      const deeplHost = isFreeKey ? "https://api-free.deepl.com" : "https://api.deepl.com";
+      const sourceLang = isArabic ? "AR" : "EN";
+      const targetLangDeepL = targetLang.toUpperCase();
+      const res = await fetchWithProxy(`${deeplHost}/v2/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `DeepL-Auth-Key ${config.deeplApiKey}` },
+        body: JSON.stringify({ text: [text.slice(0, 1000)], source_lang: sourceLang, target_lang: targetLangDeepL }),
+        signal: AbortSignal.timeout(8000) as any
+      });
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const trans = data?.translations?.[0]?.text;
+        if (trans?.trim()) translated = trans;
+      } else {
+        lastError = `DeepL ${res.status}`;
+      }
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
     }
 
-    // Fallback MyMemory عبر Proxy
+    // Fallback Bing إذا فشل DeepL
+    if (!translated?.trim()) {
+      try {
+        if (proxyUrl) process.env.HTTPS_PROXY = proxyUrl;
+        const { translate: bingTranslate } = await import("bing-translate-api");
+        const result = await bingTranslate(text.slice(0, 1000), isArabic ? "ar" : null, targetLang);
+        if (result?.translation?.trim()) translated = result.translation;
+      } catch (err) {
+        lastError = err instanceof Error ? err.message : String(err);
+      }
+    }
+
+    // Fallback MyMemory
     if (!translated?.trim()) {
       try {
         const langPair = isArabic ? "ar|en" : "en|ar";
