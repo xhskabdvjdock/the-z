@@ -143,12 +143,29 @@ export async function handleMovieSearch(channel: any, query: string, authorId: s
     components.push(selectRow);
   }
 
-  await channel.send({ embeds: [embed], components }).catch(() => null);
+  const sent = await channel.send({ embeds: [embed], components }).catch(() => null);
+  if (sent && results.length > 1) {
+    // إزالة القائمة المنسدلة بعد 30 ثانية إذا لم يتم الاختيار
+    setTimeout(async () => {
+      try {
+        const fresh = await channel.messages.fetch(sent.id).catch(() => null);
+        if (fresh && fresh.components.length > 0) {
+          // تحقق إذا لم يتم التفاعل بعد
+          const hasDropdown = fresh.components.some((row: any) => row.components.some((c: any) => c.customId?.startsWith("movies:select:")));
+          if (hasDropdown) {
+            const newComponents = components.filter((row: any) => !row.components.some((c: any) => c.customId?.startsWith("movies:select:")));
+            // احتفظ بالأزرار فقط
+            await fresh.edit({ components: newComponents }).catch(() => null);
+          }
+        }
+      } catch {}
+    }, 30000);
+  }
 }
 
 export function registerMovieComponents(router: any) {
   router.registerSelect("movies:select:", async (interaction: any) => {
-    const value = interaction.values[0]; // media_type:id
+    const value = interaction.values[0];
     const [mediaType, idStr] = value.split(":");
     const id = parseInt(idStr, 10);
     if (!id || !mediaType) {
@@ -181,6 +198,10 @@ export function registerMovieComponents(router: any) {
     if (trailer) row.addComponents(new ButtonBuilder().setLabel("Trailer").setStyle(ButtonStyle.Link).setURL(`https://www.youtube.com/watch?v=${trailer.key}`));
     const components: any[] = [];
     if (row.components.length > 0) components.push(row);
+    // احذف الرسالة الأصلية (الأشهر) وأرسل المختار
+    try {
+      await interaction.message.delete().catch(() => null);
+    } catch {}
     await interaction.followUp({ embeds: [embed], components }).catch(() => null);
   });
 }
