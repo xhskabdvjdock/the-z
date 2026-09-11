@@ -9,7 +9,11 @@ export async function POST(req: Request) {
     const videoUrl = await getVideoUrl(url);
     if (!videoUrl) {
       console.log(`[download] Failed for url: ${url.slice(0, 80)}`);
-      return Response.json({ error: "فشل الحصول على الفيديو — تأكد أن الرابط صحيح والفيديو عام. جرب رابط تيك توك/تويتر/انستا عام." }, { status: 400 });
+      const isInstaPrivate = url.includes("instagram.com") && url.includes("stkn=");
+      const msg = isInstaPrivate
+        ? "هذا الريلز خاص أو برابط مشاركة خاص — جرب رابط عام بدون stkn أو تأكد أن الحساب عام."
+        : "فشل الحصول على الفيديو — تأكد أن الرابط صحيح والفيديو عام. جرب رابط تيك توك/تويتر/انستا عام.";
+      return Response.json({ error: msg }, { status: 400 });
     }
 
     console.log(`[download] Success: ${videoUrl.slice(0, 80)}`);
@@ -49,20 +53,12 @@ async function getVideoUrl(url: string): Promise<string | null> {
     console.log("[download] btch failed:", String(err).slice(0, 120));
   }
 
-  // المحاولة 1.5: Instagram scrape مباشر
-  if ((urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) && !urlToTry.includes("?__a=")) {
-    try {
-      const scrapeUrl = urlToTry.split("?")[0] + "?__a=1&__d=dis";
-      const res = await fetch(scrapeUrl, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(8000) });
-      if (res.ok) {
-        const text = await res.text();
-        const match = text.match(/"video_url":"([^"]+)"/) ?? text.match(/video_url\\":\\"([^"]+)\\"/);
-        if (match) {
-          const v = match[1].replace(/\\u0026/g, "&").replace(/\\/g, "");
-          if (v.startsWith("http")) return v;
-        }
-      }
-    } catch {}
+  // المحاولة 1.5: Instagram — تحقق إذا كان خاصًا
+  if (urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) {
+    // إذا فشلت كل المحاولات السابقة وكان الرابط يحتوي على stkn، فهو خاص
+    if (url.includes("stkn=") || url.includes("share")) {
+      console.log("[download] Instagram private/share link detected, may require login");
+    }
   }
 
   // المحاولة 2: TikWM
