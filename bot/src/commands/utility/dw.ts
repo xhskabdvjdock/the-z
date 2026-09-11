@@ -100,7 +100,8 @@ const command: BotCommand = {
     }
 
     const dashboardUrl = process.env.DASHBOARD_URL ?? process.env.NEXTAUTH_URL ?? "https://the-z-o3lt.onrender.com";
-    const dlPageUrl = `${dashboardUrl.replace(/\/$/, "")}/downloader?url=${encodeURIComponent(url)}`;
+    const baseUrl = dashboardUrl.includes("localhost") ? "https://the-z-o3lt.onrender.com" : dashboardUrl;
+    const dlPageUrl = `${baseUrl.replace(/\/$/, "")}/downloader?url=${encodeURIComponent(url)}`;
 
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
