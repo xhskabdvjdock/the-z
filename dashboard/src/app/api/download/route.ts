@@ -54,15 +54,17 @@ async function getVideoUrl(url: string): Promise<string | null> {
   }
 
   // المحاولة 1.5: yt-dlp للانستا كاحتياطي
-  if ((urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) && !urlToTry.includes("?__a=")) {
+  if (urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) {
     try {
-      const { create } = await import("yt-dlp-exec");
-      const ytdlp = create("yt-dlp");
-      const out = (await (ytdlp as any)(urlToTry, { getUrl: true, format: "best[ext=mp4]/best", noWarnings: true } as any)) as unknown as string;
-      const v = typeof out === "string" ? out.trim() : String(out ?? "").trim();
+      const mod: any = await import("yt-dlp-exec");
+      const ytdlp = mod.create ? mod.create("yt-dlp") : mod.default ?? mod;
+      const fn = typeof ytdlp === "function" ? ytdlp : ytdlp?.exec ?? ytdlp?.default;
+      if (typeof fn !== "function") throw new Error("yt-dlp not a function");
+      const out = (await fn(urlToTry, { getUrl: true, format: "best[ext=mp4]/best", noWarnings: true } as any)) as unknown as string;
+      const v = typeof out === "string" ? out.trim() : String(out ?? "").trim().split("\n")[0];
       if (v && v.startsWith("http")) return v;
     } catch (err) {
-      console.log("[download] yt-dlp insta failed:", String(err).slice(0, 80));
+      console.log("[download] yt-dlp insta failed:", String(err).slice(0, 120));
     }
   }
 
