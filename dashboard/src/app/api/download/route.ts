@@ -25,7 +25,6 @@ export async function POST(req: Request) {
 }
 
 async function getVideoUrl(url: string): Promise<string | null> {
-  // تنظيف رابط انستا من البراميترات
   const cleanUrl = url.split("?")[0].split("&")[0];
   const urlToTry = cleanUrl || url;
 
@@ -43,7 +42,6 @@ async function getVideoUrl(url: string): Promise<string | null> {
     if (data) {
       const v = (data as any).url ?? (data as any).mp4 ?? (data as any).video?.[0] ?? (data as any).download?.[0]?.url ?? (Array.isArray(data) ? (data as any)[0]?.url : null) ?? (typeof data === "string" ? data : null);
       if (v && typeof v === "string" && v.startsWith("http")) return v;
-      // جرب كل الحقول المحتملة
       if (typeof data === "object") {
         const possible = JSON.stringify(data).match(/https:\/\/[^"]+\.mp4[^"]*/);
         if (possible) return possible[0].replace(/\\u0026/g, "&").replace(/\\/g, "");
@@ -51,6 +49,24 @@ async function getVideoUrl(url: string): Promise<string | null> {
     }
   } catch (err) {
     console.log("[download] btch failed:", String(err).slice(0, 120));
+  }
+
+  // المحاولة 1.5: Instagram — saveig API
+  if (urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) {
+    try {
+      const res = await fetch("https://saveig.app/api/ajaxSearch", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": "Mozilla/5.0" },
+        body: `q=${encodeURIComponent(urlToTry)}&t=media&lang=en`,
+        signal: AbortSignal.timeout(10000)
+      });
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const html = data?.data ?? "";
+        const match = html.match(/href="([^"]+\.mp4[^"]*)"/);
+        if (match) return match[1].replace(/&amp;/g, "&");
+      }
+    } catch {}
   }
 
   // المحاولة 1.5: Cobalt للانستا (أكثر موثوقية من yt-dlp)
