@@ -1,7 +1,3 @@
-import { create } from "yt-dlp-exec";
-
-const ytdlp = create("yt-dlp");
-
 export async function POST(req: Request) {
   try {
     const { url } = await req.json();
@@ -25,19 +21,27 @@ export async function POST(req: Request) {
 }
 
 async function getVideoUrl(url: string): Promise<string | null> {
+  // المحاولة 1: btch-downloader
   try {
-    const output = (await (ytdlp as any)(url, {
-      getUrl: true,
-      format: "best[ext=mp4]/best",
-      noWarnings: true,
-      noCallHome: true,
-      noCheckCertificate: true,
-      preferFreeFormats: true
-    })) as unknown as string;
-    const videoUrl = typeof output === "string" ? output.trim() : String(output ?? "").trim();
-    if (videoUrl && videoUrl.startsWith("http")) return videoUrl;
-  } catch {}
-  // Fallback TikWM/Cobalt
+    const btch: any = await import("btch-downloader");
+    const lower = url.toLowerCase();
+    let data: any = null;
+    if (lower.includes("tiktok.com") && btch.tiktok) data = await btch.tiktok(url);
+    else if ((lower.includes("instagram.com") || lower.includes("instagr.am")) && btch.instagram) data = await btch.instagram(url);
+    else if ((lower.includes("twitter.com") || lower.includes("x.com") || lower.includes("t.co")) && btch.twitter) data = await btch.twitter(url);
+    else if (btch.default?.tiktok && lower.includes("tiktok.com")) data = await btch.default.tiktok(url);
+    if (data) {
+      const videoUrl = data.mp4 ?? data.url ?? data.video?.[0] ?? data.download?.[0]?.url ?? null;
+      if (videoUrl && typeof videoUrl === "string" && videoUrl.startsWith("http")) return videoUrl;
+      // btch قد يعيد مصفوفة
+      if (Array.isArray(data) && data[0]?.url) return data[0].url;
+      if (typeof data === "string" && data.startsWith("http")) return data;
+    }
+  } catch (err) {
+    console.log("[download] btch failed:", String(err).slice(0, 100));
+  }
+
+  // المحاولة 2: TikWM
   if (url.includes("tiktok.com")) {
     try {
       const res = await fetch("https://www.tikwm.com/api/", {
@@ -53,6 +57,7 @@ async function getVideoUrl(url: string): Promise<string | null> {
       }
     } catch {}
   }
+  // المحاولة 3: Cobalt
   for (const endpoint of ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json"]) {
     try {
       const res = await fetch(endpoint, {
