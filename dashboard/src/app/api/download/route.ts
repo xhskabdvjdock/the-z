@@ -53,18 +53,23 @@ async function getVideoUrl(url: string): Promise<string | null> {
     console.log("[download] btch failed:", String(err).slice(0, 120));
   }
 
-  // المحاولة 1.5: yt-dlp للانستا كاحتياطي
+  // المحاولة 1.5: Cobalt للانستا (أكثر موثوقية من yt-dlp)
   if (urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) {
-    try {
-      const mod: any = await import("yt-dlp-exec");
-      const ytdlp = mod.create ? mod.create("yt-dlp") : mod.default ?? mod;
-      const fn = typeof ytdlp === "function" ? ytdlp : ytdlp?.exec ?? ytdlp?.default;
-      if (typeof fn !== "function") throw new Error("yt-dlp not a function");
-      const out = (await fn(urlToTry, { getUrl: true, format: "best[ext=mp4]/best", noWarnings: true } as any)) as unknown as string;
-      const v = typeof out === "string" ? out.trim() : String(out ?? "").trim().split("\n")[0];
-      if (v && v.startsWith("http")) return v;
-    } catch (err) {
-      console.log("[download] yt-dlp insta failed:", String(err).slice(0, 120));
+    for (const endpoint of ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json"]) {
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ url: urlToTry }),
+          signal: AbortSignal.timeout(10000)
+        });
+        if (!res.ok) continue;
+        const data = (await res.json()) as any;
+        const v = data?.url ?? data?.picker?.[0]?.url;
+        if (v) return v;
+      } catch {
+        continue;
+      }
     }
   }
 
