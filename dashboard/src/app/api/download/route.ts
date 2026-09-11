@@ -25,7 +25,13 @@ export async function POST(req: Request) {
 }
 
 async function getVideoUrl(url: string): Promise<string | null> {
-  const cleanUrl = url.split("?")[0].split("&")[0];
+  // تنظيف رابط تويتر من /video/1
+  let cleanUrl = url.split("?")[0].split("&")[0];
+  if (cleanUrl.includes("x.com") || cleanUrl.includes("twitter.com")) {
+    cleanUrl = cleanUrl.replace(/\/video\/\d+$/, "").replace(/\/photo\/\d+$/, "");
+  } else {
+    cleanUrl = cleanUrl.split("?")[0].split("&")[0];
+  }
   const urlToTry = cleanUrl || url;
 
   // المحاولة 1: btch-downloader
