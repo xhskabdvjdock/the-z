@@ -9,14 +9,18 @@ export async function POST(req: Request) {
       return Response.json({ error: "رابط غير صالح" }, { status: 400 });
     }
 
+    console.log(`[download] Trying url: ${url.slice(0, 80)}`);
     const videoUrl = await getVideoUrl(url);
     if (!videoUrl) {
-      return Response.json({ error: "فشل الحصول على الفيديو — تأكد أن الرابط صحيح والفيديو عام" }, { status: 400 });
+      console.log(`[download] Failed for url: ${url.slice(0, 80)}`);
+      return Response.json({ error: "فشل الحصول على الفيديو — تأكد أن الرابط صحيح والفيديو عام. جرب رابط تيك توك/تويتر/انستا عام." }, { status: 400 });
     }
 
+    console.log(`[download] Success: ${videoUrl.slice(0, 80)}`);
     return Response.json({ url: videoUrl });
   } catch (err) {
-    return Response.json({ error: "حدث خطأ" }, { status: 500 });
+    console.error("[download] Error:", err);
+    return Response.json({ error: `حدث خطأ: ${err instanceof Error ? err.message.slice(0, 100) : String(err).slice(0, 100)}` }, { status: 500 });
   }
 }
 
