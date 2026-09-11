@@ -1,50 +1,25 @@
 import { AttachmentBuilder, EmbedBuilder } from "discord.js";
 import { BotCommand } from "../../types/command";
+import { create } from "yt-dlp-exec";
 
-async function downloadTikTok(url: string): Promise<string | null> {
+const ytdlp = create("yt-dlp");
+
+async function getVideoViaYtDlp(url: string): Promise<string | null> {
   try {
-    const res = await fetch("https://www.tikwm.com/api/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "User-Agent": "Mozilla/5.0" },
-      body: JSON.stringify({ url }),
-      signal: AbortSignal.timeout(10000)
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as any;
-    return data?.data?.play ?? data?.data?.hdplay ?? data?.data?.wmplay ?? null;
+    const output = (await ytdlp(url, {
+      getUrl: true,
+      format: "best[ext=mp4]/best",
+      noWarnings: true,
+      noCallHome: true,
+      noCheckCertificate: true,
+      preferFreeFormats: true
+    } as any)) as unknown as string;
+    const videoUrl = typeof output === "string" ? output.trim() : String(output ?? "").trim();
+    if (videoUrl && videoUrl.startsWith("http")) return videoUrl;
+    return null;
   } catch {
     return null;
   }
-}
-
-async function downloadViaCobalt(url: string): Promise<string | null> {
-  const endpoints = ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json", "https://api.cobalt.tools/"];
-  for (const endpoint of endpoints) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json", "User-Agent": "Mozilla/5.0" },
-        body: JSON.stringify({ url }),
-        signal: AbortSignal.timeout(12000)
-      });
-      if (!res.ok) continue;
-      const data = (await res.json()) as any;
-      const videoUrl = data?.url ?? data?.picker?.[0]?.url ?? null;
-      if (videoUrl) return videoUrl;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
-async function getVideoUrl(url: string): Promise<string | null> {
-  if (url.includes("tiktok.com")) {
-    const tiktok = await downloadTikTok(url);
-    if (tiktok) return tiktok;
-  }
-  // محاولة عبر Cobalt للكل (تويتر، انستا، تيك توك)
-  return downloadViaCobalt(url);
 }
 
 const command: BotCommand = {
@@ -87,7 +62,7 @@ const command: BotCommand = {
       await ctx.reply({ content: "جاري التحميل..." });
     }
 
-    const videoUrl = await getVideoUrl(url);
+    const videoUrl = await getVideoViaYtDlp(url);
     if (!videoUrl) {
       const msg = "فشل التحميل — تأكد أن الرابط صحيح والفيديو عام. جرب رابط آخر.";
       if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: msg }).catch(() => null);
@@ -96,6 +71,7 @@ const command: BotCommand = {
     }
 
     try {
+      // yt-dlp يعطي رابط مباشر، نحمله
       const res = await fetch(videoUrl, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(30000) });
       if (!res.ok) throw new Error("fetch failed");
       const buffer = Buffer.from(await res.arrayBuffer());
@@ -113,7 +89,8 @@ const command: BotCommand = {
         await ctx.reply({ embeds: [embed], files: [attachment] });
       }
     } catch (err) {
-      const fallback = `فشل إرسال الفيديو — جرب رابط مباشر: ${videoUrl.slice(0, 400)}`;
+      // إذا فشل التحميل، أرسل الرابط المباشر
+      const fallback = `تم الحصول على الرابط المباشر: ${videoUrl.slice(0, 400)}`;
       if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: fallback }).catch(() => null);
       else await ctx.reply({ content: fallback });
     }

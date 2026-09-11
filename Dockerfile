@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# ffmpeg لتحويل الفيديو/الصور إلى GIF (أمر /gif)
-RUN apk add --no-cache ffmpeg
+# ffmpeg و python لـ yt-dlp (تحميل تيك توك/انستا/تويتر)
+RUN apk add --no-cache ffmpeg python3 py3-pip && pip3 install --no-cache-dir yt-dlp --break-system-packages
 
 WORKDIR /app
 
