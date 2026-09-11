@@ -214,7 +214,15 @@ export async function postIslamicContent(
     const item = await pickContent(config, excludeIds);
     if (!item) return { ok: false, reason: "no-content" };
 
-    await channel.send({ embeds: [buildIslamicEmbed(item)] });
+    try {
+      await channel.send({ embeds: [buildIslamicEmbed(item)] });
+    } catch (err: any) {
+      // Unknown Channel (10003) — القناة محذوفة أو البوت لا يراها
+      if (err?.code === 10003 || err?.message?.includes("10003") || err?.message?.includes("Unknown Channel")) {
+        return { ok: false, reason: "channel-not-found" };
+      }
+      throw err;
+    }
     return { ok: true, item };
   } catch (err) {
     logError("islamic/post", err);
