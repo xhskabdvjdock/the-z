@@ -18,5 +18,7 @@ export const config = {
   dbSslRootCertPath: process.env.DB_SSL_CA_PATH ?? "",
   devGuildId: process.env.DEV_GUILD_ID ?? "",
   dashboardUrl: process.env.DASHBOARD_URL ?? "http://localhost:3000",
-  defaultColor: 0x5865f2
+  defaultColor: 0x5865f2,
+  tmdbApiKey: process.env.TMDB_API_KEY || "8bc7ad43539a30944f55acd11eb0dac4",
+  omdbApiKey: process.env.OMDB_API_KEY || "ae5025e2"
 };

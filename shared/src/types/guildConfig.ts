@@ -413,6 +413,12 @@ export interface IGuildConfig {
     whitelistChannelIds: string[];
   };
 
+  /** نظام الأفلام والمسلسلات */
+  movies: {
+    enabled: boolean;
+    channelId: string | null;
+  };
+
   /** نظام الاقتراحات والتصويت */
   suggestions: {
     enabled: boolean;
@@ -616,6 +622,11 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       enabled: false,
       whitelistRoleIds: [],
       whitelistChannelIds: []
+    },
+
+    movies: {
+      enabled: false,
+      channelId: null
     },
 
     suggestions: {
