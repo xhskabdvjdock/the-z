@@ -99,38 +99,20 @@ const command: BotCommand = {
       await ctx.reply({ content: "جاري التحميل..." });
     }
 
-    let videoUrl = await getVideoViaYtDlp(url);
-    if (!videoUrl) videoUrl = await getVideoViaFallback(url);
-    if (!videoUrl) {
-      const msg = "فشل التحميل — تأكد أن الرابط صحيح والفيديو عام. جرب رابط آخر.";
-      if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: msg }).catch(() => null);
-      else await ctx.reply({ content: msg });
-      return;
-    }
+    const dashboardUrl = process.env.DASHBOARD_URL ?? process.env.NEXTAUTH_URL ?? "https://the-z-o3lt.onrender.com";
+    const dlPageUrl = `${dashboardUrl.replace(/\/$/, "")}/downloader?url=${encodeURIComponent(url)}`;
 
-    try {
-      // yt-dlp يعطي رابط مباشر، نحمله
-      const res = await fetch(videoUrl, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(30000) });
-      if (!res.ok) throw new Error("fetch failed");
-      const buffer = Buffer.from(await res.arrayBuffer());
-      if (buffer.length > 25 * 1024 * 1024) {
-        const msg = "الفيديو كبير جدًا (أكثر من 25MB). جرب رابط مباشر: " + videoUrl.slice(0, 300);
-        if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: msg }).catch(() => null);
-        else await ctx.reply({ content: msg });
-        return;
-      }
-      const attachment = new AttachmentBuilder(buffer, { name: "video.mp4" });
-      const embed = new EmbedBuilder().setColor(0x5865f2).setTitle("تم التحميل").setDescription(`[رابط أصلي](${url})`);
-      if (ctx.isSlash && ctx.interaction?.deferred) {
-        await ctx.interaction.editReply({ embeds: [embed], files: [attachment] }).catch(() => null);
-      } else {
-        await ctx.reply({ embeds: [embed], files: [attachment] });
-      }
-    } catch (err) {
-      // إذا فشل التحميل، أرسل الرابط المباشر
-      const fallback = `تم الحصول على الرابط المباشر: ${videoUrl.slice(0, 400)}`;
-      if (ctx.isSlash && ctx.interaction?.deferred) await ctx.interaction.editReply({ content: fallback }).catch(() => null);
-      else await ctx.reply({ content: fallback });
+    const embed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle("تم تجهيز الفيديو")
+      .setDescription(`[فتح صفحة التحميل](${dlPageUrl})\n\nاضغط الرابط لمشاهدة الفيديو وتحميله`)
+      .setFooter({ text: "الديسكورد لا يدعم الفيديوهات الكبيرة — التحميل عبر المتصفح" });
+
+    const msg = `تم تجهيز الفيديو — افتح: ${dlPageUrl}`;
+    if (ctx.isSlash && ctx.interaction?.deferred) {
+      await ctx.interaction.editReply({ content: msg, embeds: [embed] }).catch(() => null);
+    } else {
+      await ctx.reply({ content: msg, embeds: [embed] });
     }
   }
 };

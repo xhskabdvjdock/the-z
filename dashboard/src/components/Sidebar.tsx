@@ -30,7 +30,8 @@ import {
   Image,
   Lightbulb,
   KeyRound,
-  Film
+  Film,
+  Download
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { href: "/gifblock", label: "حظر GIFs", icon: Image },
   { href: "/suggestions", label: "الاقتراحات", icon: Lightbulb },
   { href: "/movies", label: "الأفلام", icon: Film },
+  { href: "/downloader", label: "تحميل الفيديو", icon: Download },
   { href: "/notifications", label: "الإشعارات", icon: MessageSquare },
   { href: "/advanced", label: "متقدم", icon: Settings },
   { href: "/access", label: "إدارة الوصول", icon: KeyRound },
