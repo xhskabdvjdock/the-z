@@ -21,24 +21,48 @@ export async function POST(req: Request) {
 }
 
 async function getVideoUrl(url: string): Promise<string | null> {
+  // تنظيف رابط انستا من البراميترات
+  const cleanUrl = url.split("?")[0].split("&")[0];
+  const urlToTry = cleanUrl || url;
+
   // المحاولة 1: btch-downloader
   try {
     const btch: any = await import("btch-downloader");
-    const lower = url.toLowerCase();
+    const lower = urlToTry.toLowerCase();
     let data: any = null;
-    if (lower.includes("tiktok.com") && btch.tiktok) data = await btch.tiktok(url);
-    else if ((lower.includes("instagram.com") || lower.includes("instagr.am")) && btch.instagram) data = await btch.instagram(url);
-    else if ((lower.includes("twitter.com") || lower.includes("x.com") || lower.includes("t.co")) && btch.twitter) data = await btch.twitter(url);
-    else if (btch.default?.tiktok && lower.includes("tiktok.com")) data = await btch.default.tiktok(url);
+    if (lower.includes("tiktok.com") && btch.tiktok) data = await btch.tiktok(urlToTry);
+    else if ((lower.includes("instagram.com") || lower.includes("instagr.am")) && btch.instagram) {
+      try { data = await btch.instagram(url); } catch { data = await btch.instagram(urlToTry); }
+    }
+    else if ((lower.includes("twitter.com") || lower.includes("x.com") || lower.includes("t.co")) && btch.twitter) data = await btch.twitter(urlToTry);
+    else if (btch.default?.tiktok && lower.includes("tiktok.com")) data = await btch.default.tiktok(urlToTry);
     if (data) {
-      const videoUrl = data.mp4 ?? data.url ?? data.video?.[0] ?? data.download?.[0]?.url ?? null;
-      if (videoUrl && typeof videoUrl === "string" && videoUrl.startsWith("http")) return videoUrl;
-      // btch قد يعيد مصفوفة
-      if (Array.isArray(data) && data[0]?.url) return data[0].url;
-      if (typeof data === "string" && data.startsWith("http")) return data;
+      const v = (data as any).url ?? (data as any).mp4 ?? (data as any).video?.[0] ?? (data as any).download?.[0]?.url ?? (Array.isArray(data) ? (data as any)[0]?.url : null) ?? (typeof data === "string" ? data : null);
+      if (v && typeof v === "string" && v.startsWith("http")) return v;
+      // جرب كل الحقول المحتملة
+      if (typeof data === "object") {
+        const possible = JSON.stringify(data).match(/https:\/\/[^"]+\.mp4[^"]*/);
+        if (possible) return possible[0].replace(/\\u0026/g, "&").replace(/\\/g, "");
+      }
     }
   } catch (err) {
-    console.log("[download] btch failed:", String(err).slice(0, 100));
+    console.log("[download] btch failed:", String(err).slice(0, 120));
+  }
+
+  // المحاولة 1.5: Instagram scrape مباشر
+  if ((urlToTry.includes("instagram.com") || urlToTry.includes("instagr.am")) && !urlToTry.includes("?__a=")) {
+    try {
+      const scrapeUrl = urlToTry.split("?")[0] + "?__a=1&__d=dis";
+      const res = await fetch(scrapeUrl, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        const text = await res.text();
+        const match = text.match(/"video_url":"([^"]+)"/) ?? text.match(/video_url\\":\\"([^"]+)\\"/);
+        if (match) {
+          const v = match[1].replace(/\\u0026/g, "&").replace(/\\/g, "");
+          if (v.startsWith("http")) return v;
+        }
+      }
+    } catch {}
   }
 
   // المحاولة 2: TikWM
