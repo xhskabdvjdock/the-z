@@ -59,13 +59,30 @@ export async function ensureFontLoaded(): Promise<string> {
 
 async function ensureJpFontLoaded(): Promise<void> {
   if (isJpFontRegistered) return;
-  const fontUrl = "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP-Bold.ttf";
+  const rootDir = process.cwd();
+  const possiblePaths = [
+    path.resolve(rootDir, "fonts", "NotoSansJP-Bold.ttf"),
+    path.resolve(rootDir, "bot", "fonts", "NotoSansJP-Bold.ttf"),
+    path.resolve(__dirname, "..", "..", "..", "fonts", "NotoSansJP-Bold.ttf")
+  ];
+  for (const fontPath of possiblePaths) {
+    if (!fs.existsSync(fontPath)) continue;
+    try {
+      GlobalFonts.register(fs.readFileSync(fontPath), "NotoJP");
+      isJpFontRegistered = true;
+      console.log(`[Fonts] ✅ تم تحميل NotoJP محليًا من: ${fontPath}`);
+      return;
+    } catch (err) {
+      logError("fonts-jp-local", err);
+    }
+  }
+  const fontUrl = "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP%5Bwght%5D.ttf";
   try {
     const res = await fetch(fontUrl);
     if (res.ok) {
       GlobalFonts.register(Buffer.from(await res.arrayBuffer()), "NotoJP");
       isJpFontRegistered = true;
-      console.log("[Fonts] ✅ تم تحميل Noto Sans JP");
+      console.log("[Fonts] ✅ تم تحميل Noto Sans JP عبر الشبكة");
     }
   } catch (err) {
     logError("fonts-jp", err);
