@@ -31,7 +31,6 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
   try {
     const args = [
       "--no-warnings",
-      "--no-call-home",
       "--no-check-certificate",
       "--prefer-free-formats",
       "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
@@ -103,6 +102,7 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
       }
     }
     await cleanup(jobId).catch(() => null);
+    if (msg.includes("rate-limit") || msg.includes("Rate-limit") || msg.includes("exceeded the rate-limit")) throw new Error("Instagram is temporarily rate-limiting downloads. Please try again in a few minutes.");
     if (msg.includes("Video unavailable") || msg.includes("Private")) throw new Error("The video is unavailable or private.");
     if (msg.includes("No video")) throw new Error("No downloadable video was found in this post.");
     if (msg.includes("File too large")) throw new Error("The video is too large to process.");
