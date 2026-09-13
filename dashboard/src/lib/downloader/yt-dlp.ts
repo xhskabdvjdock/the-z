@@ -17,7 +17,49 @@ export interface DownloadResult {
   size: number;
 }
 
+async function tryCobalt(url: string): Promise<string | null> {
+  for (const endpoint of ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json"]) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as any;
+      const v = data?.url ?? data?.picker?.[0]?.url;
+      if (v) return v;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
 export async function downloadWithYtDlp(url: string, platform: string): Promise<DownloadResult> {
+  // للانستا: جرب Cobalt أولًا (أقل حظرًا من yt-dlp)
+  if (platform === "instagram") {
+    const cobaltUrl = await tryCobalt(url);
+    if (cobaltUrl) {
+      const jobId = randomUUID().slice(0, 8);
+      const jobDir = path.join(TEMP_DIR, jobId);
+      await fs.promises.mkdir(jobDir, { recursive: true });
+      const res = await fetch(cobaltUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+      if (res.ok) {
+        const buffer = Buffer.from(await res.arrayBuffer());
+        if (buffer.length > 1000) {
+          const filePath = path.join(jobDir, `the-z-${platform}-${jobId}.mp4`);
+          await fs.promises.writeFile(filePath, buffer);
+          const stats = await fs.promises.stat(filePath);
+          console.log(`[Downloader] Cobalt success for job ${jobId}, size: ${stats.size}`);
+          setTimeout(() => cleanup(jobId).catch(() => null), 15 * 60 * 1000);
+          return { jobId, filePath, filename: `the-z-${platform}-${jobId}.mp4`, size: stats.size };
+        }
+      }
+    }
+  }
+
   const jobId = randomUUID().slice(0, 8);
   const jobDir = path.join(TEMP_DIR, jobId);
   await fs.promises.mkdir(jobDir, { recursive: true });
