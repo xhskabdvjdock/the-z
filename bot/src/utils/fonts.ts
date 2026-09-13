@@ -4,13 +4,17 @@ import path from "path";
 import { logError } from "./logger";
 
 let isFontRegistered = false;
+let isJpFontRegistered = false;
 
 /**
- * يضمن تحميل خط Cairo من الملف المحلي (fonts/Cairo-Bold.ttf) أو عبر الشبكة
- * كبديل، ثم يعيد اسم العائلة المسجلة. نفْس الخط المستخدم في بطاقات الرانك.
+ * يضمن تحميل خط Cairo و Noto Sans JP، ثم يعيد عائلة الخطوط.
  */
 export async function ensureFontLoaded(): Promise<string> {
-  if (isFontRegistered) return "CairoFont";
+  if (isFontRegistered && isJpFontRegistered) return '"CairoFont", "NotoJP", sans-serif';
+  if (isFontRegistered) {
+    await ensureJpFontLoaded();
+    return '"CairoFont", "NotoJP", sans-serif';
+  }
 
   const rootDir = process.cwd();
   const possiblePaths = [
@@ -27,26 +31,44 @@ export async function ensureFontLoaded(): Promise<string> {
       GlobalFonts.register(fs.readFileSync(fontPath), "CairoFont");
       isFontRegistered = true;
       console.log(`[Fonts] ✅ تم تحميل الخط محليًا من: ${fontPath}`);
-      return "CairoFont";
+      break;
     } catch (err) {
       logError("fonts-local", err);
     }
   }
 
-  try {
-    const fontUrl =
-      "https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/bot/fonts/Cairo-Bold.ttf";
-    const res = await fetch(fontUrl);
-    if (res.ok) {
-      GlobalFonts.register(Buffer.from(await res.arrayBuffer()), "CairoFont");
-      isFontRegistered = true;
-      console.log("[Fonts] ✅ تم جلب الخط عبر الشبكة بنجاح!");
-      return "CairoFont";
+  if (!isFontRegistered) {
+    try {
+      const fontUrl =
+        "https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/bot/fonts/Cairo-Bold.ttf";
+      const res = await fetch(fontUrl);
+      if (res.ok) {
+        GlobalFonts.register(Buffer.from(await res.arrayBuffer()), "CairoFont");
+        isFontRegistered = true;
+        console.log("[Fonts] ✅ تم جلب الخط عبر الشبكة بنجاح!");
+      } else {
+        console.error(`[Fonts] ❌ فشل جلب الخط من GitHub RAW: HTTP ${res.status}`);
+      }
+    } catch (err) {
+      logError("fonts-network", err);
     }
-    console.error(`[Fonts] ❌ فشل جلب الخط من GitHub RAW: HTTP ${res.status}`);
-  } catch (err) {
-    logError("fonts-network", err);
   }
 
-  return "sans-serif";
+  await ensureJpFontLoaded();
+  return isFontRegistered ? '"CairoFont", "NotoJP", sans-serif' : '"NotoJP", sans-serif';
+}
+
+async function ensureJpFontLoaded(): Promise<void> {
+  if (isJpFontRegistered) return;
+  const fontUrl = "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansjp/NotoSansJP-Bold.ttf";
+  try {
+    const res = await fetch(fontUrl);
+    if (res.ok) {
+      GlobalFonts.register(Buffer.from(await res.arrayBuffer()), "NotoJP");
+      isJpFontRegistered = true;
+      console.log("[Fonts] ✅ تم تحميل Noto Sans JP");
+    }
+  } catch (err) {
+    logError("fonts-jp", err);
+  }
 }
