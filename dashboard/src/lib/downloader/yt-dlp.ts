@@ -65,11 +65,16 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
 
     console.log(`[Downloader] Download completed for job ${jobId}, size: ${stats.size}`);
     const safeFilename = `the-z-${platform}-${jobId}.mp4`;
+    const safePath = path.join(jobDir, safeFilename);
+    // إعادة تسمية الملف لاسم آمن
+    if (videoFile !== safeFilename) {
+      await fs.promises.rename(filePath, safePath).catch(() => null);
+    }
 
     // تنظيف تلقائي بعد 15 دقيقة
     setTimeout(() => cleanup(jobId).catch(() => null), 15 * 60 * 1000);
 
-    return { jobId, filePath, filename: safeFilename, size: stats.size };
+    return { jobId, filePath: safePath, filename: safeFilename, size: stats.size };
   } catch (err) {
     await cleanup(jobId).catch(() => null);
     const msg = err instanceof Error ? err.message : String(err);
