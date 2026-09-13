@@ -76,31 +76,33 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
 
     return { jobId, filePath: safePath, filename: safeFilename, size: stats.size };
   } catch (err) {
-    await cleanup(jobId).catch(() => null);
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`[Downloader] yt-dlp failed for job ${jobId}: ${msg.slice(0, 500)}`);
-    // Fallback لانستا عبر btch/Cobalt
+    console.log(`[Downloader] yt-dlp failed for job ${jobId}: ${msg.slice(0, 800)}`);
+    // Fallback لانستا عبر btch/Cobalt — لا تنظف قبل المحاولة
     if (platform === "instagram") {
       try {
         const fallbackUrl = await tryInstagramFallback(url);
+        console.log(`[Downloader] Fallback URL: ${fallbackUrl?.slice(0, 80) ?? "null"}`);
         if (fallbackUrl) {
-          // حمل من الرابط المباشر
-          const fallbackJobId = jobId;
-          const fallbackDir = jobDir;
-          await fs.promises.mkdir(fallbackDir, { recursive: true });
+          await fs.promises.mkdir(jobDir, { recursive: true });
           const res = await fetch(fallbackUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
           if (res.ok) {
             const buffer = Buffer.from(await res.arrayBuffer());
-            const fallbackPath = path.join(fallbackDir, `the-z-${platform}-${jobId}.mp4`);
-            await fs.promises.writeFile(fallbackPath, buffer);
-            const stats = await fs.promises.stat(fallbackPath);
-            console.log(`[Downloader] Fallback success for job ${jobId}, size: ${stats.size}`);
-            setTimeout(() => cleanup(jobId).catch(() => null), 15 * 60 * 1000);
-            return { jobId, filePath: fallbackPath, filename: `the-z-${platform}-${jobId}.mp4`, size: stats.size };
+            if (buffer.length > 1000) {
+              const fallbackPath = path.join(jobDir, `the-z-${platform}-${jobId}.mp4`);
+              await fs.promises.writeFile(fallbackPath, buffer);
+              const stats = await fs.promises.stat(fallbackPath);
+              console.log(`[Downloader] Fallback success for job ${jobId}, size: ${stats.size}`);
+              setTimeout(() => cleanup(jobId).catch(() => null), 15 * 60 * 1000);
+              return { jobId, filePath: fallbackPath, filename: `the-z-${platform}-${jobId}.mp4`, size: stats.size };
+            }
           }
         }
-      } catch {}
+      } catch (e) {
+        console.log(`[Downloader] Fallback error: ${String(e).slice(0, 200)}`);
+      }
     }
+    await cleanup(jobId).catch(() => null);
     if (msg.includes("Video unavailable") || msg.includes("Private")) throw new Error("The video is unavailable or private.");
     if (msg.includes("No video")) throw new Error("No downloadable video was found in this post.");
     if (msg.includes("File too large")) throw new Error("The video is too large to process.");
