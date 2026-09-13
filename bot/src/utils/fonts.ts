@@ -18,19 +18,19 @@ export async function ensureFontLoaded(): Promise<string> {
 
   const rootDir = process.cwd();
   const possiblePaths = [
-    path.resolve(rootDir, "fonts", "Cairo-Bold.ttf"),
-    path.resolve(rootDir, "bot", "fonts", "Cairo-Bold.ttf"),
-    path.resolve(__dirname, "..", "..", "..", "fonts", "Cairo-Bold.ttf"),
-    path.resolve(__dirname, "..", "..", "fonts", "Cairo-Bold.ttf"),
-    path.resolve(__dirname, "..", "fonts", "Cairo-Bold.ttf")
+    path.resolve(rootDir, "fonts", "Rubik-Bold.ttf"),
+    path.resolve(rootDir, "bot", "fonts", "Rubik-Bold.ttf"),
+    path.resolve(__dirname, "..", "..", "..", "fonts", "Rubik-Bold.ttf"),
+    path.resolve(__dirname, "..", "..", "fonts", "Rubik-Bold.ttf"),
+    path.resolve(__dirname, "..", "fonts", "Rubik-Bold.ttf")
   ];
 
   for (const fontPath of possiblePaths) {
     if (!fs.existsSync(fontPath)) continue;
     try {
-      GlobalFonts.register(fs.readFileSync(fontPath), "CairoFont");
+      GlobalFonts.register(fs.readFileSync(fontPath), "Rubik");
       isFontRegistered = true;
-      console.log(`[Fonts] ✅ تم تحميل الخط محليًا من: ${fontPath}`);
+      console.log(`[Fonts] ✅ تم تحميل Rubik محليًا من: ${fontPath}`);
       break;
     } catch (err) {
       logError("fonts-local", err);
@@ -39,15 +39,14 @@ export async function ensureFontLoaded(): Promise<string> {
 
   if (!isFontRegistered) {
     try {
-      const fontUrl =
-        "https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/bot/fonts/Cairo-Bold.ttf";
+      const fontUrl = "https://raw.githubusercontent.com/google/fonts/main/ofl/rubik/Rubik-Bold.ttf";
       const res = await fetch(fontUrl);
       if (res.ok) {
-        GlobalFonts.register(Buffer.from(await res.arrayBuffer()), "CairoFont");
+        GlobalFonts.register(Buffer.from(await res.arrayBuffer()), "Rubik");
         isFontRegistered = true;
-        console.log("[Fonts] ✅ تم جلب الخط عبر الشبكة بنجاح!");
+        console.log("[Fonts] ✅ تم جلب Rubik عبر الشبكة بنجاح!");
       } else {
-        console.error(`[Fonts] ❌ فشل جلب الخط من GitHub RAW: HTTP ${res.status}`);
+        console.error(`[Fonts] ❌ فشل جلب Rubik من GitHub: HTTP ${res.status}`);
       }
     } catch (err) {
       logError("fonts-network", err);
@@ -55,7 +54,7 @@ export async function ensureFontLoaded(): Promise<string> {
   }
 
   await ensureJpFontLoaded();
-  return isFontRegistered ? '"CairoFont", "NotoJP", sans-serif' : '"NotoJP", sans-serif';
+  return isFontRegistered ? '"Rubik", "NotoJP", sans-serif' : '"NotoJP", sans-serif';
 }
 
 async function ensureJpFontLoaded(): Promise<void> {
