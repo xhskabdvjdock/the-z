@@ -11,6 +11,9 @@ COPY package.json ./
 # Copy orchestrator entrypoint
 COPY start.js ./
 
+# Copy fonts
+COPY fonts ./fonts/
+
 # Copy shared package
 COPY shared/package.json shared/tsconfig.json ./shared/
 COPY shared/src ./shared/src
