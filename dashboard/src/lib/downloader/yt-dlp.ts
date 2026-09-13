@@ -78,13 +78,62 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
   } catch (err) {
     await cleanup(jobId).catch(() => null);
     const msg = err instanceof Error ? err.message : String(err);
-    console.log(`[Downloader] yt-dlp failed for job ${jobId}: ${msg.slice(0, 200)}`);
+    console.log(`[Downloader] yt-dlp failed for job ${jobId}: ${msg.slice(0, 500)}`);
+    // Fallback لانستا عبر btch/Cobalt
+    if (platform === "instagram") {
+      try {
+        const fallbackUrl = await tryInstagramFallback(url);
+        if (fallbackUrl) {
+          // حمل من الرابط المباشر
+          const fallbackJobId = jobId;
+          const fallbackDir = jobDir;
+          await fs.promises.mkdir(fallbackDir, { recursive: true });
+          const res = await fetch(fallbackUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+          if (res.ok) {
+            const buffer = Buffer.from(await res.arrayBuffer());
+            const fallbackPath = path.join(fallbackDir, `the-z-${platform}-${jobId}.mp4`);
+            await fs.promises.writeFile(fallbackPath, buffer);
+            const stats = await fs.promises.stat(fallbackPath);
+            console.log(`[Downloader] Fallback success for job ${jobId}, size: ${stats.size}`);
+            setTimeout(() => cleanup(jobId).catch(() => null), 15 * 60 * 1000);
+            return { jobId, filePath: fallbackPath, filename: `the-z-${platform}-${jobId}.mp4`, size: stats.size };
+          }
+        }
+      } catch {}
+    }
     if (msg.includes("Video unavailable") || msg.includes("Private")) throw new Error("The video is unavailable or private.");
     if (msg.includes("No video")) throw new Error("No downloadable video was found in this post.");
     if (msg.includes("File too large")) throw new Error("The video is too large to process.");
     if (msg.includes("timeout") || msg.includes("ETIMEDOUT")) throw new Error("The downloader service is currently unavailable.");
     throw new Error("The video could not be downloaded.");
   }
+}
+
+async function tryInstagramFallback(url: string): Promise<string | null> {
+  const cleanUrl = url.split("?")[0];
+  try {
+    const btch: any = await import("btch-downloader");
+    const data = await btch.instagram(cleanUrl).catch(() => btch.instagram(url));
+    const v = (data as any)?.url ?? (data as any)?.mp4 ?? (data as any)?.download?.[0]?.url;
+    if (v && typeof v === "string" && v.startsWith("http")) return v;
+  } catch {}
+  for (const endpoint of ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json"]) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ url }),
+        signal: AbortSignal.timeout(8000)
+      });
+      if (!res.ok) continue;
+      const data = (await res.json()) as any;
+      const v = data?.url ?? data?.picker?.[0]?.url;
+      if (v) return v;
+    } catch {
+      continue;
+    }
+  }
+  return null;
 }
 
 export async function cleanup(jobId: string): Promise<void> {
