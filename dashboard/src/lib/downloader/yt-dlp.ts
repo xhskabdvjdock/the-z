@@ -115,14 +115,23 @@ async function tryInstagramFallback(url: string): Promise<string | null> {
   // المحاولة 1: instagram-url-direct (مخصص لانستا)
   try {
     const ig: any = await import("instagram-url-direct");
-    const data = await ig.default?.(url) ?? ig(url);
-    const v = data?.url_list?.[0] ?? data?.url ?? data?.results_number?.[0]?.url;
+    let data: any = null;
+    try { data = await ig.default?.(url); } catch {}
+    if (!data || !data.url_list) {
+      try { data = await (ig as any)(url); } catch {}
+    }
+    const v = data?.url_list?.[0] ?? data?.url ?? data?.results_number?.[0]?.url ?? data?.results_number?.[0];
     if (v && typeof v === "string" && v.startsWith("http")) return v;
+    if (typeof v === "object" && v?.url) return v.url;
     if (data?.results_number?.[0]) {
       const first = data.results_number[0];
+      if (typeof first === "string" && first.startsWith("http")) return first;
       if (first?.url) return first.url;
     }
-  } catch {}
+    console.log(`[download] instagram-url-direct raw: ${JSON.stringify(data).slice(0, 200)}`);
+  } catch (err) {
+    console.log(`[download] instagram-url-direct failed: ${String(err).slice(0, 100)}`);
+  }
   const cleanUrl = url.split("?")[0];
   try {
     const btch: any = await import("btch-downloader");
