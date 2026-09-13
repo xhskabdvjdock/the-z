@@ -18,21 +18,40 @@ export interface DownloadResult {
 }
 
 async function tryCobalt(url: string): Promise<string | null> {
-  for (const endpoint of ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json"]) {
+  const customCobalt = process.env.COBALT_API_URL;
+  // Public Cobalt API shut down Nov 2024, use self-hosted if configured, otherwise try saveig as fallback for Instagram
+  if (customCobalt) {
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetch(customCobalt, {
         method: "POST",
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({ url }),
         signal: AbortSignal.timeout(8000)
       });
-      if (!res.ok) continue;
-      const data = (await res.json()) as any;
-      const v = data?.url ?? data?.picker?.[0]?.url;
-      if (v) return v;
-    } catch {
-      continue;
-    }
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const v = data?.url ?? data?.picker?.[0]?.url;
+        if (typeof v === "string" && v.startsWith("http")) return v;
+      }
+    } catch {}
+    return null;
+  }
+  // Fallback for Instagram via saveig
+  if (url.includes("instagram.com")) {
+    try {
+      const res = await fetch("https://saveig.app/api/ajaxSearch", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `q=${encodeURIComponent(url)}&t=media&lang=en`,
+        signal: AbortSignal.timeout(10000)
+      });
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const html = data?.data ?? "";
+        const match = html.match(/href="([^"]+\.mp4[^"]*)"/);
+        if (match) return match[1].replace(/&amp;/g, "&");
+      }
+    } catch {}
   }
   return null;
 }
