@@ -18,6 +18,8 @@ RUN npm install && npm run build
 # Production stage
 FROM node:20-alpine
 
+RUN apk add --no-cache ffmpeg python3 py3-pip && pip3 install --no-cache-dir yt-dlp --break-system-packages
+
 WORKDIR /app
 
 # Copy built files
