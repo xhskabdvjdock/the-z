@@ -178,15 +178,6 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   ctx.font = `20px "${fontName}"`;
   ctx.fillText(usernameText, centerX(usernameText, ctx), usernameY);
 
-  // Make it a Quote#6660 — أسفل اليمين
-  ctx.fillStyle = "#9AA0A6";
-  ctx.font = `16px "${fontName}"`;
-  ctx.textAlign = "right";
-  ctx.textBaseline = "bottom";
-  ctx.fillText("Make it a Quote#6660", WIDTH - 30, height - 25);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-
   return canvas.toBuffer("image/png");
 }
 
