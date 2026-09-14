@@ -78,15 +78,20 @@ const command: BotCommand = {
       return;
     }
 
+    const nowUnixBan = Math.floor(Date.now() / 1000);
     const embed = new EmbedBuilder()
       .setColor(0xed4245)
       .setTitle("تم حظر عضو")
       .addFields(
-        { name: "العضو", value: `${user.tag} (${user.id})` },
-        { name: "بواسطة", value: ctx.user.tag },
+        { name: "العضو", value: `${user.tag} <@${user.id}> (\`${user.id}\`)` },
+        { name: "المنفذ", value: `${ctx.user.tag} <@${ctx.user.id}>` },
         { name: "السبب", value: reason },
-        ...(deleteDays > 0 ? [{ name: "حذف رسائل", value: `آخر ${deleteDays} يوم`, inline: true }] : [])
-      );
+        ...(deleteDays > 0 ? [{ name: "حذف الرسائل", value: `اخر ${deleteDays} يوم`, inline: true } as const] : []),
+        { name: "الوقت", value: `<t:${nowUnixBan}:F> (<t:${nowUnixBan}:R>)`, inline: false },
+        { name: "القناة", value: `<#${ctx.channel.id}>`, inline: true }
+      )
+      .setFooter({ text: `Target: ${user.id} | Executor: ${ctx.user.id}` })
+      .setTimestamp();
 
     const reply = await ctx.reply({ embeds: [embed] });
 

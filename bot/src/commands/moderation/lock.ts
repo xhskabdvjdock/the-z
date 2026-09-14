@@ -58,7 +58,15 @@ const command: BotCommand = {
       action: "lock",
       reason: selected.id
     });
-    await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
+    const nowUnix = Math.floor(Date.now() / 1000);
+    embed.addFields({ name: "الوقت", value: `<t:${nowUnix}:F> (<t:${nowUnix}:R>)` });
+    embed.setFooter({ text: `Channel ID: ${selected.id} | Executor: ${ctx.user.tag}` }).setTimestamp();
+    await sendLog(ctx.client, ctx.guild.id, "moderation", embed, undefined, {
+      executorId: ctx.user.id,
+      executorTag: ctx.user.tag,
+      channelId: selected.id,
+      channelName: (selected as any).name || selected.id
+    });
   }
 };
 

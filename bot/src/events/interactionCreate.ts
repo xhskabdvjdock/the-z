@@ -19,7 +19,7 @@ const event: BotEvent = {
         // الرسائل الخاصة (DM): أمر مصمم للعمل خارج السيرفرات — بدون إعدادات/صلاحيات سيرفر
         if (!interaction.guild || !interaction.member) {
           if (!command.dmEnabled) {
-            await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+            await interaction.reply({ content: "هذا الأمر يعمل داخل السيرفرات فقط." });
             return;
           }
           const dmCtx = buildSlashContext(client, interaction);
@@ -65,7 +65,7 @@ const event: BotEvent = {
         );
         if (!cdCheck.allowed) {
           await interaction.reply({
-            content: `⏳ هذا الأمر قيد البرودة — انتظر ${cdCheck.remainingSeconds} ثانية تقريبًا.`,
+            content: `هذا الأمر قيد البرودة - انتظر ${cdCheck.remainingSeconds} ثانية تقريبا.`,
             ephemeral: true
           });
           return;
@@ -106,7 +106,7 @@ const event: BotEvent = {
         // الرسائل الخاصة (DM): بدون إعدادات/صلاحيات سيرفر
         if (!interaction.guild || !interaction.member) {
           if (!contextMenu.dmEnabled) {
-            await interaction.reply({ content: "❌ هذا الأمر يعمل داخل السيرفرات فقط." });
+            await interaction.reply({ content: "هذا الأمر يعمل داخل السيرفرات فقط." });
             return;
           }
           await contextMenu.run(client, interaction);
@@ -184,7 +184,7 @@ const event: BotEvent = {
 
       const errorEmbed = new EmbedBuilder()
         .setColor(0xed4245)
-        .setDescription("❌ حدث خطأ غير متوقع أثناء تنفيذ هذا الإجراء.");
+        .setDescription("حدث خطأ غير متوقع أثناء تنفيذ هذا الإجراء.");
       if (interaction.isRepliable()) {
         if (interaction.replied || interaction.deferred) {
           await client.withRetry(async () => {

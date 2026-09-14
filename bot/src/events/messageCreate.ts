@@ -146,7 +146,7 @@ const event: BotEvent = {
             );
             if (!cdCheck.allowed) {
               await message.reply(
-                `⏳ هذا الأمر قيد البرودة — انتظر ${cdCheck.remainingSeconds} ثانية تقريبًا.`
+                `هذا الأمر قيد البرودة - انتظر ${cdCheck.remainingSeconds} ثانية تقريبا.`
               );
               return;
             }
@@ -243,15 +243,18 @@ const event: BotEvent = {
         size: a.size
       }));
 
+      const channelNameMedia = (message.channel as any)?.name || "Unknown";
+      const nowUnixMedia = Math.floor(Date.now() / 1000);
+      const messageUrlMedia = `https://discord.com/channels/${message.guild.id}/${message.channelId}/${message.id}`;
       const embed = new EmbedBuilder()
         .setColor(0x2ecc71)
-        .setTitle("📎 ملف جديد")
-        .setDescription(`بواسطة ${message.author.tag} \`${message.author.id}\``)
-        .addFields({
-          name: "القناة",
-          value: `<#${message.channelId}> \`${message.channelId}\``,
-          inline: true
-        });
+        .setTitle("ملف جديد")
+        .setDescription(`بواسطة ${message.author.tag} <@${message.author.id}> (\`${message.author.id}\`)`)
+        .addFields(
+          { name: "القناة", value: `<#${message.channelId}> \`${channelNameMedia}\` (\`${message.channelId}\`)`, inline: false },
+          { name: "الوقت", value: `<t:${nowUnixMedia}:F> (<t:${nowUnixMedia}:R>)`, inline: true },
+          { name: "رابط الرسالة", value: `[الانتقال](${messageUrlMedia})`, inline: true }
+        );
 
       if (message.content) {
         embed.addFields({
@@ -260,8 +263,18 @@ const event: BotEvent = {
         });
       }
 
-      embed.setFooter({ text: `Message ID: ${message.id}` });
-      await sendMediaLog(client, message.guild.id, "files", embed, media);
+      embed.setFooter({ text: `Message ID: ${message.id} | Author ID: ${message.author.id}` }).setTimestamp();
+      await sendMediaLog(client, message.guild.id, "files", embed, media, undefined, {
+        executorId: message.author.id,
+        executorTag: message.author.tag,
+        targetId: message.author.id,
+        targetTag: message.author.tag,
+        channelId: message.channelId,
+        channelName: channelNameMedia,
+        messageId: message.id,
+        messageUrl: messageUrlMedia,
+        details: { attachments: media.map((m) => ({ name: m.name, size: m.size })) }
+      });
     }
   }
 };

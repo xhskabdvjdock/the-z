@@ -56,7 +56,18 @@ const command: BotCommand = {
       durationMinutes: Math.ceil(seconds / 60),
       reason: ctx.channel.id
     });
-    await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
+    const nowUnixSlow = Math.floor(Date.now() / 1000);
+    embed.addFields({ name: "الوقت", value: `<t:${nowUnixSlow}:F> (<t:${nowUnixSlow}:R>)` });
+    embed.setFooter({ text: `Channel ID: ${ctx.channel.id} | Executor: ${ctx.user.tag}` }).setTimestamp();
+    await sendLog(ctx.client, ctx.guild.id, "moderation", embed, undefined, {
+      executorId: ctx.user.id,
+      executorTag: ctx.user.tag,
+      channelId: ctx.channel.id,
+      channelName: (ctx.channel as any).name || ctx.channel.id,
+      duration: seconds === 0 ? "معطل" : `${seconds}s`,
+      before: (ctx.channel as any).rateLimitPerUser,
+      after: seconds
+    });
   }
 };
 

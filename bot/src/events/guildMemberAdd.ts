@@ -12,29 +12,19 @@ const event: BotEvent = {
   async execute(client, member: GuildMember) {
     const gConfig = await getGuildConfig(client, member.guild.id);
 
-    // Check if user was jailed before leaving
     if (gConfig.jail?.enabled && gConfig.jail.roleId) {
       let jailRecord = await JailUser.findOne({ userId: member.id, guildId: member.guild.id });
       if (jailRecord) {
-        // انتهت مدة الج إوم الصادرة مسبقاً — لا نعيد تفعيله وننظف السجل
-        if (
-          jailRecord.jailedUntil &&
-          new Date(jailRecord.jailedUntil).getTime() <= Date.now()
-        ) {
-          await JailUser.deleteOne({ userId: member.id, guildId: member.guild.id }).catch(
-            () => null
-          );
+        if (jailRecord.jailedUntil && new Date(jailRecord.jailedUntil).getTime() <= Date.now()) {
+          await JailUser.deleteOne({ userId: member.id, guildId: member.guild.id }).catch(() => null);
           jailRecord = null;
         }
       }
       if (jailRecord) {
         const jailRole = member.guild.roles.cache.get(gConfig.jail.roleId);
         if (jailRole) {
-          // Re-apply jail role
           await member.roles.add(jailRole).catch(() => null);
-          
-          // Remove roles that should be removed when jailed
-          const rolesToRemove = member.roles.cache.filter(r => gConfig.jail.removeRoles.includes(r.id));
+          const rolesToRemove = member.roles.cache.filter((r) => gConfig.jail.removeRoles.includes(r.id));
           if (rolesToRemove.size > 0) {
             await member.roles.remove(rolesToRemove).catch(() => null);
           }
@@ -44,29 +34,35 @@ const event: BotEvent = {
 
     if (gConfig.captcha?.enabled) {
       const handled = await handleMemberJoinCaptcha(client, member, gConfig);
-      if (handled) return; // موديول الكابتشا سيتكفّل بمنح الرولات وإرسال الترحيب بعد التحقق
+      if (handled) return;
     }
 
     await handleAutoRole(client, member);
     await sendWelcomeMessage(client, member, gConfig);
 
+    const nowUnix = Math.floor(Date.now() / 1000);
     const accountAge = Date.now() - member.user.createdTimestamp;
-    const isNewAccount = accountAge < 7 * 24 * 60 * 60 * 1000; // less than 7 days
+    const isNewAccount = accountAge < 7 * 24 * 60 * 60 * 1000;
 
     const embed = new EmbedBuilder()
       .setColor(0x57f287)
-      .setTitle("📥 Member Joined")
+      .setTitle("Member Joined")
       .addFields(
-        { name: "User", value: `${member.user.tag} (${member.id})`, inline: true },
-        { name: "Account Age", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>`, inline: true },
+        { name: "User", value: `${member.user.tag} <@${member.id}> (\`${member.id}\`)`, inline: false },
+        { name: "Account Created", value: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:F> (<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>)`, inline: true },
+        { name: "Joined At", value: `<t:${nowUnix}:F> (<t:${nowUnix}:R>)`, inline: true },
         { name: "Server Members", value: `${member.guild.memberCount}`, inline: true },
-        { name: "New Account", value: isNewAccount ? "Yes ⚠️" : "No", inline: true }
+        { name: "New Account", value: isNewAccount ? "Yes - less than 7 days" : "No", inline: true }
       )
       .setThumbnail(member.user.displayAvatarURL())
-      .setFooter({ text: `User ID: ${member.id}` })
+      .setFooter({ text: `User ID: ${member.id} | Guild: ${member.guild.name}` })
       .setTimestamp();
 
-    await sendLog(client, member.guild.id, "members", embed);
+    await sendLog(client, member.guild.id, "members", embed, undefined, {
+      targetId: member.id,
+      targetTag: member.user.tag,
+      details: { accountAgeDays: Math.floor(accountAge / 86400000), memberCount: member.guild.memberCount, isNewAccount }
+    });
   }
 };
 

@@ -73,7 +73,7 @@ export default function LoggingForm({
     <div className="flex flex-col gap-6">
       <section className="card flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold">📋 السجلات</h2>
+          <h2 className="text-lg font-bold">السجلات</h2>
           <Toggle
             checked={state.enabled}
             onChange={(v) => setState({ ...state, enabled: v })}
@@ -82,7 +82,7 @@ export default function LoggingForm({
         </div>
 
         <div>
-          <label className="label">📁 تصنيف السجلات (لأمر setup-logs)</label>
+          <label className="label">تصنيف السجلات (لأمر setup-logs)</label>
           <ChannelSelect
             label="اختر التصنيف"
             channels={channels}
@@ -113,7 +113,7 @@ export default function LoggingForm({
       </section>
 
       <section className="card flex flex-col gap-4">
-        <h2 className="text-lg font-bold">🔧 القنوات المخصصة</h2>
+        <h2 className="text-lg font-bold">القنوات المخصصة</h2>
         <p className="text-sm text-gray-500">اختر قنوات مخصصة لأنواع محددة من المحتوى</p>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">

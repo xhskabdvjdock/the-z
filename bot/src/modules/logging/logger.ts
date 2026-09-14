@@ -28,35 +28,32 @@ export type LogChannelKey =
 const logCache = new Map<string, number>();
 const LOG_CACHE_TTL = 10000; // 10 ثواني
 
-/** يرسل تضمين (Embed) محسّن مع معلومات كاملة */
+export interface LogOptions {
+  executorId?: string;
+  executorTag?: string;
+  targetId?: string;
+  targetTag?: string;
+  reason?: string;
+  duration?: string;
+  channelId?: string;
+  channelName?: string;
+  roleId?: string;
+  roleName?: string;
+  messageId?: string;
+  messageUrl?: string;
+  before?: any;
+  after?: any;
+  details?: any;
+}
+
+/** يرسل تضمين مع معلومات كاملة ويحفظ في قاعدة البيانات */
 export async function sendLog(
   client: ExtendedClient,
   guildId: string,
   key: LogChannelKey,
   embed: EmbedBuilder,
   extra?: BaseMessageOptions,
-  options?: {
-    // من قام بالإجراء
-    executorId?: string;
-    executorTag?: string;
-    // من تأثر بالإجراء
-    targetId?: string;
-    targetTag?: string;
-    // تفاصيل الإجراء
-    reason?: string;
-    duration?: string;
-    channelId?: string;
-    channelName?: string;
-    roleId?: string;
-    roleName?: string;
-    messageId?: string;
-    messageUrl?: string;
-    // حالة قبل وبعد
-    before?: any;
-    after?: any;
-    // تفاصيل إضافية
-    details?: any;
-  }
+  options?: LogOptions
 ) {
   try {
     const gConfig = await getGuildConfig(client, guildId);
@@ -90,30 +87,29 @@ export async function sendLog(
     if (!embed.data.color) embed.setColor(botConfig.defaultColor);
     if (!embed.data.timestamp) embed.setTimestamp();
 
-    // حفظ السجل في قاعدة البيانات مع تفاصيل كاملة
-    if (options) {
-      await LogEntry.create({
-        guildId,
-        type: key as any,
-        action: embed.data.title || "Unknown",
-        executorId: options.executorId,
-        executorTag: options.executorTag,
-        targetId: options.targetId,
-        targetTag: options.targetTag,
-        reason: options.reason,
-        duration: options.duration,
-        channelId: options.channelId,
-        channelName: options.channelName,
-        roleId: options.roleId,
-        roleName: options.roleName,
-        messageId: options.messageId,
-        messageUrl: options.messageUrl,
-        before: options.before,
-        after: options.after,
-        details: options.details,
-        createdAt: new Date()
-      }).catch(() => {});
-    }
+    // حفظ السجل في قاعدة البيانات دائما مع تفاصيل كاملة
+    const logAction = embed.data.title || embed.data.description?.slice(0, 80) || "Unknown";
+    await LogEntry.create({
+      guildId,
+      type: key as any,
+      action: logAction,
+      executorId: options?.executorId,
+      executorTag: options?.executorTag,
+      targetId: options?.targetId,
+      targetTag: options?.targetTag,
+      reason: options?.reason,
+      duration: options?.duration,
+      channelId: options?.channelId,
+      channelName: options?.channelName,
+      roleId: options?.roleId,
+      roleName: options?.roleName,
+      messageId: options?.messageId,
+      messageUrl: options?.messageUrl,
+      before: options?.before,
+      after: options?.after,
+      details: options?.details,
+      createdAt: new Date()
+    }).catch(() => {});
 
     // استخدام retry للتعامل مع rate limits
     await client.withRetry(async () => {
@@ -152,14 +148,15 @@ export async function sendMediaLog(
   key: LogChannelKey,
   embed: EmbedBuilder,
   attachments: LogAttachmentRef[],
-  limit = MAX_LOG_ATTACHMENTS
+  limit = MAX_LOG_ATTACHMENTS,
+  options?: LogOptions
 ) {
   const usable = attachments
     .filter((a) => !a.size || a.size <= MAX_LOG_FILE_BYTES)
     .slice(0, limit);
 
   if (!usable.length) {
-    await sendLog(client, guildId, key, embed);
+    await sendLog(client, guildId, key, embed, undefined, options);
     return;
   }
 
@@ -169,5 +166,5 @@ export async function sendMediaLog(
     embed.setImage(`attachment://${firstImage.name}`);
   }
 
-  await sendLog(client, guildId, key, embed, { files });
+  await sendLog(client, guildId, key, embed, { files }, options);
 }

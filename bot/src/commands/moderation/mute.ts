@@ -62,15 +62,20 @@ const command: BotCommand = {
       return;
     }
 
+    const nowUnixMute = Math.floor(Date.now() / 1000);
     const embed = new EmbedBuilder()
       .setColor(0xed4245)
       .setTitle("تم كتم عضو")
       .addFields(
-        { name: "العضو", value: `${target.user.tag} (${target.id})` },
+        { name: "العضو", value: `${target.user.tag} <@${target.id}> (\`${target.id}\`)` },
         { name: "المدة", value: `${duration} دقيقة` },
-        { name: "بواسطة", value: ctx.user.tag },
-        { name: "السبب", value: reason }
-      );
+        { name: "المنفذ", value: `${ctx.user.tag} <@${ctx.user.id}>` },
+        { name: "السبب", value: reason },
+        { name: "الوقت", value: `<t:${nowUnixMute}:F> (<t:${nowUnixMute}:R>)`, inline: false },
+        { name: "القناة", value: `<#${ctx.channel.id}>`, inline: true }
+      )
+      .setFooter({ text: `Target: ${target.id} | Executor: ${ctx.user.id}` })
+      .setTimestamp();
 
     await ctx.reply({ embeds: [embed] });
     await recordModerationLog({

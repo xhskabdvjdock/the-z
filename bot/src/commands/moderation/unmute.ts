@@ -73,7 +73,15 @@ const command: BotCommand = {
       moderatorId: ctx.user.id,
       action: "unmute"
     });
-    await sendLog(ctx.client, ctx.guild.id, "moderation", embed);
+    const nowUnixUnmute = Math.floor(Date.now() / 1000);
+    embed.addFields({ name: "الوقت", value: `<t:${nowUnixUnmute}:F> (<t:${nowUnixUnmute}:R>)` });
+    embed.setFooter({ text: `User ID: ${target.id} | Executor: ${ctx.user.tag}` }).setTimestamp();
+    await sendLog(ctx.client, ctx.guild.id, "moderation", embed, undefined, {
+      executorId: ctx.user.id,
+      executorTag: ctx.user.tag,
+      targetId: target.id,
+      targetTag: target.user.tag
+    });
   }
 };
 
