@@ -17,9 +17,24 @@ export interface DownloadResult {
   size: number;
 }
 
+function getCookiesArgs(): string[] {
+  const candidates = [
+    process.env.INSTAGRAM_COOKIES_PATH,
+    process.env.COOKIES_PATH,
+    "/app/instagram_cookies.txt",
+    "/tmp/instagram_cookies.txt",
+    path.join(TEMP_DIR, "cookies.txt")
+  ].filter(Boolean) as string[];
+  for (const p of candidates) {
+    try {
+      if (fs.existsSync(p) && fs.statSync(p).size > 10) return ["--cookies", p];
+    } catch {}
+  }
+  return [];
+}
+
 async function tryCobalt(url: string): Promise<string | null> {
   const customCobalt = process.env.COBALT_API_URL;
-  // Public Cobalt API shut down Nov 2024, use self-hosted if configured, otherwise try saveig as fallback for Instagram
   if (customCobalt) {
     try {
       const res = await fetch(customCobalt, {
@@ -36,46 +51,67 @@ async function tryCobalt(url: string): Promise<string | null> {
     } catch {}
     return null;
   }
-  // Fallback for Instagram via saveig
   if (url.includes("instagram.com")) {
     try {
       const res = await fetch("https://saveig.app/api/ajaxSearch", {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-Requested-With": "XMLHttpRequest",
+          Referer: "https://saveig.app/en",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+        },
         body: `q=${encodeURIComponent(url)}&t=media&lang=en`,
         signal: AbortSignal.timeout(10000)
       });
       if (res.ok) {
         const data = (await res.json()) as any;
-        const html = data?.data ?? "";
-        const match = html.match(/href="([^"]+\.mp4[^"]*)"/);
-        if (match) return match[1].replace(/&amp;/g, "&");
+        const html = data?.data ?? data?.html ?? "";
+        if (html) {
+          // يدعم href="...mp4..." او href='...mp4...' مع &amp;
+          const patterns = [/href="([^"]+\.mp4[^"]*)"/, /href='([^']+\.mp4[^']*)'/, /href=\\"([^"]+\.mp4[^"]*)\\"/];
+          for (const re of patterns) {
+            const m = html.match(re);
+            if (m) return m[1].replace(/&amp;/g, "&").replace(/\\\//g, "/");
+          }
+          // saveig احيانا يرجع JSON مباشر مع downloadUrl
+          const direct = html.match(/https:\/\/[^"']+\.mp4[^"']*/);
+          if (direct) return direct[0].replace(/&amp;/g, "&");
+        }
       }
-    } catch {}
+    } catch (e) {
+      console.log(`[Downloader] saveig error: ${String(e).slice(0, 120)}`);
+    }
   }
   return null;
 }
 
 export async function downloadWithYtDlp(url: string, platform: string): Promise<DownloadResult> {
-  // للانستا: جرب Cobalt أولًا (أقل حظرًا من yt-dlp)
-  if (platform === "instagram") {
+  const isInstagram = platform === "instagram";
+  if (isInstagram) {
     const cobaltUrl = await tryCobalt(url);
     if (cobaltUrl) {
+      console.log(`[Downloader] Cobalt/saveig found URL`);
       const jobId = randomUUID().slice(0, 8);
       const jobDir = path.join(TEMP_DIR, jobId);
       await fs.promises.mkdir(jobDir, { recursive: true });
-      const res = await fetch(cobaltUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
-      if (res.ok) {
-        const buffer = Buffer.from(await res.arrayBuffer());
-        if (buffer.length > 1000) {
-          const filePath = path.join(jobDir, `the-z-${platform}-${jobId}.mp4`);
-          await fs.promises.writeFile(filePath, buffer);
-          const stats = await fs.promises.stat(filePath);
-          console.log(`[Downloader] Cobalt success for job ${jobId}, size: ${stats.size}`);
-          setTimeout(() => cleanup(jobId).catch(() => null), 15 * 60 * 1000);
-          return { jobId, filePath, filename: `the-z-${platform}-${jobId}.mp4`, size: stats.size };
+      try {
+        const res = await fetch(cobaltUrl, { headers: { "User-Agent": "Mozilla/5.0", Referer: "https://www.instagram.com/" } });
+        if (res.ok) {
+          const buffer = Buffer.from(await res.arrayBuffer());
+          if (buffer.length > 1000) {
+            const filePath = path.join(jobDir, `the-z-${platform}-${jobId}.mp4`);
+            await fs.promises.writeFile(filePath, buffer);
+            const stats = await fs.promises.stat(filePath);
+            console.log(`[Downloader] Cobalt success for job ${jobId}, size: ${stats.size}`);
+            setTimeout(() => cleanup(jobId).catch(() => null), 15 * 60 * 1000);
+            return { jobId, filePath, filename: `the-z-${platform}-${jobId}.mp4`, size: stats.size };
+          }
         }
+      } catch (e) {
+        console.log(`[Downloader] Cobalt fetch failed: ${String(e).slice(0, 120)}`);
       }
+      await fs.promises.rm(jobDir, { recursive: true, force: true }).catch(() => null);
     }
   }
 
@@ -89,15 +125,24 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
   console.log(`[Downloader] URL validated: ${url.slice(0, 60)}`);
   console.log(`[Downloader] Starting yt-dlp for job ${jobId}`);
 
+  const cookiesArgs = isInstagram ? getCookiesArgs() : [];
+  if (cookiesArgs.length) console.log(`[Downloader] Using cookies: ${cookiesArgs[1]}`);
+
   try {
     const args = [
       "--no-warnings",
       "--no-check-certificate",
       "--prefer-free-formats",
+      "--no-playlist",
+      "--extractor-retries", "3",
+      "--fragment-retries", "3",
+      "--add-header", "Referer:https://www.instagram.com/",
+      "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
       "-f", "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
       "--merge-output-format", "mp4",
       "-o", outputTemplate,
       "--max-filesize", `${MAX_FILE_SIZE_MB}M`,
+      ...cookiesArgs,
       url
     ];
 
@@ -106,7 +151,8 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
       maxBuffer: 10 * 1024 * 1024
     });
 
-    if (stderr) console.log(`[Downloader] yt-dlp stderr: ${stderr.slice(0, 200)}`);
+    if (stderr) console.log(`[Downloader] yt-dlp stderr: ${stderr.slice(0, 500)}`);
+    if (stdout) console.log(`[Downloader] yt-dlp stdout: ${stdout.slice(0, 300)}`);
 
     const files = await fs.promises.readdir(jobDir);
     const videoFile = files.find((f) => f.endsWith(".mp4") || f.endsWith(".mkv") || f.endsWith(".webm"));
@@ -126,26 +172,23 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
     console.log(`[Downloader] Download completed for job ${jobId}, size: ${stats.size}`);
     const safeFilename = `the-z-${platform}-${jobId}.mp4`;
     const safePath = path.join(jobDir, safeFilename);
-    // إعادة تسمية الملف لاسم آمن
     if (videoFile !== safeFilename) {
       await fs.promises.rename(filePath, safePath).catch(() => null);
     }
 
-    // تنظيف تلقائي بعد 15 دقيقة
     setTimeout(() => cleanup(jobId).catch(() => null), 15 * 60 * 1000);
 
     return { jobId, filePath: safePath, filename: safeFilename, size: stats.size };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.log(`[Downloader] yt-dlp failed for job ${jobId}: ${msg.slice(0, 800)}`);
-    // Fallback لانستا عبر btch/Cobalt — لا تنظف قبل المحاولة
-    if (platform === "instagram") {
+    if (isInstagram) {
       try {
         const fallbackUrl = await tryInstagramFallback(url);
         console.log(`[Downloader] Fallback URL: ${fallbackUrl?.slice(0, 80) ?? "null"}`);
         if (fallbackUrl) {
           await fs.promises.mkdir(jobDir, { recursive: true });
-          const res = await fetch(fallbackUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
+          const res = await fetch(fallbackUrl, { headers: { "User-Agent": "Mozilla/5.0", Referer: "https://www.instagram.com/" } });
           if (res.ok) {
             const buffer = Buffer.from(await res.arrayBuffer());
             if (buffer.length > 1000) {
@@ -163,17 +206,19 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
       }
     }
     await cleanup(jobId).catch(() => null);
-    if (msg.includes("rate-limit") || msg.includes("Rate-limit") || msg.includes("exceeded the rate-limit")) throw new Error("Instagram is temporarily rate-limiting downloads. Please try again in a few minutes.");
-    if (msg.includes("Video unavailable") || msg.includes("Private")) throw new Error("The video is unavailable or private.");
-    if (msg.includes("No video")) throw new Error("No downloadable video was found in this post.");
-    if (msg.includes("File too large")) throw new Error("The video is too large to process.");
-    if (msg.includes("timeout") || msg.includes("ETIMEDOUT")) throw new Error("The downloader service is currently unavailable.");
-    throw new Error("The video could not be downloaded.");
+    const lower = msg.toLowerCase();
+    if (lower.includes("rate-limit") || lower.includes("exceeded") || lower.includes("429")) throw new Error("Instagram is temporarily rate-limiting downloads. Please try again in a few minutes. If persists, add Instagram cookies via INSTAGRAM_COOKIES_PATH.");
+    if (lower.includes("login required") || lower.includes("not logged in") || lower.includes("private") ) throw new Error("The video is private or requires login. Try a public post or add cookies.");
+    if (lower.includes("video unavailable") ) throw new Error("The video is unavailable or private.");
+    if (lower.includes("no video")) throw new Error("No downloadable video was found in this post. The link may be invalid or the post is a photo album.");
+    if (lower.includes("file too large")) throw new Error("The video is too large to process.");
+    if (lower.includes("timeout") || lower.includes("timed out") || lower.includes("etimedout")) throw new Error("The downloader service is currently unavailable. Please try again.");
+    if (lower.includes("unsupported url")) throw new Error("Unsupported Instagram URL. Use a direct reel/post link like https://www.instagram.com/reel/XXXX/");
+    throw new Error("The video could not be downloaded. " + msg.slice(0, 120));
   }
 }
 
 async function tryInstagramFallback(url: string): Promise<string | null> {
-  // المحاولة 1: instagram-url-direct (مخصص لانستا)
   try {
     const ig: any = await import("instagram-url-direct");
     let data: any = null;
@@ -193,28 +238,15 @@ async function tryInstagramFallback(url: string): Promise<string | null> {
   } catch (err) {
     console.log(`[download] instagram-url-direct failed: ${String(err).slice(0, 100)}`);
   }
-  const cleanUrl = url.split("?")[0];
+  const cleanUrl = url.split("?")[0].replace(/\/$/, "");
   try {
     const btch: any = await import("btch-downloader");
     const data = await btch.instagram(cleanUrl).catch(() => btch.instagram(url));
-    const v = (data as any)?.url ?? (data as any)?.mp4 ?? (data as any)?.download?.[0]?.url;
+    const v = (data as any)?.url ?? (data as any)?.mp4 ?? (data as any)?.download?.[0]?.url ?? (data as any)?.result?.[0]?.url;
     if (v && typeof v === "string" && v.startsWith("http")) return v;
-  } catch {}
-  for (const endpoint of ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json"]) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ url }),
-        signal: AbortSignal.timeout(8000)
-      });
-      if (!res.ok) continue;
-      const data = (await res.json()) as any;
-      const v = data?.url ?? data?.picker?.[0]?.url;
-      if (v) return v;
-    } catch {
-      continue;
-    }
+    console.log(`[download] btch raw: ${JSON.stringify(data).slice(0, 200)}`);
+  } catch (e) {
+    console.log(`[download] btch failed: ${String(e).slice(0, 120)}`);
   }
   return null;
 }
@@ -228,7 +260,6 @@ export async function cleanup(jobId: string): Promise<void> {
 }
 
 export function getFilePath(jobId: string, filename: string): string | null {
-  // منع Path Traversal
   if (!/^[a-z0-9-]{8}$/i.test(jobId)) return null;
   if (filename.includes("/") || filename.includes("\\") || filename.includes("..")) return null;
   if (!filename.startsWith("the-z-")) return null;

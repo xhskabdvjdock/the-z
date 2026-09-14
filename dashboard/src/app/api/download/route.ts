@@ -36,7 +36,13 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "The video could not be downloaded.";
-    const status = msg.includes("unavailable") || msg.includes("No video") ? 404 : msg.includes("too large") ? 413 : msg.includes("unavailable") ? 503 : 500;
+    const lower = msg.toLowerCase();
+    let status = 500;
+    if (lower.includes("rate-limit") || lower.includes("429")) status = 429;
+    else if (lower.includes("unavailable") || lower.includes("no video") || lower.includes("no downloadable")) status = 404;
+    else if (lower.includes("private") || lower.includes("login")) status = 403;
+    else if (lower.includes("too large")) status = 413;
+    else if (lower.includes("unavailable") || lower.includes("timeout") || lower.includes("unavailable")) status = 503;
     return NextResponse.json({ error: msg }, { status });
   }
 }
