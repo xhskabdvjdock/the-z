@@ -8,12 +8,19 @@ const event: BotEvent = {
     if (!message.guild || message.author?.bot) return;
 
     let executor: any = null;
+    let auditEntry: any = null;
     try {
-      const audit = await message.guild.fetchAuditLogs({ type: AuditLogEvent.MessageDelete, limit: 8 });
-      const entry = audit.entries.find((e) => (e.target as any)?.id === message.author?.id && Date.now() - e.createdTimestamp < 10000) as any;
-      // Also try matching by channel extra
-      const byChannel = audit.entries.find((e) => e.extra?.channel?.id === message.channelId && Date.now() - e.createdTimestamp < 10000);
-      executor = entry?.executor || byChannel?.executor || null;
+      const audit = await message.guild.fetchAuditLogs({ type: AuditLogEvent.MessageDelete, limit: 5 });
+      // MessageDelete audit: targetId = authorId, extra.channel.id = channelId
+      auditEntry =
+        audit.entries.find(
+          (e: any) => e.targetId === message.author?.id && (e.extra as any)?.channel?.id === message.channelId && Date.now() - e.createdTimestamp < 5000
+        ) ||
+        audit.entries.find((e: any) => e.targetId === message.author?.id && Date.now() - e.createdTimestamp < 5000) ||
+        audit.entries.find((e: any) => (e.extra as any)?.channel?.id === message.channelId && Date.now() - e.createdTimestamp < 5000) ||
+        audit.entries.first() ||
+        null;
+      executor = auditEntry?.executor || null;
     } catch {}
 
     const channel = message.channel as any;
@@ -21,15 +28,25 @@ const event: BotEvent = {
     const nowUnix = Math.floor(Date.now() / 1000);
     const messageUrl = `https://discord.com/channels/${message.guild.id}/${message.channelId}/${message.id}`;
 
+    const deletedByText = executor
+      ? `${executor.tag} <@${executor.id}> (\`${executor.id}\`)`
+      : message.author
+        ? `${message.author.tag} (رسالته - قد يكون حذفها بنفسه او بواسطة مشرف بدون صلاحية Audit)`
+        : "Unknown";
+
     const embed = new EmbedBuilder()
       .setColor(0xed4245)
       .setTitle("Message Deleted")
       .addFields(
         { name: "Author", value: `${message.author?.tag || "Unknown"} <@${message.author?.id || "Unknown"}> (\`${message.author?.id || "Unknown"}\`)`, inline: false },
         { name: "Channel", value: `<#${message.channelId}> \`${channelName}\` (\`${message.channelId}\`)`, inline: false },
-        { name: "Deleted By", value: executor ? `${executor.tag} <@${executor.id}> (\`${executor.id}\`)` : "Author or Unknown", inline: false },
+        { name: "Deleted By", value: deletedByText, inline: false },
         { name: "Time", value: `<t:${nowUnix}:F> (<t:${nowUnix}:R>)`, inline: false }
       );
+
+    if (auditEntry) {
+      embed.addFields({ name: "Audit Reason", value: auditEntry.reason || "No reason", inline: false });
+    }
 
     if (message.content) {
       const truncatedContent = message.content.length > 1000 ? message.content.slice(0, 997) + "..." : message.content;
@@ -56,7 +73,11 @@ const event: BotEvent = {
       messageId: message.id,
       messageUrl,
       before: message.content || null,
-      details: { attachments: attachments.map((a) => ({ name: a.name, url: a.url, size: a.size, contentType: a.contentType })) }
+      details: {
+        attachments: attachments.map((a) => ({ name: a.name, url: a.url, size: a.size, contentType: a.contentType })),
+        auditReason: auditEntry?.reason || null,
+        auditTargetId: auditEntry?.targetId || null
+      }
     };
 
     if (attachments.length > 0) {
