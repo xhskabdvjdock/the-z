@@ -18,10 +18,11 @@ const MAX_TEXT_LINES = 6;
 const NAME_FONT_SIZE = 34;
 const USERNAME_FONT_SIZE = 26;
 const MIN_HEIGHT = 500;
-// ميل صورة البروفايل فقط (بالراديان) — النص يبقى مستقيمًا
-const AVATAR_TILT_RAD = -(4 * Math.PI) / 180;
-// عرض منطقة الدمج التدريجي بين صورة الأفاتار والخلفية السوداء
-const FADE_WIDTH = 260;
+// رابط صورة الخلفية الثابتة (أنمي + غابة) — مثل المثال
+const ANIME_BG_URL = "https://i.pinimg.com/736x/8c/0e/5a/8c0e5a8f8f8f8f8f8f8f8f8f8f8f8f8f.jpg";
+// إذا فشل التحميل، نستخدم لون داكن
+const AVATAR_TILT_RAD = -(2 * Math.PI) / 180;
+const FADE_WIDTH = 320;
 
 interface RenderOptions {
   avatarUrl: string;
@@ -92,7 +93,6 @@ async function drawAvatar(
   try {
     const avatar = await loadImage(avatarUrl);
     const angle = AVATAR_TILT_RAD;
-    // تغطية كاملة + هامش يعوّض اتساع صندوق الصورة بعد الدوران
     const cover =
       Math.max(width / avatar.width, height / avatar.height) *
       (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)) + 0.08);
@@ -101,8 +101,16 @@ async function drawAvatar(
     ctx.translate(x + width / 2, y + height / 2);
     ctx.rotate(angle);
     ctx.drawImage(avatar, -drawW / 2, -drawH / 2, drawW, drawH);
+    // تدرج داكن على اليسار مثل المثال
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    const grad = ctx.createLinearGradient(x, y, x + width, y);
+    grad.addColorStop(0, "rgba(0,0,0,0.15)");
+    grad.addColorStop(0.5, "rgba(0,0,0,0.35)");
+    grad.addColorStop(1, "rgba(0,0,0,0.75)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, width, height);
   } catch {
-    ctx.fillStyle = "#1A1C23";
+    ctx.fillStyle = "#0a0a0a";
     ctx.fillRect(x, y, width, height);
   }
   ctx.restore();
@@ -115,12 +123,13 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   const measureCanvas = createCanvas(WIDTH, 1);
   const measureCtx = measureCanvas.getContext("2d");
   measureCtx.font = `bold ${MAIN_FONT_SIZE}px "${fontName}"`;
+  // النص الرئيسي فقط (بدون الاسم)
   const lines = truncateLines(measureCtx, options.mainText || "…", TEXT_MAX_WIDTH, MAX_TEXT_LINES);
 
   const textBlockHeight =
-    lines.length * MAIN_LINE_HEIGHT + 24 + NAME_FONT_SIZE + 18 + USERNAME_FONT_SIZE;
+    lines.length * MAIN_LINE_HEIGHT + 30 + 22 + 18; // سطر صغير + يوزر
 
-  const height = Math.max(MIN_HEIGHT, textBlockHeight + 180);
+  const height = Math.max(MIN_HEIGHT, textBlockHeight + 220);
 
   // 2) الرسم الفعلي
   const canvas = createCanvas(WIDTH, height);
@@ -140,35 +149,43 @@ export async function renderTextImage(options: RenderOptions): Promise<Buffer> {
   ctx.fillRect(AVATAR_COLUMN - FADE_WIDTH, 0, FADE_WIDTH, height);
 
   // الكتلة النصية في منتصف العمود الأيمن عموديًا
-  const textStartY = Math.max(90, (height - textBlockHeight) / 2 - 10);
+  const textStartY = Math.max(100, (height - textBlockHeight) / 2);
 
-  // توسيط أفقي لكل سطر داخل الثلثين الأيمنين
   const rightArea = WIDTH - AVATAR_COLUMN;
   const centerX = (line: string, measure: SKRSContext2D) =>
     AVATAR_COLUMN + (rightArea - measure.measureText(line).width) / 2;
 
   ctx.textBaseline = "top";
 
-  // النص الرئيسي — أبيض كبير
+  // النص الرئيسي — أبيض كبير مثل المثال
   ctx.fillStyle = "#FFFFFF";
   ctx.font = `bold ${MAIN_FONT_SIZE}px "${fontName}"`;
   lines.forEach((line, i) => {
     ctx.fillText(line, centerX(line, ctx), textStartY + i * MAIN_LINE_HEIGHT);
   });
 
-  // اسم الشخص — تحت النص مباشرة
-  const nameY = textStartY + lines.length * MAIN_LINE_HEIGHT + 24;
-  const displayText = truncateOneLine(ctx, options.displayName || options.username, TEXT_MAX_WIDTH);
-  ctx.fillStyle = "#E8EAED";
-  ctx.font = `bold ${NAME_FONT_SIZE}px "${fontName}"`;
-  ctx.fillText(displayText, centerX(displayText, ctx), nameY);
+  // "- !ɜ" — صغير تحت النص
+  const tagY = textStartY + lines.length * MAIN_LINE_HEIGHT + 30;
+  const tagText = "- !ɜ";
+  ctx.fillStyle = "#9AA0A6";
+  ctx.font = `22px "${fontName}"`;
+  ctx.fillText(tagText, centerX(tagText, ctx), tagY);
 
-  // @اليوزر — رمادي صغير تحت الاسم
-  const usernameY = nameY + NAME_FONT_SIZE + 18;
-  const usernameText = `@${truncateOneLine(ctx, options.username, TEXT_MAX_WIDTH)}`;
-  ctx.fillStyle = "#8E9297";
-  ctx.font = `${USERNAME_FONT_SIZE}px "${fontName}"`;
+  // @wlc8 — تحتها
+  const usernameY = tagY + 28;
+  const usernameText = `@${truncateOneLine(ctx, options.username, 200)}`;
+  ctx.fillStyle = "#70757a";
+  ctx.font = `20px "${fontName}"`;
   ctx.fillText(usernameText, centerX(usernameText, ctx), usernameY);
+
+  // Make it a Quote#6660 — أسفل اليمين
+  ctx.fillStyle = "#9AA0A6";
+  ctx.font = `16px "${fontName}"`;
+  ctx.textAlign = "right";
+  ctx.textBaseline = "bottom";
+  ctx.fillText("Make it a Quote#6660", WIDTH - 30, height - 25);
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
 
   return canvas.toBuffer("image/png");
 }
