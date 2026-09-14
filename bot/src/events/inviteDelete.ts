@@ -8,9 +8,12 @@ const event: BotEvent = {
     if (!invite.guild) return;
     let executor: any = null;
     try {
-      const audit = await invite.guild.fetchAuditLogs({ type: AuditLogEvent.InviteDelete, limit: 5 });
-      const entry = audit.entries.find((e) => (e.target as any)?.code === invite.code && Date.now() - e.createdTimestamp < 10000);
-      executor = entry?.executor || null;
+      if ("fetchAuditLogs" in invite.guild) {
+        const guild: any = invite.guild;
+        const audit = await guild.fetchAuditLogs({ type: AuditLogEvent.InviteDelete, limit: 5 });
+        const entry = audit.entries.find((e: any) => (e.target as any)?.code === invite.code && Date.now() - e.createdTimestamp < 10000);
+        executor = entry?.executor || null;
+      }
     } catch {}
     const nowUnix = Math.floor(Date.now() / 1000);
     const embed = new EmbedBuilder()

@@ -8,9 +8,10 @@ const event: BotEvent = {
     if (!invite.guild) return;
     let executor: any = invite.inviter || null;
     try {
-      if (!executor) {
-        const audit = await invite.guild.fetchAuditLogs({ type: AuditLogEvent.InviteCreate, limit: 5 });
-        const entry = audit.entries.find((e) => (e.target as any)?.code === invite.code && Date.now() - e.createdTimestamp < 10000);
+      if (!executor && "fetchAuditLogs" in invite.guild) {
+        const guild: any = invite.guild;
+        const audit = await guild.fetchAuditLogs({ type: AuditLogEvent.InviteCreate, limit: 5 });
+        const entry = audit.entries.find((e: any) => (e.target as any)?.code === invite.code && Date.now() - e.createdTimestamp < 10000);
         executor = entry?.executor || null;
       }
     } catch {}
