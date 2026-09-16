@@ -10,6 +10,8 @@ interface TMDBResult {
   id: number;
   title?: string;
   name?: string;
+  original_title?: string;
+  original_name?: string;
   overview: string;
   poster_path: string | null;
   release_date?: string;
@@ -29,7 +31,6 @@ async function searchTMDB(query: string): Promise<TMDBResult[]> {
     if (!res.ok) return [];
     const data = (await res.json()) as any;
     const results: TMDBResult[] = (data.results ?? []).filter((r: any) => r.media_type === "movie" || r.media_type === "tv");
-    // ترتيب حسب الشهرة
     return results.sort((a, b) => b.popularity - a.popularity).slice(0, 10);
   } catch (err) {
     logError("movies/tmdb-search", err);
@@ -39,12 +40,25 @@ async function searchTMDB(query: string): Promise<TMDBResult[]> {
 
 async function getTMDBDetails(id: number, mediaType: string): Promise<any> {
   try {
+    // التفاصيل بالعربي للمعلومات، وسنجلب العنوان الإنجليزي بشكل منفصل
     const res = await fetch(
       `${TMDB_BASE}/${mediaType}/${id}?api_key=${config.tmdbApiKey}&language=ar&append_to_response=videos,external_ids`,
       { signal: AbortSignal.timeout(8000) }
     );
     if (!res.ok) return null;
-    return await res.json();
+    const details = (await res.json()) as any;
+    // جلب العنوان الأصلي بالإنجليزية
+    try {
+      const enRes = await fetch(
+        `${TMDB_BASE}/${mediaType}/${id}?api_key=${config.tmdbApiKey}&language=en-US`,
+        { signal: AbortSignal.timeout(5000) }
+      );
+      if (enRes.ok) {
+        const enData = (await enRes.json()) as any;
+        details._enTitle = enData.title ?? enData.name ?? details.original_title ?? details.original_name;
+      }
+    } catch {}
+    return details;
   } catch {
     return null;
   }
@@ -63,7 +77,7 @@ async function getOMDbRating(imdbId: string): Promise<string | null> {
 }
 
 function buildMovieEmbed(result: TMDBResult, details: any, imdbRating: string | null): EmbedBuilder {
-  const title = result.title ?? result.name ?? "غير معروف";
+  const enTitle = details?._enTitle ?? result.original_title ?? result.original_name ?? result.title ?? result.name ?? "Unknown";
   const date = result.release_date ?? result.first_air_date ?? "";
   const year = date ? new Date(date).getFullYear() : "";
   const rating = imdbRating ?? (result.vote_average ? result.vote_average.toFixed(1) : "—");
@@ -71,7 +85,7 @@ function buildMovieEmbed(result: TMDBResult, details: any, imdbRating: string | 
 
   const embed = new EmbedBuilder()
     .setColor(config.defaultColor)
-    .setTitle(`${title}${year ? ` (${year})` : ""}`)
+    .setTitle(`${enTitle}${year ? ` (${year})` : ""}`)
     .setDescription(overview.slice(0, 900) + (overview.length > 900 ? "..." : ""))
     .addFields(
       { name: "التقييم", value: `⭐ ${rating} (${result.vote_count} صوت)`, inline: true },
@@ -120,7 +134,7 @@ export async function handleMovieSearch(channel: any, query: string, authorId: s
   const components: any[] = [];
   if (row.components.length > 0) components.push(row);
 
-  // إذا كان هناك أكثر من نتيجة، أضف قائمة منسدلة
+  // إذا كان هناك أكثر من نتيجة، أضف قائمة منسدلة (بالإنجليزية)
   if (results.length > 1) {
     const selectRow = new ActionRowBuilder<StringSelectMenuBuilder>().addComponents(
       new StringSelectMenuBuilder()
@@ -128,7 +142,7 @@ export async function handleMovieSearch(channel: any, query: string, authorId: s
         .setPlaceholder("اختر من النتائج الأخرى")
         .addOptions(
           results.slice(1, 10).map((r) => {
-            const t = r.title ?? r.name ?? "غير معروف";
+            const t = r.original_title ?? r.original_name ?? r.title ?? r.name ?? "Unknown";
             const d = r.release_date ?? r.first_air_date ?? "";
             const y = d ? new Date(d).getFullYear() : "—";
             const rating = r.vote_average ? r.vote_average.toFixed(1) : "—";
