@@ -1,13 +1,13 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, Message } from "discord.js";
-import { Suggestion } from "@thez/shared";
+import { IGuildConfig, Suggestion } from "@thez/shared";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { generateSuggestionImage } from "./suggestionImage";
 
-export async function handleSuggestionMessage(message: Message): Promise<boolean> {
+export async function handleSuggestionMessage(message: Message, sharedConfig?: IGuildConfig): Promise<boolean> {
   if (message.author.bot || !message.guild) return false;
   if (!message.content || message.content.trim().length === 0) return false;
 
-  const gConfig = await getGuildConfig((message as any).client, message.guild.id);
+  const gConfig = sharedConfig ?? (await getGuildConfig((message as any).client, message.guild.id));
   const suggestions = (gConfig as any).suggestions;
   if (!suggestions?.enabled || !suggestions?.channelId) return false;
   if (message.channelId !== suggestions.channelId) return false;

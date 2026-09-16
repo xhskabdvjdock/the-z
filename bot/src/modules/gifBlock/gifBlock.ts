@@ -1,13 +1,21 @@
 import { Message, GuildMember, EmbedBuilder } from "discord.js";
+import { IGuildConfig } from "@thez/shared";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { GifBlock } from "@thez/shared";
 import { sendLog } from "../logging/logger";
 
-export async function handleGifBlock(client: ExtendedClient, message: Message): Promise<boolean> {
+export async function handleGifBlock(
+  client: ExtendedClient,
+  message: Message,
+  sharedConfig?: IGuildConfig
+): Promise<boolean> {
   if (!message.guild) return false;
 
-  const gConfig = await getGuildConfig(client, message.guild.id);
+  // فحص سريع: لا استعلام قاعدة بيانات لرسائل بلا روابط أصلًا
+  if (!message.content || !/https?:\/\//i.test(message.content)) return false;
+
+  const gConfig = sharedConfig ?? (await getGuildConfig(client, message.guild.id));
   if (!gConfig.gifBlock?.enabled) return false;
 
   // Check if user or channel is whitelisted

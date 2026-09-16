@@ -4,45 +4,81 @@ import { ILevelUser, IGuildConfig, LevelUser, levelFromTotalXp, LiveDoc } from "
 import { getGuildConfig } from "../../utils/guildConfig";
 import { buildMessageFromCustom } from "../../utils/embed";
 import { logError } from "../../utils/logger";
+import {
+  recordDbRead,
+  recordDbWrite,
+  recordDiscordApiCall,
+  recordXpAccumulated,
+  recordXpFlushed
+} from "../../utils/metrics";
+import { registerFlushHandler, registerRecurring } from "../../scheduler/scheduler";
 
-/** يجلب مستند مستخدم الخبرة أو ينشئه إن لم يكن موجوداً */
-async function getOrCreateLevelUser(guildId: string, userId: string): Promise<LiveDoc<ILevelUser>> {
-  let doc = await LevelUser.findOne({ guildId, userId });
-  if (!doc) {
-    doc = await LevelUser.create({ guildId, userId });
+/**
+ * خبرة مجمّعة (batched): الرسائل تتراكم في الذاكرة فقط، والتفريغ لقاعدة
+ * البيانات يتم مرة كل دقيقة عبر المجدول المركزي — لا كتابة لكل رسالة.
+ */
+
+export const XP_FLUSH_MS = 60_000;
+/** حد أعلى للإدخالات المعلقة — عند تجاوزه يُحفَّز تفريغ فوري */
+const MAX_PENDING_ENTRIES = 5000;
+/** حد خريطة البرودة + تنظيف دوري */
+const MAX_COOLDOWN_ENTRIES = 10000;
+
+interface PendingEntry {
+  xp: number;
+  voiceMinutes: number;
+  lastChannelId?: string;
+  lastMessageAt?: number;
+}
+
+const pending = new Map<string, PendingEntry>();
+const lastAwardAt = new Map<string, number>();
+
+const keyOf = (guildId: string, userId: string) => `${guildId}:${userId}`;
+
+function pruneCooldownMap(): void {
+  if (lastAwardAt.size <= MAX_COOLDOWN_ENTRIES) return;
+  const cutoff = Date.now() - 60 * 60_000;
+  for (const [k, ts] of lastAwardAt) {
+    if (ts < cutoff) lastAwardAt.delete(k);
+    if (lastAwardAt.size <= MAX_COOLDOWN_ENTRIES) break;
   }
-  return doc;
 }
 
 /** يرسل رسالة الترقية للمستوى الجديد حسب إعدادات السيرفر */
 async function announceLevelUp(
+  client: ExtendedClient,
+  guildId: string,
   member: GuildMember,
+  userId: string,
   newLevel: number,
   gConfig: IGuildConfig,
-  fallbackChannel: GuildTextBasedChannel | null
+  fallbackChannelId?: string
 ): Promise<void> {
   const custom = gConfig.leveling.levelUpMessage;
   if (!custom?.enabled) return;
 
   let targetChannel: GuildTextBasedChannel | null = null;
 
+  // الكاش فقط — لا REST إضافي من أجل رسالة ترقية
   if (gConfig.leveling.announceInChannel) {
     if (gConfig.leveling.levelUpChannelId) {
-      const ch = member.guild.channels.cache.get(gConfig.leveling.levelUpChannelId);
-      if (ch?.isTextBased()) targetChannel = ch;
+      const ch = client.channels.cache.get(gConfig.leveling.levelUpChannelId);
+      if (ch?.isTextBased()) targetChannel = ch as GuildTextBasedChannel;
     }
-  } else {
-    targetChannel = fallbackChannel;
+  } else if (fallbackChannelId) {
+    const ch = client.channels.cache.get(fallbackChannelId);
+    if (ch?.isTextBased()) targetChannel = ch as GuildTextBasedChannel;
   }
 
   if (!targetChannel) return;
 
   const payload = buildMessageFromCustom(custom, {
     user: {
-      id: member.id,
+      id: userId,
       username: member.user.username,
       tag: member.user.tag,
-      mention: `<@${member.id}>`,
+      mention: `<@${userId}>`,
       avatarURL: member.user.displayAvatarURL()
     },
     server: {
@@ -82,32 +118,6 @@ async function grantRoleRewards(member: GuildMember, newLevel: number, gConfig: 
   }
 }
 
-/**
- * ينفّذ منطق منح الخبرة المشترك: يضيف الخبرة، يحفظ المستند، ويتحقق من الترقية
- * (منح رتب المكافآت وإرسال رسالة الترقية) إن ارتفع المستوى.
- */
-async function awardXp(
-  member: GuildMember,
-  doc: LiveDoc<ILevelUser>,
-  amount: number,
-  gConfig: IGuildConfig,
-  fallbackChannel: GuildTextBasedChannel | null
-): Promise<void> {
-  const oldLevel = doc.level;
-
-  doc.totalXp += amount;
-  const info = levelFromTotalXp(doc.totalXp);
-  doc.level = info.level;
-  doc.xp = info.currentLevelXp;
-
-  await doc.save();
-
-  if (info.level > oldLevel) {
-    await grantRoleRewards(member, info.level, gConfig);
-    await announceLevelUp(member, info.level, gConfig, fallbackChannel);
-  }
-}
-
 /** يتحقق مما إذا كانت القناة أو رتب العضو ضمن قوائم الاستثناء */
 function isIgnored(gConfig: IGuildConfig, channelId: string, member: GuildMember): boolean {
   if (gConfig.leveling.ignoredChannelIds?.includes(channelId)) return true;
@@ -120,7 +130,7 @@ function isIgnored(gConfig: IGuildConfig, channelId: string, member: GuildMember
   return false;
 }
 
-/** يعالج منح الخبرة عند إرسال رسالة نصية (يُستدعى من messageCreate) */
+/** يعالج منح الخبرة عند إرسال رسالة نصية — تراكم في الذاكرة فقط، بلا أي DB */
 export async function handleMessageXp(
   client: ExtendedClient,
   message: Message,
@@ -130,71 +140,159 @@ export async function handleMessageXp(
   if (!message.guild || !message.member) return;
   if (isIgnored(gConfig, message.channelId, message.member)) return;
 
-  const doc = await getOrCreateLevelUser(message.guild.id, message.author.id);
-
+  const key = keyOf(message.guild.id, message.author.id);
+  const now = Date.now();
   const cooldownMs = (gConfig.leveling.messageCooldownSeconds ?? 60) * 1000;
-  if (doc.lastMessageAt && Date.now() - doc.lastMessageAt.getTime() < cooldownMs) {
-    return;
-  }
+  if (now - (lastAwardAt.get(key) ?? 0) < cooldownMs) return;
+  lastAwardAt.set(key, now);
+  pruneCooldownMap();
 
   const { min, max } = gConfig.leveling.xpPerMessage;
   const amount = Math.floor(Math.random() * (max - min + 1)) + min;
 
-  doc.lastMessageAt = new Date();
-
-  await awardXp(message.member, doc, amount, gConfig, message.channel as GuildTextBasedChannel);
+  const entry = pending.get(key) ?? { xp: 0, voiceMinutes: 0 };
+  entry.xp += amount;
+  entry.lastMessageAt = now;
+  entry.lastChannelId = message.channelId;
+  pending.set(key, entry);
+  recordXpAccumulated();
 }
 
-/** يبدأ مهمة دورية كل دقيقة لمنح خبرة الأعضاء الموجودين في الرومات الصوتية */
-export function startVoiceXpInterval(client: ExtendedClient): void {
-  setInterval(async () => {
-    for (const guild of client.guilds.cache.values()) {
-      try {
-        const gConfig = await getGuildConfig(client, guild.id);
-        if (!gConfig.leveling.enabled) continue;
+/** يجمع دقائق الصوت للأعضاء النشطين — تراكم فقط، بلا أي DB */
+export async function collectVoiceXp(client: ExtendedClient): Promise<void> {
+  for (const guild of client.guilds.cache.values()) {
+    try {
+      const gConfig = await getGuildConfig(client, guild.id);
+      if (!gConfig.leveling.enabled) continue;
 
-        const voiceChannels = guild.channels.cache.filter(
-          (c): c is VoiceChannel => c.type === ChannelType.GuildVoice
-        );
+      const voiceChannels = guild.channels.cache.filter(
+        (c): c is VoiceChannel => c.type === ChannelType.GuildVoice
+      );
 
-        // ── جمع الأعضاء النشطين عبر كل الرومات الصوتية ──────────────────
-        type ActiveMember = { member: GuildMember; channelId: string };
-        const activeMembers: ActiveMember[] = [];
-
-        for (const channel of voiceChannels.values()) {
-          if (gConfig.leveling.ignoredChannelIds?.includes(channel.id)) continue;
-          for (const member of channel.members.values()) {
-            if (member.user.bot) continue;
-            if (isIgnored(gConfig, channel.id, member)) continue;
-            activeMembers.push({ member, channelId: channel.id });
-          }
+      for (const channel of voiceChannels.values()) {
+        if (gConfig.leveling.ignoredChannelIds?.includes(channel.id)) continue;
+        for (const member of channel.members.values()) {
+          if (member.user.bot) continue;
+          if (isIgnored(gConfig, channel.id, member)) continue;
+          const key = keyOf(guild.id, member.id);
+          const entry = pending.get(key) ?? { xp: 0, voiceMinutes: 0 };
+          entry.xp += gConfig.leveling.xpPerVoiceMinute;
+          entry.voiceMinutes += 1;
+          pending.set(key, entry);
+          recordXpAccumulated();
         }
-
-        if (!activeMembers.length) continue;
-
-        // ── جلب مستندات الخبرة دفعة واحدة (batch) بدلاً من N+1 ────────────
-        const memberIds = activeMembers.map(({ member }) => member.id);
-        const existingDocs = await LevelUser.find({ guildId: guild.id, userId: { $in: memberIds } });
-        const docMap = new Map(existingDocs.map((d) => [d.userId, d]));
-
-        // إنشاء المستندات المفقودة لمن لم يُسجَّل بعد
-        const missingIds = memberIds.filter((id) => !docMap.has(id));
-        for (const userId of missingIds) {
-          const newDoc = await LevelUser.create({ guildId: guild.id, userId }).catch(() => null);
-          if (newDoc) docMap.set(userId, newDoc);
-        }
-
-        // ── منح الخبرة لكل عضو ───────────────────────────────────────────
-        for (const { member } of activeMembers) {
-          const doc = docMap.get(member.id);
-          if (!doc) continue;
-          doc.voiceMinutes = (doc.voiceMinutes ?? 0) + 1;
-          await awardXp(member, doc, gConfig.leveling.xpPerVoiceMinute, gConfig, null);
-        }
-      } catch (err) {
-        logError("xp-voice", err);
       }
+    } catch (err) {
+      logError("xp-voice-collect", err);
     }
-  }, 60_000);
+  }
 }
 
+/** يفرّغ المتراكم لقاعدة البيانات دفعة واحدة (قراءة جماعية + كتابة لكل مستخدم نشط فقط) */
+export async function flushXp(client: ExtendedClient): Promise<void> {
+  if (pending.size === 0) return;
+
+  const byGuild = new Map<string, string[]>();
+  for (const key of pending.keys()) {
+    const sep = key.indexOf(":");
+    const guildId = key.slice(0, sep);
+    const userId = key.slice(sep + 1);
+    const list = byGuild.get(guildId) ?? [];
+    list.push(userId);
+    byGuild.set(guildId, list);
+  }
+
+  for (const [guildId, userIds] of byGuild) {
+    try {
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) {
+        // السيرفر غادر — أسقط المعلق الخاص به
+        for (const userId of userIds) pending.delete(keyOf(guildId, userId));
+        continue;
+      }
+      const gConfig = await getGuildConfig(client, guildId);
+
+      recordDbRead();
+      const existingDocs = await LevelUser.find({ guildId, userId: { $in: userIds } });
+      const docMap = new Map(existingDocs.map((d) => [d.userId, d]));
+
+      for (const userId of userIds) {
+        const key = keyOf(guildId, userId);
+        const entry = pending.get(key);
+        if (!entry) continue;
+        pending.delete(key);
+
+        try {
+          let doc = docMap.get(userId);
+          if (!doc) {
+            recordDbWrite();
+            doc = await LevelUser.create({ guildId, userId });
+          }
+          await applyPendingXp(client, guildId, userId, doc as LiveDoc<ILevelUser>, entry, gConfig);
+          recordXpFlushed();
+        } catch (err) {
+          logError("xp-flush", err);
+        }
+      }
+    } catch (err) {
+      logError("xp-flush", err);
+    }
+  }
+}
+
+async function applyPendingXp(
+  client: ExtendedClient,
+  guildId: string,
+  userId: string,
+  doc: LiveDoc<ILevelUser>,
+  entry: PendingEntry,
+  gConfig: IGuildConfig
+): Promise<void> {
+  const oldLevel = doc.level ?? 0;
+
+  doc.totalXp = (doc.totalXp ?? 0) + entry.xp;
+  doc.voiceMinutes = (doc.voiceMinutes ?? 0) + entry.voiceMinutes;
+  if (entry.lastMessageAt) doc.lastMessageAt = new Date(entry.lastMessageAt);
+  const info = levelFromTotalXp(doc.totalXp);
+  doc.level = info.level;
+  doc.xp = info.currentLevelXp;
+
+  recordDbWrite();
+  await doc.save();
+
+  if (info.level <= oldLevel) return;
+
+  // ترقية — نجلب العضو من الكاش أولًا لتجنب REST
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild) return;
+  let member = guild.members.cache.get(userId) ?? null;
+  if (!member) {
+    try {
+      recordDiscordApiCall();
+      member = await guild.members.fetch(userId);
+    } catch {
+      return;
+    }
+  }
+  await grantRoleRewards(member, info.level, gConfig);
+  await announceLevelUp(client, guildId, member, userId, info.level, gConfig, entry.lastChannelId);
+}
+
+/** تسجيل مهام XP في المجدول المركزي + تفريغ عند الإغلاق */
+export function registerXpScheduler(client: ExtendedClient): void {
+  registerRecurring("xp-tick", XP_FLUSH_MS, async (c) => {
+    await collectVoiceXp(c);
+    await flushXp(c);
+  });
+  registerFlushHandler("xp", () => flushXp(client));
+}
+
+/** للاختبار والمراقبة */
+export function getPendingXpCount(): number {
+  return pending.size;
+}
+
+export function clearXpState(): void {
+  pending.clear();
+  lastAwardAt.clear();
+}

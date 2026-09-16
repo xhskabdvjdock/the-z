@@ -1,10 +1,15 @@
 import { GuildMember } from "discord.js";
+import { IGuildConfig } from "@thez/shared";
 import { ExtendedClient } from "../client";
 import { getGuildConfig } from "../utils/guildConfig";
 
 /** يعطي الرولات التلقائية للأعضاء الجدد (بشرياً كان أو بوت) عند الانضمام */
-export async function handleAutoRole(client: ExtendedClient, member: GuildMember) {
-  const gConfig = await getGuildConfig(client, member.guild.id);
+export async function handleAutoRole(
+  client: ExtendedClient,
+  member: GuildMember,
+  sharedConfig?: IGuildConfig
+) {
+  const gConfig = sharedConfig ?? (await getGuildConfig(client, member.guild.id));
   if (!gConfig.autoRole?.enabled) return;
 
   const roleIds = member.user.bot ? gConfig.autoRole.botRoleIds : gConfig.autoRole.userRoleIds;

@@ -1,4 +1,5 @@
 import { config } from "../config";
+import { recordError } from "./metrics";
 
 /** أسرار تُستبدل بـ [REDACTED] في أي نص سجل حتى لا تتسرب في الآثار/logs */
 const SECRETS = [
@@ -36,6 +37,11 @@ export function sanitizeError(err: unknown): string {
 /** سجل خطأ آمن يحجب الأسرار ويبقي رسالة قصيرة قابلة للتصفّح */
 export function logError(label: string, err: unknown): void {
   console.error(`[${label}] ${sanitizeError(err)}`);
+  try {
+    recordError(label);
+  } catch {
+    // تجاهل أي فشل في العدّاد — لا يؤثر على مسار الخطأ نفسه
+  }
 }
 
 export function logInfo(label: string, message: string): void {

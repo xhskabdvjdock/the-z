@@ -1,5 +1,6 @@
 import { GuildConfig, IGuildConfig } from "@thez/shared";
 import { ExtendedClient } from "../client";
+import { recordCacheHit, recordCacheMiss, recordDbRead, recordDbWrite } from "./metrics";
 
 const CACHE_TTL_MS = 30_000;
 
@@ -32,17 +33,22 @@ export async function getGuildConfig(
 ): Promise<IGuildConfig> {
   const cached = client.guildConfigCache.get(guildId);
   if (cached && cached.expiresAt > Date.now()) {
+    recordCacheHit();
     return cached.data;
   }
+  recordCacheMiss();
+  recordDbRead();
 
   let doc = await GuildConfig.findOne({ guildId });
   if (!doc) {
+    recordDbWrite();
     doc = await GuildConfig.create({ guildId });
   }
 
   const { normalized, changed } = normalizeOverrides(doc.commandOverrides);
   if (changed) {
     doc.commandOverrides = normalized;
+    recordDbWrite();
     GuildConfig.updateOne({ guildId }, { $set: { commandOverrides: normalized } }).catch(() => null);
   }
 

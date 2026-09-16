@@ -16,11 +16,25 @@ dns.setDefaultResultOrder("ipv4first");
 let client: ExtendedClient | null = null;
 let shuttingDown = false;
 
-/** إيقاف آمن: إغلاق اتصال Discord + قاعدة البيانات ثم الخروج بالكود المعطى */
+/**
+ * إيقاف آمن: إيقاف المجدول + تفريغ المعلَّق (XP/AFK/أصوات) أولًا
+ * ثم إغلاق اتصال Discord وقاعدة البيانات — بمهلة إجمالية آمنة.
+ */
 async function gracefulShutdown(code: number): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
   logInfo("shutdown", "بدء إيقاف التشغيل الآمن...");
+  const hardStop = setTimeout(() => {
+    logError("shutdown/timeout", new Error("انتهت مهلة الإغلاق الآمن — خروج قسري"));
+    process.exit(code);
+  }, 30_000);
+  hardStop.unref?.();
+  try {
+    const { stopScheduler } = await import("./scheduler/scheduler");
+    await stopScheduler();
+  } catch (err) {
+    logError("shutdown/scheduler", err);
+  }
   try {
     if (client) {
       await client.destroy();
@@ -34,6 +48,7 @@ async function gracefulShutdown(code: number): Promise<void> {
   } catch (err) {
     logError("shutdown/db", err);
   }
+  clearTimeout(hardStop);
   process.exit(code);
 }
 

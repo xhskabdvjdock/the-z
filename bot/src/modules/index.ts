@@ -5,15 +5,18 @@ import { registerTempVoiceComponents } from "./tempVoice/voiceManager";
 import { registerColorComponents } from "./roles/colorRoles";
 import { registerSelfRoleComponents } from "./roles/selfRoles";
 import { registerCaptchaComponents } from "./captcha/captcha";
-import { startVoiceXpInterval } from "./leveling/xpManager";
+import { registerXpScheduler } from "./leveling/xpManager";
 import { startJailExpiryInterval } from "./jail/expiry";
 import { startAlwaysVoiceLoop } from "./alwaysVoice/alwaysVoiceManager";
 import { startMemberCounter } from "./memberCounter/memberCounterManager";
-import { startScheduledMessages } from "./scheduledMessages/scheduledMessagesManager";
+import { scanScheduledMessages } from "./scheduledMessages/scheduledMessagesManager";
 import { registerReactionRoles } from "./reactionRoles/reactionRolesManager";
-import { startIslamicContent } from "./islamicContent/islamicContentManager";
+import { scanIslamicDue } from "./islamicContent/islamicContentManager";
 import { registerSuggestionComponents } from "./suggestions/suggestionManager";
 import { registerMovieComponents } from "./movies/moviesManager";
+import { flushAfkMentions } from "../utils/afkBatch";
+import { flushVotes } from "./suggestions/voteStore";
+import { registerFlushHandler, registerRecurring, startScheduler } from "../scheduler/scheduler";
 
 /** نقطة تجميع مركزية: تسجّل كل معالجات الأزرار/القوائم الخاصة بكل موديول، وتشغّل المهام الدورية */
 export function registerAllModules(client: ExtendedClient) {
@@ -27,11 +30,19 @@ export function registerAllModules(client: ExtendedClient) {
   registerReactionRoles(client);
 
   client.once("ready", () => {
-    startVoiceXpInterval(client);
+    // كل المهام الدورية تمر عبر المجدول المركزي الوحيد — لا مؤقتات متفرقة
+    registerXpScheduler(client);
+    registerRecurring("afk-flush", 30_000, async () => {
+      await flushAfkMentions();
+    });
+    registerRecurring("scheduled-messages", 30_000, scanScheduledMessages);
+    registerRecurring("islamic-due", 15_000, scanIslamicDue);
+    registerFlushHandler("afk", () => flushAfkMentions());
+    registerFlushHandler("suggestion-votes", () => flushVotes());
+    startScheduler(client);
+
     startJailExpiryInterval(client);
     startAlwaysVoiceLoop(client);
     startMemberCounter(client);
-    startScheduledMessages(client);
-    startIslamicContent(client);
   });
 }

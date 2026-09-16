@@ -1,15 +1,9 @@
 import { GuildConfig, IIslamicContent } from "@thez/shared";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig, invalidateGuildConfigCache } from "../../utils/guildConfig";
-import { logError, logInfo } from "../../utils/logger";
+import { logError } from "../../utils/logger";
+import { recordDbWrite } from "../../utils/metrics";
 import { postIslamicContent, pruneRecent } from "./contentService";
-
-/**
- * سجل المجدولات: جدول واحد كحد أقصى لكل سيرفر.
- * أي تعديل على الإعدادات (فترة، قناة، تشغيل/إيقاف) يوقف الجدول القديم وينشئ جدولًا جديدًا
- * حتى لا يتضاعف النشر.
- */
-const schedulers = new Map<string, NodeJS.Timeout>();
 
 /** حساب موعد النشر التالي: الآن + الفترة بالدقائق (حد أدنى دقيقة واحدة) */
 export function computeNextRunAt(intervalMinutes: number, now = Date.now()): string {
@@ -18,67 +12,55 @@ export function computeNextRunAt(intervalMinutes: number, now = Date.now()): str
   return new Date(now + safe * 60_000).toISOString();
 }
 
-/** إيقاف جدول سيرفر (إن وجد) */
-export function stopIslamicScheduler(guildId: string): void {
-  const timer = schedulers.get(guildId);
-  if (timer) {
-    clearTimeout(timer);
-    schedulers.delete(guildId);
-  }
-}
-
-/** هل يوجد جدول نشط لهذا السيرفر؟ */
-export function isIslamicSchedulerActive(guildId: string): boolean {
-  return schedulers.has(guildId);
-}
-
-/** عدد السيرفرات المجدولة حالياً (لأغراض المراقبة) */
-export function schedulerCount(): number {
-  return schedulers.size;
-}
-
 /**
- * إنشاء جدول النشر لسيرفر — يوقف أي جدول سابق أولاً (جدول واحد فقط لكل سيرفر).
- * إذا كان النظام معطلًا أو لا توجد قناة، لا يُنشأ جدول.
+ * ضمان وجود موعد نشر قادم — المجدول المركزي هو من ينفّذ فعليًا،
+ * هذه الدالة فقط تهيئ nextRunAt عند تفعيل النظام (لا مؤقتات هنا).
  */
-export function ensureScheduler(
+export async function ensureScheduler(
   client: ExtendedClient,
   guildId: string,
   config: IIslamicContent | undefined | null
-): void {
-  stopIslamicScheduler(guildId);
+): Promise<void> {
   if (!config?.enabled || !config?.channelId) return;
-
-  const nextAt = config.nextRunAt ? new Date(config.nextRunAt).getTime() : Date.now();
-  const delayMs = Math.max(1_000, nextAt - Date.now());
-
-  const timer = setTimeout(() => {
-    runForGuild(client, guildId).catch((err) => logError("islamic/run", err));
-  }, delayMs);
-  schedulers.set(guildId, timer);
+  if (config.nextRunAt && new Date(config.nextRunAt).getTime() > Date.now()) return;
+  config.nextRunAt = computeNextRunAt(config.intervalMinutes);
+  recordDbWrite();
+  await GuildConfig.findOneAndUpdate({ guildId }, { $set: { islamicContent: config } }).catch(
+    () => null
+  );
+  invalidateGuildConfigCache(client, guildId);
 }
 
 /**
- * إعادة جدولة من إعدادات القاعدة الحالية (تُستخدم بعد أي تغيير أو عند إعادة التشغيل).
- * قراءة مباشرة بدون كاش للتأكد من آخر حالة محفوظة.
+ * توافقية API فقط — لا توجد مؤقتات لكل سيرفر بعد الآن،
+ * المجدول المركزي يقرأ الحالة من الإعدادات مباشرة.
+ */
+export function stopIslamicScheduler(_guildId: string): void {
+  return;
+}
+
+/**
+ * إعادة قراءة الإعدادات من القاعدة وإبطال الكاش حتى يلتقطها المجدول المركزي.
  */
 export async function restartIslamicScheduler(
   client: ExtendedClient,
   guildId: string
 ): Promise<void> {
-  const fresh = await GuildConfig.findOne({ guildId }).lean();
-  ensureScheduler(client, guildId, fresh?.islamicContent ?? ({} as IIslamicContent));
+  invalidateGuildConfigCache(client, guildId);
+  await getGuildConfig(client, guildId).catch(() => null);
 }
 
-/** دورة النشر: قراءة إعدادات حديثة، نشر، حفظ الحالة، ثم جدولة الدورة التالية */
-async function runForGuild(client: ExtendedClient, guildId: string): Promise<void> {
+/**
+ * دورة النشر لسيرفر واحد — يُستدعى من المجدول المركزي فقط عند استحقاق الموعد.
+ * يعيد true إن تمت المعالجة (نشر أو تخطٍّ مبرر).
+ */
+export async function runForGuild(client: ExtendedClient, guildId: string): Promise<boolean> {
   try {
     const gConfig = await getGuildConfig(client, guildId);
     const config = gConfig.islamicContent as IIslamicContent | undefined;
 
     if (!config?.enabled || !config?.channelId) {
-      stopIslamicScheduler(guildId);
-      return;
+      return false;
     }
 
     const result = await postIslamicContent(client, config);
@@ -94,6 +76,7 @@ async function runForGuild(client: ExtendedClient, guildId: string): Promise<voi
         at: new Date().toISOString()
       };
       config.nextRunAt = computeNextRunAt(config.intervalMinutes);
+      recordDbWrite();
       await GuildConfig.findOneAndUpdate(
         { guildId },
         { $set: { islamicContent: config } }
@@ -102,31 +85,36 @@ async function runForGuild(client: ExtendedClient, guildId: string): Promise<voi
     } else {
       // لا نوقف الجدولة عند الفشل — نعيد المحاولة في الدورة التالية
       config.nextRunAt = computeNextRunAt(config.intervalMinutes);
+      recordDbWrite();
       await GuildConfig.findOneAndUpdate(
         { guildId },
         { $set: { islamicContent: config } }
       );
       invalidateGuildConfigCache(client, guildId);
     }
+    return true;
   } catch (err) {
     logError("islamic/run", err);
-  } finally {
-    await restartIslamicScheduler(client, guildId).catch((err) =>
-      logError("islamic/restart", err)
-    );
+    return false;
   }
 }
 
-/** تشغيل المجدولات عند جاهزية البوت: يجدول لكل سيرفر مفعّل وله قناة */
-export async function startIslamicContent(client: ExtendedClient): Promise<void> {
-  const guildIds = [...client.guilds.cache.keys()];
-  logInfo("islamic", `بدء المجدولات لـ ${guildIds.length} سيرفر`);
-  for (const guildId of guildIds) {
+/**
+ * فحص كل السيرفرات بحثًا عن منشورات مستحقة — يُستدعى من المجدول المركزي فقط
+ * (قراءات الإعدادات مكشّنة، ولا كتابة إلا عند النشر الفعلي).
+ */
+export async function scanIslamicDue(client: ExtendedClient): Promise<void> {
+  const now = Date.now();
+  for (const guild of client.guilds.cache.values()) {
     try {
-      const gConfig = await getGuildConfig(client, guildId);
-      ensureScheduler(client, guildId, gConfig.islamicContent);
+      const gConfig = await getGuildConfig(client, guild.id);
+      const config = gConfig.islamicContent as IIslamicContent | undefined;
+      if (!config?.enabled || !config?.channelId) continue;
+      const nextAt = config.nextRunAt ? new Date(config.nextRunAt).getTime() : 0;
+      if (nextAt > now) continue;
+      await runForGuild(client, guild.id);
     } catch (err) {
-      logError(`islamic/start/${guildId}`, err);
+      logError(`islamic/scan/${guild.id}`, err);
     }
   }
 }

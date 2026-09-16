@@ -30,9 +30,12 @@ const {
   computeNextRunAt,
   ensureScheduler,
   stopIslamicScheduler,
-  schedulerCount,
-  isIslamicSchedulerActive
+  restartIslamicScheduler,
+  runForGuild,
+  scanIslamicDue
 } = require("../bot/dist/modules/islamicContent/islamicContentManager.js");
+
+const shared = require("../shared/dist/index.js");
 
 test("islamic: تصفية أنواع المحتوى (معروفة فقط + الافتراضي عند الفراغ)", () => {
   const known = ISLAMIC_CONTENT_TYPES.map((t) => t.id);
@@ -261,35 +264,84 @@ test("islamic: computeNextRunAt — الآن + الفترة مع حد أدنى �
   assert.equal(new Date(computeNextRunAt(-5, now)).getTime(), now + 60_000);
 });
 
-test("islamic: جدول واحد فقط لكل سيرفر (إيقاف القديم عند إعادة الإنشاء)", () => {
-  const fakeClient = {};
-  const base = {
-    enabled: true,
-    channelId: "123",
-    intervalMinutes: 60,
-    contentTypes: ["quran"],
-    allowedSources: ["Bukhari"],
-    azkarCategories: ["أذكار الصباح"],
-    antiRepeatMinutes: 180,
-    recentlySent: [],
-    nextRunAt: new Date(Date.now() + 10 * 60_000).toISOString()
+test("islamic: ensureScheduler يهيئ nextRunAt فقط — بلا مؤقتات لكل سيرفر", async () => {
+  const writes = [];
+  const origUpdate = shared.GuildConfig.findOneAndUpdate;
+  shared.GuildConfig.findOneAndUpdate = async (filter, update) => {
+    writes.push({ filter, update });
+    return null;
   };
+  // كاش وهمي لـ invalidateGuildConfigCache
+  const fakeClient = { guildConfigCache: new Map() };
+  try {
+    const base = {
+      enabled: true,
+      channelId: "123",
+      intervalMinutes: 60,
+      contentTypes: ["quran"],
+      allowedSources: ["Bukhari"],
+      azkarCategories: ["أذكار الصباح"],
+      antiRepeatMinutes: 180,
+      recentlySent: []
+    };
 
-  assert.equal(schedulerCount(), 0);
-  ensureScheduler(fakeClient, "g1", base);
-  assert.equal(schedulerCount(), 1);
-  assert.ok(isIslamicSchedulerActive("g1"));
+    // بلا nextRunAt → كتابة واحدة تهيئ الموعد
+    await ensureScheduler(fakeClient, "g1", { ...base });
+    assert.equal(writes.length, 1);
+    assert.ok(writes[0].update.$set.islamicContent.nextRunAt);
 
-  // إعادة الإنشاء (تعديل الإعدادات) يجب ألا تضاعف الجدول
-  ensureScheduler(fakeClient, "g1", { ...base, intervalMinutes: 30 });
-  assert.equal(schedulerCount(), 1);
+    // موعد مستقبلي موجود → بلا كتابة
+    writes.length = 0;
+    await ensureScheduler(fakeClient, "g1", {
+      ...base,
+      nextRunAt: new Date(Date.now() + 10 * 60_000).toISOString()
+    });
+    assert.equal(writes.length, 0);
 
-  // معطّل أو بلا قناة = لا جدول
-  ensureScheduler(fakeClient, "g2", { ...base, enabled: false });
-  assert.equal(schedulerCount(), 1);
-  ensureScheduler(fakeClient, "g2", { ...base, channelId: null });
-  assert.equal(schedulerCount(), 1);
+    // معطّل أو بلا قناة → بلا كتابة
+    await ensureScheduler(fakeClient, "g2", { ...base, enabled: false });
+    await ensureScheduler(fakeClient, "g2", { ...base, channelId: null });
+    assert.equal(writes.length, 0);
 
-  stopIslamicScheduler("g1");
-  assert.equal(schedulerCount(), 0);
+    // stop توافقية فقط — لا ترمي ولا تعمل شيء
+    stopIslamicScheduler("g1");
+  } finally {
+    shared.GuildConfig.findOneAndUpdate = origUpdate;
+  }
+});
+
+test("islamic: scanIslamicDue يتخطى المعطّل وغير المستحق — بلا كتابة", async () => {
+  const origFindOne = shared.GuildConfig.findOne;
+  let reads = 0;
+  const future = new Date(Date.now() + 60 * 60_000).toISOString();
+  // إعداد مفعّل لكن موعده في المستقبل → يجب التخطي دون نشر
+  shared.GuildConfig.findOne = async () => {
+    reads++;
+    return {
+      islamicContent: {
+        enabled: true,
+        channelId: "123",
+        intervalMinutes: 60,
+        contentTypes: ["quran"],
+        allowedSources: ["Bukhari"],
+        azkarCategories: [],
+        antiRepeatMinutes: 180,
+        recentlySent: [],
+        nextRunAt: future
+      },
+      commandOverrides: []
+    };
+  };
+  const fakeClient = {
+    guildConfigCache: new Map(),
+    guilds: { cache: new Map([["g1", {}]]) },
+    channels: { fetch: async () => { throw new Error("must not be called"); } }
+  };
+  try {
+    await scanIslamicDue(fakeClient);
+    assert.ok(reads >= 1);
+  } finally {
+    shared.GuildConfig.findOne = origFindOne;
+    fakeClient.guildConfigCache.clear();
+  }
 });

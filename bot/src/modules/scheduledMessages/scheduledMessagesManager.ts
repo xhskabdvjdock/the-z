@@ -3,8 +3,7 @@ import { GuildConfig, IScheduledMessage } from "@thez/shared";
 import { ExtendedClient } from "../../client";
 import { getGuildConfig, invalidateGuildConfigCache } from "../../utils/guildConfig";
 import { logError } from "../../utils/logger";
-
-const CHECK_INTERVAL_MS = 30 * 1000;
+import { recordDbWrite } from "../../utils/metrics";
 
 function buildPayload(msg: IScheduledMessage): BaseMessageOptions {
   const payload: BaseMessageOptions = {};
@@ -49,6 +48,7 @@ async function processGuild(client: ExtendedClient, guildId: string): Promise<vo
     msg.lastRunAt = nowIso;
   }
 
+  recordDbWrite();
   await GuildConfig.findOneAndUpdate(
     { guildId },
     { $set: { scheduledMessages: gConfig.scheduledMessages } }
@@ -56,11 +56,16 @@ async function processGuild(client: ExtendedClient, guildId: string): Promise<vo
   invalidateGuildConfigCache(client, guildId);
 }
 
-/** حلقة دورية تفحص الرسائل المجدولة كل 30 ثانية */
-export function startScheduledMessages(client: ExtendedClient): void {
-  setInterval(() => {
-    for (const guild of client.guilds.cache.values()) {
-      processGuild(client, guild.id).catch((err) => logError("scheduled-messages", err));
+/**
+ * فحص كل السيرفرات بحثًا عن رسائل مستحقة — يُستدعى من المجدول المركزي فقط
+ * (قراءات الإعدادات مكشّنة، ولا كتابة إلا عند وجود رسائل مستحقة فعلًا).
+ */
+export async function scanScheduledMessages(client: ExtendedClient): Promise<void> {
+  for (const guild of client.guilds.cache.values()) {
+    try {
+      await processGuild(client, guild.id);
+    } catch (err) {
+      logError("scheduled-messages", err);
     }
-  }, CHECK_INTERVAL_MS);
+  }
 }

@@ -121,7 +121,7 @@ const command: BotCommand = {
           { $set: { islamicContent: config } }
         );
         invalidateGuildConfigCache(ctx.client, ctx.guild.id);
-        ensureScheduler(ctx.client, ctx.guild.id, config);
+        await ensureScheduler(ctx.client, ctx.guild.id, config);
         await ctx.reply("تم تشغيل نظام الأذكار والمحتوى الإسلامي، سيبدأ النشر تلقائياً خلال لحظات.");
         return;
       }
@@ -152,8 +152,7 @@ const command: BotCommand = {
         );
         invalidateGuildConfigCache(ctx.client, ctx.guild.id);
         if (config.enabled) {
-          stopIslamicScheduler(ctx.guild.id);
-          ensureScheduler(ctx.client, ctx.guild.id, config);
+          await ensureScheduler(ctx.client, ctx.guild.id, config);
         }
         await ctx.reply(`تم تعيين فترة النشر إلى ${minutes} دقيقة.`);
         return;

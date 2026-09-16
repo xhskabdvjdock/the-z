@@ -1,12 +1,13 @@
 import { Message } from "discord.js";
+import { IGuildConfig } from "@thez/shared";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { handleMovieSearch } from "./moviesManager";
 
-export async function handleMovieMessage(message: Message): Promise<boolean> {
+export async function handleMovieMessage(message: Message, sharedConfig?: IGuildConfig): Promise<boolean> {
   if (message.author.bot || !message.guild) return false;
   if (!message.content || message.content.trim().length < 2) return false;
 
-  const gConfig = await getGuildConfig((message as any).client, message.guild.id);
+  const gConfig = sharedConfig ?? (await getGuildConfig((message as any).client, message.guild.id));
   const movies = (gConfig as any).movies;
   if (!movies?.enabled || !movies?.channelId) return false;
   if (message.channelId !== movies.channelId) return false;
