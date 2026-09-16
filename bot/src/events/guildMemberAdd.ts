@@ -8,6 +8,7 @@ import { handleMemberJoinCaptcha } from "../modules/captcha/captcha";
 import { sendWelcomeMessage } from "../modules/welcome/welcomeManager";
 import { sendLog } from "../modules/logging/logger";
 import { dispatchEvent, onEvent } from "../utils/eventRouter";
+import { trackJoin } from "../modules/analytics/analytics";
 
 export interface MemberJoinContext {
   client: ExtendedClient;
@@ -95,6 +96,7 @@ const event: BotEvent = {
   async execute(client, member: GuildMember) {
     // جلب واحد للإعدادات — يُمرَّر لكل المعالجات
     const gConfig = await getGuildConfig(client, member.guild.id);
+    if (!member.user.bot) trackJoin(member.guild.id);
     await dispatchEvent("guildMemberAdd", { client, member, gConfig } satisfies MemberJoinContext);
   }
 };

@@ -8,6 +8,7 @@ import { buildMessageFromCustom } from "../utils/embed";
 import { applyCommandCooldown, checkCommandCooldown } from "../utils/cooldown";
 import { logError } from "../utils/logger";
 import { recordCommandRun, recordInteractionHandled } from "../utils/metrics";
+import { trackCommand as trackAnalyticsCommand } from "../modules/analytics/analytics";
 
 const event: BotEvent = {
   name: "interactionCreate",
@@ -98,6 +99,7 @@ const event: BotEvent = {
 
         const ctx = buildSlashContext(client, interaction);
         recordCommandRun();
+        if (interaction.guildId) trackAnalyticsCommand(interaction.guildId, interaction.commandName);
         await command.run(ctx);
         return;
       }

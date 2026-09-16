@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useMemo } from "react";
 import { 
-  LayoutDashboard, 
+  LayoutDashboard,
+  HeartPulse,
+  Star,
   Ticket, 
   Mic, 
   MessageSquare, 
@@ -37,6 +39,8 @@ import {
 const NAV_ITEMS = [
   { href: "", label: "نظرة عامة", icon: LayoutDashboard },
   { href: "/stats", label: "لوحة الإحصائيات", icon: BarChart3 },
+  { href: "/health", label: "صحة السيرفر", icon: HeartPulse },
+  { href: "/starboard", label: "لوحة النجوم", icon: Star },
   { href: "/members", label: "إدارة الأعضاء", icon: Users },
   { href: "/tickets", label: "نظام التذاكر", icon: Ticket },
   { href: "/voice", label: "الرومات الصوتية", icon: Mic },

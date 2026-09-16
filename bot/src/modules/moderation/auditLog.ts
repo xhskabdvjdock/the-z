@@ -1,5 +1,6 @@
 import { ModerationLog } from "@thez/shared";
 import { logError } from "../../utils/logger";
+import { trackModeration } from "../analytics/analytics";
 
 /** معاملات سجل الإشراف */
 export interface AuditEntry {
@@ -17,6 +18,7 @@ export interface AuditEntry {
  */
 export async function recordModerationLog(entry: AuditEntry): Promise<void> {
   try {
+    trackModeration(entry.guildId, entry.action);
     await ModerationLog.create({
       ...entry,
       createdAt: new Date()

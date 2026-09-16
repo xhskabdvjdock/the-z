@@ -4,11 +4,13 @@ import { getGuildConfig } from "../utils/guildConfig";
 import { sendLeaveMessage } from "../modules/welcome/welcomeManager";
 import { sendLog } from "../modules/logging/logger";
 import { handleMemberRemove as handleAntiNukeMemberRemove } from "../modules/antinuke/antinuke";
+import { trackLeave } from "../modules/analytics/analytics";
 
 const event: BotEvent = {
   name: "guildMemberRemove",
   async execute(client, member: GuildMember | { guild: any; user: User; id: string }) {
     const guildMember = member as GuildMember;
+    if (!(guildMember.user as User | undefined)?.bot) trackLeave(guildMember.guild.id);
     const gConfig = await getGuildConfig(client, guildMember.guild.id);
     if (gConfig.antiNuke?.enabled) {
       await handleAntiNukeMemberRemove(client, guildMember, gConfig).catch(() => null);

@@ -16,6 +16,8 @@ import { registerSuggestionComponents } from "./suggestions/suggestionManager";
 import { registerMovieComponents } from "./movies/moviesManager";
 import { flushAfkMentions } from "../utils/afkBatch";
 import { flushVotes } from "./suggestions/voteStore";
+import { registerAnalyticsScheduler } from "./analytics/analytics";
+import { registerHeartbeatScheduler } from "./health/heartbeat";
 import { registerFlushHandler, registerRecurring, startScheduler } from "../scheduler/scheduler";
 
 /** نقطة تجميع مركزية: تسجّل كل معالجات الأزرار/القوائم الخاصة بكل موديول، وتشغّل المهام الدورية */
@@ -32,6 +34,8 @@ export function registerAllModules(client: ExtendedClient) {
   client.once("ready", () => {
     // كل المهام الدورية تمر عبر المجدول المركزي الوحيد — لا مؤقتات متفرقة
     registerXpScheduler(client);
+    registerAnalyticsScheduler();
+    registerHeartbeatScheduler(client);
     registerRecurring("afk-flush", 30_000, async () => {
       await flushAfkMentions();
     });

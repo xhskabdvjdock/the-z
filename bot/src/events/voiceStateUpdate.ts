@@ -4,6 +4,7 @@ import { sendLog } from "../modules/logging/logger";
 import { getGuildConfig } from "../utils/guildConfig";
 import { handleVoiceStateUpdate as handleTempVoiceUpdate } from "../modules/tempVoice/voiceManager";
 import { scheduleReconcile } from "../modules/alwaysVoice/alwaysVoiceManager";
+import { trackVoiceJoin, trackVoiceLeave } from "../modules/analytics/analytics";
 
 const event: BotEvent = {
   name: "voiceStateUpdate",
@@ -33,9 +34,11 @@ const event: BotEvent = {
 
     if (oldState.channelId !== newState.channelId) {
       if (!oldState.channelId && newState.channel) {
+        if (!member.user.bot) trackVoiceJoin(newState.guild.id, member.id);
         changes.push(`Joined: <#${newState.channel.id}> \`${newState.channel.name}\``);
         details.joined = { channelId: newState.channel.id, channelName: newState.channel.name };
       } else if (oldState.channel && !newState.channelId) {
+        if (!member.user.bot) trackVoiceLeave(newState.guild.id, member.id);
         changes.push(`Left: \`${oldState.channel.name}\` (\`${oldState.channel.id}\`)`);
         details.left = { channelId: oldState.channel.id, channelName: oldState.channel.name };
       } else if (oldState.channel && newState.channel) {

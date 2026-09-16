@@ -11,6 +11,7 @@ import {
   recordXpAccumulated,
   recordXpFlushed
 } from "../../utils/metrics";
+import { trackXp } from "../analytics/analytics";
 import { registerFlushHandler, registerRecurring } from "../../scheduler/scheduler";
 
 /**
@@ -216,6 +217,8 @@ export async function flushXp(client: ExtendedClient): Promise<void> {
       const existingDocs = await LevelUser.find({ guildId, userId: { $in: userIds } });
       const docMap = new Map(existingDocs.map((d) => [d.userId, d]));
 
+      let flushedXp = 0;
+      let flushedLevelups = 0;
       for (const userId of userIds) {
         const key = keyOf(guildId, userId);
         const entry = pending.get(key);
@@ -228,12 +231,16 @@ export async function flushXp(client: ExtendedClient): Promise<void> {
             recordDbWrite();
             doc = await LevelUser.create({ guildId, userId });
           }
-          await applyPendingXp(client, guildId, userId, doc as LiveDoc<ILevelUser>, entry, gConfig);
+          flushedXp += entry.xp;
+          if (await applyPendingXp(client, guildId, userId, doc as LiveDoc<ILevelUser>, entry, gConfig)) {
+            flushedLevelups++;
+          }
           recordXpFlushed();
         } catch (err) {
           logError("xp-flush", err);
         }
       }
+      trackXp(guildId, flushedXp, flushedLevelups);
     } catch (err) {
       logError("xp-flush", err);
     }
@@ -247,7 +254,7 @@ async function applyPendingXp(
   doc: LiveDoc<ILevelUser>,
   entry: PendingEntry,
   gConfig: IGuildConfig
-): Promise<void> {
+): Promise<boolean> {
   const oldLevel = doc.level ?? 0;
 
   doc.totalXp = (doc.totalXp ?? 0) + entry.xp;
@@ -260,22 +267,23 @@ async function applyPendingXp(
   recordDbWrite();
   await doc.save();
 
-  if (info.level <= oldLevel) return;
+  if (info.level <= oldLevel) return false;
 
   // ترقية — نجلب العضو من الكاش أولًا لتجنب REST
   const guild = client.guilds.cache.get(guildId);
-  if (!guild) return;
+  if (!guild) return true;
   let member = guild.members.cache.get(userId) ?? null;
   if (!member) {
     try {
       recordDiscordApiCall();
       member = await guild.members.fetch(userId);
     } catch {
-      return;
+      return true;
     }
   }
   await grantRoleRewards(member, info.level, gConfig);
   await announceLevelUp(client, guildId, member, userId, info.level, gConfig, entry.lastChannelId);
+  return true;
 }
 
 /** تسجيل مهام XP في المجدول المركزي + تفريغ عند الإغلاق */

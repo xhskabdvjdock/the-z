@@ -18,6 +18,11 @@ export interface MetricsSnapshot {
   suggestionVotes: number;
   xpAccumulated: number;
   xpFlushed: number;
+  analyticsEvents: number;
+  analyticsFlushed: number;
+  starboardReactions: number;
+  starboardApiUpdates: number;
+  healthChecks: number;
   errors: Record<string, number>;
   startedAt: number;
 }
@@ -37,6 +42,11 @@ const counters: MetricsSnapshot = {
   suggestionVotes: 0,
   xpAccumulated: 0,
   xpFlushed: 0,
+  analyticsEvents: 0,
+  analyticsFlushed: 0,
+  starboardReactions: 0,
+  starboardApiUpdates: 0,
+  healthChecks: 0,
   errors: {},
   startedAt: Date.now()
 };
@@ -94,6 +104,26 @@ export function recordXpFlushed(n = 1): void {
   counters.xpFlushed += n;
 }
 
+export function recordAnalyticsEvent(n = 1): void {
+  counters.analyticsEvents += n;
+}
+
+export function recordAnalyticsFlushed(n = 1): void {
+  counters.analyticsFlushed += n;
+}
+
+export function recordStarboardReaction(): void {
+  counters.starboardReactions++;
+}
+
+export function recordStarboardApiUpdate(): void {
+  counters.starboardApiUpdates++;
+}
+
+export function recordHealthCheck(): void {
+  counters.healthChecks++;
+}
+
 export function recordError(label: string): void {
   if (counters.errors[label] !== undefined) {
     counters.errors[label]++;
@@ -122,6 +152,11 @@ export function resetMetrics(): void {
   counters.suggestionVotes = 0;
   counters.xpAccumulated = 0;
   counters.xpFlushed = 0;
+  counters.analyticsEvents = 0;
+  counters.analyticsFlushed = 0;
+  counters.starboardReactions = 0;
+  counters.starboardApiUpdates = 0;
+  counters.healthChecks = 0;
   counters.errors = {};
   counters.startedAt = Date.now();
 }

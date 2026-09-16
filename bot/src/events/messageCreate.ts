@@ -14,6 +14,7 @@ import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
 import { sendMediaLog } from "../modules/logging/logger";
 import { handleGifBlock } from "../modules/gifBlock/gifBlock";
 import { buildMessageContext } from "../utils/messageContext";
+import { trackCommand as trackAnalyticsCommand, trackMessage } from "../modules/analytics/analytics";
 import { recordAfkMention } from "../utils/afkBatch";
 import { recordCommandRun, recordDbRead, recordDbWrite, recordMessageProcessed } from "../utils/metrics";
 import { AfkUser } from "@thez/shared";
@@ -50,7 +51,12 @@ const event: BotEvent = {
 
     // 1) أوامر البادئة الثابتة (,tr | ,afk | ,avatar | ,banner | ,jail | ,unjail)
     const wasLegacy = await handleLegacyPrefixCommands(client, message);
-    if (wasLegacy) return;
+    if (wasLegacy) {
+      const legacyName = `legacy:${message.content.split(/\s+/)[0]?.slice(0, 32) ?? "?"}`;
+      trackAnalyticsCommand(message.guild.id, legacyName);
+      recordMessageProcessed(Date.now() - startedAt);
+      return;
+    }
 
     // جلب واحد للإعدادات المكشّنة — يُمرَّر لكل الأنظمة بالمرجع (لا تكرار)
     const gConfig = await getGuildConfig(client, message.guild.id);
@@ -59,6 +65,7 @@ const event: BotEvent = {
       recordMessageProcessed(Date.now() - startedAt);
       return;
     }
+    trackMessage(msgCtx.guildId, msgCtx.user.id, msgCtx.channelId);
 
     // 1.5) نظام الاقتراحات — تحويل رسائل قناة الاقتراحات إلى صور
     const wasSuggestion = await handleSuggestionMessage(message, gConfig);
@@ -204,6 +211,7 @@ const event: BotEvent = {
 
             const ctx = buildPrefixContext(client, message, args, command);
             recordCommandRun();
+            trackAnalyticsCommand(message.guild.id, command.name);
             await command.run(ctx);
             recordMessageProcessed(Date.now() - startedAt);
             return;

@@ -419,6 +419,23 @@ export interface IGuildConfig {
     channelId: string | null;
   };
 
+  /** لوحة النجوم Starboard */
+  starboard: {
+    enabled: boolean;
+    channelId: string | null;
+    /** عدد التفاعلات اللازم للنشر */
+    threshold: number;
+    /** الإيموجي المحتسب (افتراضي ⭐) */
+    emoji: string;
+    ignoredChannelIds: string[];
+    ignoredRoleIds: string[];
+    ignoredUserIds: string[];
+    /** حذف رسالة اللوحة عند النزول تحت الحد */
+    removeOnBelowThreshold: boolean;
+    /** أقل عمر حساب بالأيام (0 = بدون شرط) */
+    minAccountAgeDays: number;
+  };
+
   /** نظام الاقتراحات والتصويت */
   suggestions: {
     enabled: boolean;
@@ -441,6 +458,36 @@ export interface IGuildConfig {
 
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** إعدادات Starboard محلولة مع defaults — للمستندات القديمة بدون الحقل */
+export interface ResolvedStarboardSettings {
+  enabled: boolean;
+  channelId: string | null;
+  threshold: number;
+  emoji: string;
+  ignoredChannelIds: string[];
+  ignoredRoleIds: string[];
+  ignoredUserIds: string[];
+  removeOnBelowThreshold: boolean;
+  minAccountAgeDays: number;
+}
+
+export function resolveStarboardSettings(
+  config?: Pick<IGuildConfig, "starboard"> | null
+): ResolvedStarboardSettings {
+  const s = config?.starboard as Partial<ResolvedStarboardSettings> | undefined;
+  return {
+    enabled: s?.enabled ?? false,
+    channelId: s?.channelId ?? null,
+    threshold: Math.max(1, Math.floor(Number(s?.threshold) || 3)),
+    emoji: s?.emoji || "⭐",
+    ignoredChannelIds: Array.isArray(s?.ignoredChannelIds) ? s.ignoredChannelIds : [],
+    ignoredRoleIds: Array.isArray(s?.ignoredRoleIds) ? s.ignoredRoleIds : [],
+    ignoredUserIds: Array.isArray(s?.ignoredUserIds) ? s.ignoredUserIds : [],
+    removeOnBelowThreshold: s?.removeOnBelowThreshold !== false,
+    minAccountAgeDays: Math.max(0, Math.floor(Number(s?.minAccountAgeDays) || 0))
+  };
 }
 
 /**
@@ -627,6 +674,18 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
     movies: {
       enabled: false,
       channelId: null
+    },
+
+    starboard: {
+      enabled: false,
+      channelId: null,
+      threshold: 3,
+      emoji: "⭐",
+      ignoredChannelIds: [],
+      ignoredRoleIds: [],
+      ignoredUserIds: [],
+      removeOnBelowThreshold: true,
+      minAccountAgeDays: 0
     },
 
     suggestions: {

@@ -25,11 +25,15 @@ interface ActivityData {
   messages: number;
   joins: number;
   leaves: number;
+  commands: number;
 }
 
 export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
   const [stats, setStats] = useState<StatCard[]>([]);
   const [activityData, setActivityData] = useState<ActivityData[]>([]);
+  const [topChannels, setTopChannels] = useState<Array<{ id: string; name: string; count: number }>>([]);
+  const [topMembers, setTopMembers] = useState<Array<{ id: string; count: number }>>([]);
+  const [moderation, setModeration] = useState<Array<{ action: string; count: number }>>([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("7d");
 
@@ -45,12 +49,15 @@ export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
       const data = await res.json();
       const realStats: StatCard[] = [
         { title: "إجمالي الأعضاء", value: data.memberCount ?? 0, change: "", icon: Users, color: "success" },
-        { title: "الرسائل (7 أيام)", value: data.totalMessages ?? 0, change: "", icon: MessageSquare, color: "info" },
+        { title: "الرسائل", value: data.totalMessages ?? 0, change: "", icon: MessageSquare, color: "info" },
         { title: "إجراءات الإشراف", value: data.moderationActions ?? 0, change: "", icon: Shield, color: "warning" },
-        { title: "تذاكر مفتوحة", value: data.ticketsOpen ?? 0, change: "", icon: Activity, color: "success" }
+        { title: "دقائق الصوت", value: data.voiceMinutes ?? 0, change: "", icon: Clock, color: "success" }
       ];
       setStats(realStats);
       setActivityData(data.activity ?? []);
+      setTopChannels(data.topChannels ?? []);
+      setTopMembers(data.topMembers ?? []);
+      setModeration(data.moderationBreakdown ?? []);
     } catch (error) {
       console.error("Failed to fetch stats:", error);
       // fallback to empty
@@ -71,7 +78,7 @@ export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
     return colors[color as keyof typeof colors] || "badge-info";
   };
 
-  const maxValue = Math.max(...activityData.map(d => d.messages));
+  const maxValue = Math.max(1, ...activityData.map(d => d.messages));
 
   return (
     <div className="space-y-6">
@@ -81,7 +88,7 @@ export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
           <p className="text-sm text-slate-500 mt-1">نظرة شاملة على نشاط السيرفر</p>
         </div>
         <div className="flex gap-2">
-          {["7d", "30d", "90d"].map((range) => (
+          {["24h", "7d", "30d", "90d"].map((range) => (
             <button
               key={range}
               onClick={() => setTimeRange(range)}
@@ -91,7 +98,7 @@ export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
                   : "bg-slate-800 text-slate-400 hover:bg-slate-700"
               }`}
             >
-              {range === "7d" ? "7 أيام" : range === "30d" ? "30 يوم" : "90 يوم"}
+              {range === "24h" ? "24 ساعة" : range === "7d" ? "7 أيام" : range === "30d" ? "30 يوم" : "90 يوم"}
             </button>
           ))}
         </div>
@@ -190,10 +197,13 @@ export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
                 <h3 className="font-semibold">أكثر الأعضاء نشاطاً</h3>
               </div>
               <div className="space-y-2">
-                {["User#1234", "User#5678", "User#9012"].map((user, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">{user}</span>
-                    <span className="font-medium">{(150 - i * 20)} رسالة</span>
+                {topMembers.length === 0 && (
+                  <p className="text-sm text-slate-500">لا توجد بيانات بعد</p>
+                )}
+                {topMembers.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400 font-mono">{user.id.slice(0, 8)}…</span>
+                    <span className="font-medium">{user.count} رسالة</span>
                   </div>
                 ))}
               </div>
@@ -205,10 +215,13 @@ export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
                 <h3 className="font-semibold">أكثر القنوات نشاطاً</h3>
               </div>
               <div className="space-y-2">
-                {["#general", "#off-topic", "#announcements"].map((channel, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <span className="text-slate-400">{channel}</span>
-                    <span className="font-medium">{(300 - i * 50)} رسالة</span>
+                {topChannels.length === 0 && (
+                  <p className="text-sm text-slate-500">لا توجد بيانات بعد</p>
+                )}
+                {topChannels.map((channel) => (
+                  <div key={channel.id} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">#{channel.name}</span>
+                    <span className="font-medium">{channel.count} رسالة</span>
                   </div>
                 ))}
               </div>
@@ -220,18 +233,15 @@ export default function AnalyticsDashboard({ guildId }: { guildId: string }) {
                 <h3 className="font-semibold">تنبيهات النظام</h3>
               </div>
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">انفاذ الحد</span>
-                  <span className="badge badge-warning">2</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">أخطاء</span>
-                  <span className="badge badge-error">5</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-400">تحذيرات</span>
-                  <span className="badge badge-info">8</span>
-                </div>
+                {moderation.length === 0 && (
+                  <p className="text-sm text-slate-500">لا توجد إجراءات بعد</p>
+                )}
+                {moderation.map((m) => (
+                  <div key={m.action} className="flex items-center justify-between text-sm">
+                    <span className="text-slate-400">{m.action}</span>
+                    <span className="badge badge-warning">{m.count}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
