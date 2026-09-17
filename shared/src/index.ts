@@ -22,6 +22,7 @@ export * from "./utils/variables";
 export * from "./utils/leveling";
 export * from "./utils/cooldown";
 export * from "./utils/validate";
+export * from "./utils/downloadToken";
 export * from "./utils/dashboard";
 export * from "./utils/rateLimit";
 export * from "./constants/commands";

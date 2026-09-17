@@ -194,7 +194,6 @@ export interface IGuildConfig {
   _id?: string;
   guildId: string;
   prefix: string;
-  language: "ar" | "en";
   embedColor?: string;
 
   tickets: {
@@ -528,7 +527,6 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
   return {
     guildId,
     prefix: "!",
-    language: "ar",
 
     tickets: {
       enabled: false,

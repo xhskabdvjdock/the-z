@@ -14,8 +14,12 @@ export const DashboardAccess = new Collection<IDashboardAccess>("dashboard_acces
   updatedAt: new Date().toISOString()
 }));
 
-// المالك الأساسي - دائمًا مسموح حتى لو حُذف من القائمة
-export const OWNER_ID = "839934741918777415";
+/**
+ * المالك الأساسي للوحة التحكم — يُضبط عبر متغير البيئة `OWNER_ID` (أو `DASHBOARD_OWNER_ID`).
+ * القيمة الاحتياطية هي معرّف المالك الأصلي للمشروع حتى لا يتعطّل الوصول إذا لم يُضبط المتغير.
+ */
+export const OWNER_ID =
+  process.env.OWNER_ID || process.env.DASHBOARD_OWNER_ID || "839934741918777415";
 
 export async function getAllowedUserIds(): Promise<string[]> {
   try {
