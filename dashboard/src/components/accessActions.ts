@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { DashboardAccess, OWNER_ID } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
-import { requireDashboardAccess } from "@/lib/guildAccess";
+import { requireDashboardAccess, clearAccessCache } from "@/lib/guildAccess";
 import { logAction, logError } from "@/lib/logger";
 import { rateLimitOrThrow } from "@/lib/dashboardRateLimit";
 
@@ -35,6 +35,7 @@ export async function addAccessId(userId: string) {
       { $set: { allowedUserIds: updated, updatedAt: new Date().toISOString() } },
       { upsert: true }
     );
+    clearAccessCache();
 
     logAction({
       label: "access/add",
@@ -45,7 +46,7 @@ export async function addAccessId(userId: string) {
       details: { addedUserId: trimmed }
     });
 
-    revalidatePath("/dashboard/access");
+    revalidatePath("/dashboard", "layout");
   } catch (error) {
     logError("access/add", error);
     throw error;
@@ -70,6 +71,7 @@ export async function removeAccessId(userId: string) {
       { $set: { allowedUserIds: updated, updatedAt: new Date().toISOString() } },
       { upsert: true }
     );
+    clearAccessCache();
 
     logAction({
       label: "access/remove",
@@ -80,7 +82,7 @@ export async function removeAccessId(userId: string) {
       details: { removedUserId: userId }
     });
 
-    revalidatePath("/dashboard/access");
+    revalidatePath("/dashboard", "layout");
   } catch (error) {
     logError("access/remove", error);
     throw error;

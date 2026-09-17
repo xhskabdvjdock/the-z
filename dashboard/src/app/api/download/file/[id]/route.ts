@@ -12,6 +12,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     return NextResponse.json({ error: "Invalid file." }, { status: 400 });
   }
 
+  // تحقق إضافي: المسار المحلول يجب أن يبقى داخل مجلد التحميل
+  const resolved = path.resolve(filePath);
+  const baseDir = path.resolve("/tmp/the-z-downloads");
+  if (!resolved.startsWith(baseDir + path.sep)) {
+    return NextResponse.json({ error: "Invalid file." }, { status: 400 });
+  }
+
   try {
     await fs.promises.access(filePath);
   } catch {

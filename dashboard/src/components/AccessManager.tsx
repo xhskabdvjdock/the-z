@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addAccessId, removeAccessId } from "./actions";
+import { addAccessId, removeAccessId } from "./accessActions";
 
 const OWNER_ID = "839934741918777415";
 

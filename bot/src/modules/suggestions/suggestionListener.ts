@@ -1,13 +1,13 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, Message } from "discord.js";
-import { IGuildConfig, Suggestion } from "@thez/shared";
+import { Suggestion, createNotification } from "@thez/shared";
 import { getGuildConfig } from "../../utils/guildConfig";
 import { generateSuggestionImage } from "./suggestionImage";
 
-export async function handleSuggestionMessage(message: Message, sharedConfig?: IGuildConfig): Promise<boolean> {
+export async function handleSuggestionMessage(message: Message): Promise<boolean> {
   if (message.author.bot || !message.guild) return false;
   if (!message.content || message.content.trim().length === 0) return false;
 
-  const gConfig = sharedConfig ?? (await getGuildConfig((message as any).client, message.guild.id));
+  const gConfig = await getGuildConfig((message as any).client, message.guild.id);
   const suggestions = (gConfig as any).suggestions;
   if (!suggestions?.enabled || !suggestions?.channelId) return false;
   if (message.channelId !== suggestions.channelId) return false;
@@ -44,6 +44,12 @@ export async function handleSuggestionMessage(message: Message, sharedConfig?: I
 
   try {
     await Suggestion.create(suggestionData as any);
+    await createNotification(
+      message.guild.id,
+      "suggestion",
+      "اقتراح جديد",
+      `${message.author.tag}: ${content.slice(0, 100)}`
+    ).catch(() => null);
   } catch (err) {
     console.error("[suggestions] فشل حفظ الاقتراح:", err);
   }

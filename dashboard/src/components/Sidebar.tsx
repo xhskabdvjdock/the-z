@@ -4,9 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useMemo } from "react";
 import { 
-  LayoutDashboard,
-  HeartPulse,
-  Star,
+  LayoutDashboard, 
   Ticket, 
   Mic, 
   MessageSquare, 
@@ -33,14 +31,13 @@ import {
   Lightbulb,
   KeyRound,
   Film,
-  Download
+  Download,
+  Bell
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { href: "", label: "نظرة عامة", icon: LayoutDashboard },
   { href: "/stats", label: "لوحة الإحصائيات", icon: BarChart3 },
-  { href: "/health", label: "صحة السيرفر", icon: HeartPulse },
-  { href: "/starboard", label: "لوحة النجوم", icon: Star },
   { href: "/members", label: "إدارة الأعضاء", icon: Users },
   { href: "/tickets", label: "نظام التذاكر", icon: Ticket },
   { href: "/voice", label: "الرومات الصوتية", icon: Mic },
@@ -53,7 +50,7 @@ const NAV_ITEMS = [
   { href: "/suggestions", label: "الاقتراحات", icon: Lightbulb },
   { href: "/movies", label: "الأفلام", icon: Film },
   { href: "/downloader", label: "تحميل الفيديو", icon: Download },
-  { href: "/notifications", label: "الإشعارات", icon: MessageSquare },
+  { href: "/notifications", label: "الإشعارات", icon: Bell },
   { href: "/advanced", label: "متقدم", icon: Settings },
   { href: "/access", label: "إدارة الوصول", icon: KeyRound },
   { href: "/roles", label: "الرولات والألوان", icon: User },

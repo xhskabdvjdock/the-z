@@ -19,7 +19,7 @@ import {
   TextInputStyle
 } from "discord.js";
 import { ExportReturnType, createTranscript } from "discord-html-transcripts";
-import { GuildConfig, IGuildConfig, ITicketCategory, Ticket, VariableContext, applyVariables } from "@thez/shared";
+import { GuildConfig, IGuildConfig, ITicketCategory, Ticket, VariableContext, applyVariables, createNotification } from "@thez/shared";
 import { ExtendedClient } from "../../client";
 import { config } from "../../config";
 import { ComponentRouter } from "../../handlers/componentRouter";
@@ -180,6 +180,13 @@ async function createTicketChannel(
     status: "open",
     answers
   });
+
+  await createNotification(
+    guild.id,
+    "ticket",
+    `تذكرة جديدة #${number}`,
+    `${member.user.tag} فتح تذكرة في ${category.name ?? category.key}`
+  ).catch(() => null);
 
   await sendTicketWelcome(channel, member, category, answers);
 
@@ -498,6 +505,13 @@ export async function closeTicket(
   ticket.closedBy = closedById;
   ticket.closedAt = new Date();
   await ticket.save();
+
+  await createNotification(
+    channel.guild.id,
+    "ticket",
+    `تم إغلاق التذكرة #${ticket.number}`,
+    `أغلقها <@${closedById}>`
+  ).catch(() => null);
 
   const gConfig = await getGuildConfig(client, channel.guild.id);
   const category = gConfig.tickets.categories.find((c) => c.key === ticket.categoryKey);

@@ -1,11 +1,8 @@
 import { EmbedBuilder, Message } from "discord.js";
 import { BotCommand } from "../../types/command";
 import { config } from "../../config";
-import translate from "translate";
+import { translateText } from "../../utils/translate";
 import { logError } from "../../utils/logger";
-
-// ضبط المحرك مجاناً
-translate.engine = "google";
 
 // بسيط تخزين مؤقت للترجمات لتجنب الطلبات المكررة — محدود الحجم + TTL تنظيف عند الإضافة
 const translationCache = new Map<string, { text: string; timestamp: number }>();
@@ -16,7 +13,6 @@ function cacheSet(key: string, value: { text: string; timestamp: number }): void
   if (translationCache.size >= CACHE_MAX_ENTRIES) {
     const oldest = translationCache.keys().next().value;
     if (oldest !== undefined) translationCache.delete(oldest);
-    // تنظيف المنتهية أيضًا عند الامتلاء — يمنع أي نمو بلا حدود
     const now = Date.now();
     for (const [k, v] of translationCache) {
       if (now - v.timestamp >= CACHE_DURATION) translationCache.delete(k);
@@ -78,9 +74,8 @@ const command: BotCommand = {
     }
 
     try {
-      const translatedText = await translate(text, { to: targetLang, from: isArabic ? 'ar' : 'auto' });
+      const translatedText = await translateText(text, targetLang);
 
-      // التحقق من أن الترجمة نجحت
       if (!translatedText || translatedText.trim() === "") {
         await ctx.reply("فشلت الترجمة، يرجى المحاولة مرة أخرى");
         return;

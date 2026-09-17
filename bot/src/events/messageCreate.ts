@@ -13,80 +13,30 @@ import { handleMovieMessage } from "../modules/movies/movieListener";
 import { checkCommandCooldown, applyCommandCooldown } from "../utils/cooldown";
 import { sendMediaLog } from "../modules/logging/logger";
 import { handleGifBlock } from "../modules/gifBlock/gifBlock";
-import { buildMessageContext } from "../utils/messageContext";
-import { trackCommand as trackAnalyticsCommand, trackMessage } from "../modules/analytics/analytics";
-import { recordAfkMention } from "../utils/afkBatch";
-import { recordCommandRun, recordDbRead, recordDbWrite, recordMessageProcessed } from "../utils/metrics";
 import { AfkUser } from "@thez/shared";
-
-// نظام بسيط لتقليل rate limits من خلال تأخير الردود
-const messageQueue = new Map<string, number>();
-const QUEUE_DELAY = 200; // 200ms بين الردود في نفس الروم
-
-/** دالة مساعدة لتأخير الردود لتقليل rate limits */
-async function queueReply(channelId: string, replyFn: () => Promise<any>) {
-  const lastReply = messageQueue.get(channelId) || 0;
-  const now = Date.now();
-  const timeSinceLastReply = now - lastReply;
-
-  if (timeSinceLastReply < QUEUE_DELAY) {
-    await new Promise(resolve => setTimeout(resolve, QUEUE_DELAY - timeSinceLastReply));
-  }
-
-  messageQueue.set(channelId, Date.now());
-  return await replyFn();
-}
 
 const event: BotEvent = {
   name: "messageCreate",
   async execute(client, message: Message) {
     if (message.author.bot || !message.guild) return;
-    const startedAt = Date.now();
-
-    // إضافة تأخير بسيط لتقليل الضغط على API
-    // وهذا مهم خاصة في السيرفرات الكبيرة
-    if (Math.random() < 0.1) { // 10% من الرسائل فقط
-      await new Promise(resolve => setTimeout(resolve, 50));
-    }
 
     // 1) أوامر البادئة الثابتة (,tr | ,afk | ,avatar | ,banner | ,jail | ,unjail)
     const wasLegacy = await handleLegacyPrefixCommands(client, message);
-    if (wasLegacy) {
-      const legacyName = `legacy:${message.content.split(/\s+/)[0]?.slice(0, 32) ?? "?"}`;
-      trackAnalyticsCommand(message.guild.id, legacyName);
-      recordMessageProcessed(Date.now() - startedAt);
-      return;
-    }
+    if (wasLegacy) return;
 
-    // جلب واحد للإعدادات المكشّنة — يُمرَّر لكل الأنظمة بالمرجع (لا تكرار)
     const gConfig = await getGuildConfig(client, message.guild.id);
-    const msgCtx = buildMessageContext(client, message, gConfig);
-    if (!msgCtx) {
-      recordMessageProcessed(Date.now() - startedAt);
-      return;
-    }
-    trackMessage(msgCtx.guildId, msgCtx.user.id, msgCtx.channelId);
 
     // 1.5) نظام الاقتراحات — تحويل رسائل قناة الاقتراحات إلى صور
-    const wasSuggestion = await handleSuggestionMessage(message, gConfig);
-    if (wasSuggestion) {
-      recordMessageProcessed(Date.now() - startedAt);
-      return;
-    }
+    const wasSuggestion = await handleSuggestionMessage(message);
+    if (wasSuggestion) return;
 
     // 1.6) نظام الأفلام — البحث في قناة الأفلام
-    const wasMovie = await handleMovieMessage(message, gConfig);
-    if (wasMovie) {
-      recordMessageProcessed(Date.now() - startedAt);
-      return;
-    }
+    const wasMovie = await handleMovieMessage(message);
+    if (wasMovie) return;
 
     // 1.6) التحقق من حظر GIFs
-    const wasGifBlocked = await handleGifBlock(client, message, gConfig);
-    if (wasGifBlocked) {
-      recordMessageProcessed(Date.now() - startedAt);
-      return;
-    }
+    const wasGifBlocked = await handleGifBlock(client, message);
+    if (wasGifBlocked) return;
 
     // 2) القنوات المخصصة لنوع معين من المحتوى
     const customChannels = gConfig.logging?.customChannels;
@@ -100,31 +50,24 @@ const event: BotEvent = {
 
     if (customChannels?.messages?.includes(channelId) && !isTextOnly) {
       await message.delete().catch(() => null);
-      recordMessageProcessed(Date.now() - startedAt);
       return;
     }
     if (customChannels?.commands?.includes(channelId) && !isCommand) {
       await message.delete().catch(() => null);
-      recordMessageProcessed(Date.now() - startedAt);
       return;
     }
     if (customChannels?.media?.includes(channelId) && !hasMedia) {
       await message.delete().catch(() => null);
-      recordMessageProcessed(Date.now() - startedAt);
       return;
     }
     if (customChannels?.stickers?.includes(channelId) && !hasStickers) {
       await message.delete().catch(() => null);
-      recordMessageProcessed(Date.now() - startedAt);
       return;
     }
 
     // 3) الرقابة التلقائية
-    const wasActioned = await handleAutoMod(client, msgCtx.message, msgCtx.guildConfig);
-    if (wasActioned) {
-      recordMessageProcessed(Date.now() - startedAt);
-      return;
-    }
+    const wasActioned = await handleAutoMod(client, message, gConfig);
+    if (wasActioned) return;
 
     // 4) أوامر بادئة السيرفر (مع دعم البادئة المخصصة لكل أمر)
     const overrideMap = new Map((gConfig.commandOverrides ?? []).map((o) => [o.name, o]));
@@ -159,7 +102,6 @@ const event: BotEvent = {
             const discordPerm = verifyCommandPermission(command, message.member!, message.channel);
             if (!discordPerm.allowed) {
               await message.reply(discordPerm.reason ?? "لا تملك الصلاحيات الكافية.");
-              recordMessageProcessed(Date.now() - startedAt);
               return;
             }
 
@@ -167,7 +109,6 @@ const event: BotEvent = {
             const permCheck = checkCommandPermission(override, message.member!, message.channelId);
             if (!permCheck.allowed) {
               await message.reply(permCheck.reason ?? "غير مسموح.");
-              recordMessageProcessed(Date.now() - startedAt);
               return;
             }
 
@@ -181,9 +122,8 @@ const event: BotEvent = {
             );
             if (!cdCheck.allowed) {
               await message.reply(
-                `⏳ هذا الأمر قيد البرودة — انتظر ${cdCheck.remainingSeconds} ثانية تقريبًا.`
+                `هذا الأمر قيد البرودة - انتظر ${cdCheck.remainingSeconds} ثانية تقريبا.`
               );
-              recordMessageProcessed(Date.now() - startedAt);
               return;
             }
             applyCommandCooldown(client, command, message.guild.id, message.author.id, override);
@@ -205,15 +145,11 @@ const event: BotEvent = {
                 }
               });
               await message.reply(payload as any);
-              recordMessageProcessed(Date.now() - startedAt);
               return;
             }
 
             const ctx = buildPrefixContext(client, message, args, command);
-            recordCommandRun();
-            trackAnalyticsCommand(message.guild.id, command.name);
             await command.run(ctx);
-            recordMessageProcessed(Date.now() - startedAt);
             return;
           }
         }
@@ -221,30 +157,34 @@ const event: BotEvent = {
     }
 
     // 5) الردود التلقائية
-    const responded = await handleAutoResponse(client, msgCtx.message, msgCtx.guildConfig);
-    if (responded) {
-      recordMessageProcessed(Date.now() - startedAt);
-      return;
-    }
+    const responded = await handleAutoResponse(client, message, gConfig);
+    if (responded) return;
 
-    // 6) نظام AFK — قراءة واحدة، وعدّادات المنشن متراكمة تُحفَظ دفعيًا (لا N×update)
-    const mentionedUsers = msgCtx.message.mentions.users.filter((u) => !u.bot);
+    // 6) نظام AFK — batch queries بدلاً من N+1
+    const mentionedUsers = message.mentions.users.filter((u) => !u.bot);
     if (mentionedUsers.size > 0) {
       const userIds = [...mentionedUsers.keys()];
-      recordDbRead();
       const afkUsers = await AfkUser.find({
-        guildId: msgCtx.guildId,
+        guildId: message.guild.id,
         userId: { $in: userIds },
         status: true
       });
 
       if (afkUsers.length > 0) {
+        // updateMany غير متاح على نوع هذا الموديل — نستخدم updateOne متوازية
+        await Promise.all(
+          afkUsers.map((a) =>
+            AfkUser.updateOne(
+              { guildId: message.guild!.id, userId: a.userId },
+              { $inc: { mentionCount: 1 } }
+            )
+          )
+        );
         const afkMap = new Map(afkUsers.map((a) => [a.userId, a]));
         for (const [userId, user] of mentionedUsers) {
           const afkData = afkMap.get(userId);
           if (afkData) {
-            recordAfkMention(msgCtx.guildId, userId);
-            await msgCtx.message
+            await message
               .reply(`User ${user.tag} is currently AFK. Reason: ${afkData.reason || "No reason provided"}`)
               .catch(() => null);
           }
@@ -253,24 +193,22 @@ const event: BotEvent = {
     }
 
     const authorAfk = await AfkUser.findOne({
-      guildId: msgCtx.guildId,
-      userId: msgCtx.user.id,
+      guildId: message.guild.id,
+      userId: message.author.id,
       status: true
     });
-    recordDbRead();
     if (authorAfk) {
-      recordDbWrite();
       await AfkUser.updateOne(
-        { guildId: msgCtx.guildId, userId: msgCtx.user.id },
+        { guildId: message.guild.id, userId: message.author.id },
         { $set: { status: false, mentionCount: 0 } }
       );
-      await msgCtx.message
+      await message
         .reply(`Welcome back! You have ${authorAfk.mentionCount} unread mentions while you were away.`)
         .catch(() => null);
     }
 
-    // 7) نظام الخبرة — تراكم في الذاكرة فقط
-    await handleMessageXp(client, msgCtx.message, msgCtx.guildConfig);
+    // 7) نظام الخبرة
+    await handleMessageXp(client, message, gConfig);
 
     // 8) تسجيل المرفقات المرسلة (صور/فيديوهات/ملفات) — يُرسل الملف نفسه لروم اللوق
     if (message.attachments.size > 0) {
@@ -281,15 +219,18 @@ const event: BotEvent = {
         size: a.size
       }));
 
+      const channelNameMedia = (message.channel as any)?.name || "Unknown";
+      const nowUnixMedia = Math.floor(Date.now() / 1000);
+      const messageUrlMedia = `https://discord.com/channels/${message.guild.id}/${message.channelId}/${message.id}`;
       const embed = new EmbedBuilder()
         .setColor(0x2ecc71)
-        .setTitle("📎 ملف جديد")
-        .setDescription(`بواسطة ${message.author.tag} \`${message.author.id}\``)
-        .addFields({
-          name: "القناة",
-          value: `<#${message.channelId}> \`${message.channelId}\``,
-          inline: true
-        });
+        .setTitle("ملف جديد")
+        .setDescription(`بواسطة ${message.author.tag} <@${message.author.id}> (\`${message.author.id}\`)`)
+        .addFields(
+          { name: "القناة", value: `<#${message.channelId}> \`${channelNameMedia}\` (\`${message.channelId}\`)`, inline: false },
+          { name: "الوقت", value: `<t:${nowUnixMedia}:F> (<t:${nowUnixMedia}:R>)`, inline: true },
+          { name: "رابط الرسالة", value: `[الانتقال](${messageUrlMedia})`, inline: true }
+        );
 
       if (message.content) {
         embed.addFields({
@@ -298,11 +239,19 @@ const event: BotEvent = {
         });
       }
 
-      embed.setFooter({ text: `Message ID: ${message.id}` });
-      await sendMediaLog(client, message.guild.id, "files", embed, media);
+      embed.setFooter({ text: `Message ID: ${message.id} | Author ID: ${message.author.id}` }).setTimestamp();
+      await sendMediaLog(client, message.guild.id, "files", embed, media, undefined, {
+        executorId: message.author.id,
+        executorTag: message.author.tag,
+        targetId: message.author.id,
+        targetTag: message.author.tag,
+        channelId: message.channelId,
+        channelName: channelNameMedia,
+        messageId: message.id,
+        messageUrl: messageUrlMedia,
+        details: { attachments: media.map((m) => ({ name: m.name, size: m.size })) }
+      });
     }
-
-    recordMessageProcessed(Date.now() - startedAt);
   }
 };
 

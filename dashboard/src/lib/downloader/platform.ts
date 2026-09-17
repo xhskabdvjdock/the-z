@@ -36,12 +36,18 @@ export function validateUrl(url: string): { valid: boolean; error?: string; plat
     return { valid: false, error: "Invalid URL." };
   }
 
-  // SSRF protection - block private IPs
+  // SSRF protection - block private/internal hosts
   const host = parsed.hostname.toLowerCase();
   if (
     host === "localhost" ||
     host === "127.0.0.1" ||
+    host === "0.0.0.0" ||
     host === "::1" ||
+    host === "::" ||
+    host.startsWith("169.254.") ||
+    host.startsWith("100.64.") ||
+    host.startsWith("[fd") ||
+    host.startsWith("[fe80") ||
     host.startsWith("192.168.") ||
     host.startsWith("10.") ||
     host.startsWith("172.16.") ||

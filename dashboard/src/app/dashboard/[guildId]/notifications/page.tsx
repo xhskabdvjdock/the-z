@@ -1,6 +1,7 @@
 import { ensureDb } from "@/lib/db";
 import { Notification } from "@thez/shared";
 import { requireGuildAdmin } from "@/lib/guildAccess";
+import { markAllNotificationsRead } from "./actions";
 
 export default async function NotificationsPage({ params }: { params: { guildId: string } }) {
   await requireGuildAdmin(params.guildId);
@@ -9,14 +10,30 @@ export default async function NotificationsPage({ params }: { params: { guildId:
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-bold">الإشعارات</h1>
-      <p className="mb-6 text-sm text-slate-500">آخر الأحداث المهمة</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="mb-1 text-xl font-bold">الإشعارات</h1>
+          <p className="text-sm text-slate-500">آخر الأحداث المهمة</p>
+        </div>
+        {notifications.length > 0 && (
+          <form action={async () => { "use server"; await markAllNotificationsRead(params.guildId); }}>
+            <button type="submit" className="btn-secondary !px-3 !py-1.5 text-sm">
+              تعليم الكل كمقروء
+            </button>
+          </form>
+        )}
+      </div>
       <div className="card flex flex-col gap-3">
         {notifications.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-400">لا توجد إشعارات</p>
         ) : (
           notifications.map((n: any) => (
-            <div key={n.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+            <div
+              key={n.id}
+              className={`flex items-center gap-3 rounded-lg border p-3 ${
+                n.read ? "border-slate-200 dark:border-slate-700 opacity-60" : "border-slate-300 dark:border-slate-600"
+              }`}
+            >
               <div className="flex-1">
                 <p className="text-sm font-bold">{n.title}</p>
                 <p className="text-xs text-slate-500">{n.message}</p>

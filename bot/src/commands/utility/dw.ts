@@ -1,63 +1,5 @@
-import { AttachmentBuilder, EmbedBuilder } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import { BotCommand } from "../../types/command";
-import { create } from "yt-dlp-exec";
-
-const ytdlp = create("yt-dlp");
-
-async function getVideoViaYtDlp(url: string): Promise<string | null> {
-  try {
-    const output = (await ytdlp(url, {
-      getUrl: true,
-      format: "best[ext=mp4]/best",
-      noWarnings: true,
-      noCallHome: true,
-      noCheckCertificate: true,
-      preferFreeFormats: true
-    } as any)) as unknown as string;
-    const videoUrl = typeof output === "string" ? output.trim() : String(output ?? "").trim();
-    if (videoUrl && videoUrl.startsWith("http")) return videoUrl;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function getVideoViaFallback(url: string): Promise<string | null> {
-  // TikTok fallback
-  if (url.includes("tiktok.com")) {
-    try {
-      const res = await fetch("https://www.tikwm.com/api/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url }),
-        signal: AbortSignal.timeout(8000)
-      });
-      if (res.ok) {
-        const data = (await res.json()) as any;
-        const v = data?.data?.play ?? data?.data?.hdplay;
-        if (v) return v;
-      }
-    } catch {}
-  }
-  // Cobalt fallback
-  for (const endpoint of ["https://api.cobalt.tools/api/json", "https://co.wuk.sh/api/json"]) {
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ url }),
-        signal: AbortSignal.timeout(8000)
-      });
-      if (!res.ok) continue;
-      const data = (await res.json()) as any;
-      const v = data?.url ?? data?.picker?.[0]?.url;
-      if (v) return v;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
 
 const command: BotCommand = {
   name: "dw",
@@ -69,7 +11,6 @@ const command: BotCommand = {
     { name: "url", description: "رابط الفيديو", type: "string", required: true }
   ],
   async run(ctx) {
-    // السماح فقط في الخاص
     if (ctx.guild) {
       await ctx.reply({ content: "هذا الأمر يعمل في الخاص فقط. راسل البوت على الخاص." });
       return;
@@ -92,29 +33,17 @@ const command: BotCommand = {
       return;
     }
 
-    // defer لتجنب timeout
-    if (ctx.isSlash && ctx.interaction && !ctx.interaction.deferred) {
-      await ctx.interaction.deferReply().catch(() => null);
-    } else {
-      await ctx.reply({ content: "جاري التحميل..." });
-    }
-
     const dashboardUrl = process.env.DASHBOARD_URL ?? process.env.NEXTAUTH_URL ?? "https://the-z-o3lt.onrender.com";
     const baseUrl = dashboardUrl.includes("localhost") ? "https://the-z-o3lt.onrender.com" : dashboardUrl;
     const dlPageUrl = `${baseUrl.replace(/\/$/, "")}/downloader?url=${encodeURIComponent(url)}`;
 
     const embed = new EmbedBuilder()
       .setColor(0x5865f2)
-      .setTitle("تم تجهيز الفيديو")
-      .setDescription(`[فتح صفحة التحميل](${dlPageUrl})\n\nاضغط الرابط لمشاهدة الفيديو وتحميله`)
-      .setFooter({ text: "الديسكورد لا يدعم الفيديوهات الكبيرة — التحميل عبر المتصفح" });
+      .setTitle("صفحة التحميل جاهزة")
+      .setDescription(`[فتح صفحة التحميل](${dlPageUrl})\n\nالصق الرابط هناك لمشاهدة الفيديو وتحميله`)
+      .setFooter({ text: "التحميل يتم عبر المتصفح" });
 
-    const msg = `تم تجهيز الفيديو — افتح: ${dlPageUrl}`;
-    if (ctx.isSlash && ctx.interaction?.deferred) {
-      await ctx.interaction.editReply({ content: msg, embeds: [embed] }).catch(() => null);
-    } else {
-      await ctx.reply({ content: msg, embeds: [embed] });
-    }
+    await ctx.reply({ content: `صفحة التحميل: ${dlPageUrl}`, embeds: [embed] });
   }
 };
 

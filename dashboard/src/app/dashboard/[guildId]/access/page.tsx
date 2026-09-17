@@ -1,7 +1,7 @@
 import { requireDashboardAccess } from "@/lib/guildAccess";
 import { ensureDb } from "@/lib/db";
 import { DashboardAccess, OWNER_ID } from "@thez/shared";
-import AccessManager from "../../access/AccessManager";
+import AccessManager from "@/components/AccessManager";
 
 export default async function GuildAccessPage({ params }: { params: { guildId: string } }) {
   await requireDashboardAccess();

@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 import {
   GuildConfig,
+  DashboardAccess,
+  OWNER_ID,
   resolveDashboardSettings,
   resolveGuildAccessLevel,
   isSnowflakeId
@@ -43,6 +45,19 @@ export async function requireApiGuild(guildId: string): Promise<ApiGuildResult> 
   }
   const userId = (session.user as any)?.id;
   if (!isSnowflakeId(userId)) return fail(401, "جلسة غير صالحة");
+
+  // 1.5) القائمة البيضاء للداشبورد — نفس حماية الصفحات
+  if (userId !== OWNER_ID) {
+    try {
+      await ensureDb();
+      const accessDoc = await DashboardAccess.findOne({ id: "global" });
+      const allowed = accessDoc?.allowedUserIds ?? [OWNER_ID];
+      const effective = allowed.includes(OWNER_ID) ? allowed : [OWNER_ID, ...allowed];
+      if (!effective.includes(userId)) return fail(403, "غير مصرح لك باستخدام لوحة التحكم");
+    } catch {
+      return fail(500, "حدث خطأ داخلي أثناء التحقق من الصلاحية");
+    }
+  }
 
   // 2) صحة معرّف السيرفر
   if (!isSnowflakeId(guildId)) return fail(400, "معرّف السيرفر غير صالح");

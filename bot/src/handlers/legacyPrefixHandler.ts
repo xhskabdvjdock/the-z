@@ -5,6 +5,7 @@ import { getGuildConfig } from "../utils/guildConfig";
 import { config } from "../config";
 import { releaseJailedMember } from "../modules/jail/expiry";
 import { recordModerationLog } from "../modules/moderation/auditLog";
+import { translateText } from "../utils/translate";
 
 // ذاكرة مؤقتة للترجمات — محدودة الحجم لمنع نمو غير محدود
 const translationCache = new Map<string, { text: string; timestamp: number }>();
@@ -64,77 +65,11 @@ export async function handleLegacyPrefixCommands(
       return true;
     }
 
-    // محاولة ترجمة مع إعادة محاولة و fallback — استخدام Google API المباشر كـ أساسي (أكثر موثوقية)
-    let translated: string | null = null;
-    let lastError: string | null = null;
-
-    const proxyUrl = process.env.HTTPS_PROXY || process.env.https_proxy || process.env.DISCORD_PROXY;
-    const fetchWithProxy = (url: string, opts: RequestInit = {}) => {
-      if (proxyUrl) {
-        try {
-          // @ts-ignore
-          const { HttpsProxyAgent } = require("https-proxy-agent");
-          (opts as any).agent = new HttpsProxyAgent(proxyUrl);
-        } catch {}
-      }
-      return fetch(url, opts);
-    };
-
-    // DeepL كأساسي (جودة ممتازة + 500K مجاني)
-    try {
-      const isFreeKey = config.deeplApiKey.endsWith(":fx");
-      const deeplHost = isFreeKey ? "https://api-free.deepl.com" : "https://api.deepl.com";
-      const sourceLang = isArabic ? "AR" : "EN";
-      const targetLangDeepL = targetLang.toUpperCase();
-      const res = await fetchWithProxy(`${deeplHost}/v2/translate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `DeepL-Auth-Key ${config.deeplApiKey}` },
-        body: JSON.stringify({ text: [text.slice(0, 1000)], source_lang: sourceLang, target_lang: targetLangDeepL }),
-        signal: AbortSignal.timeout(8000) as any
-      });
-      if (res.ok) {
-        const data = (await res.json()) as any;
-        const trans = data?.translations?.[0]?.text;
-        if (trans?.trim()) translated = trans;
-      } else {
-        lastError = `DeepL ${res.status}`;
-      }
-    } catch (err) {
-      lastError = err instanceof Error ? err.message : String(err);
-    }
-
-    // Fallback Bing إذا فشل DeepL
-    if (!translated?.trim()) {
-      try {
-        if (proxyUrl) process.env.HTTPS_PROXY = proxyUrl;
-        const { translate: bingTranslate } = await import("bing-translate-api");
-        const result = await bingTranslate(text.slice(0, 1000), isArabic ? "ar" : null, targetLang);
-        if (result?.translation?.trim()) translated = result.translation;
-      } catch (err) {
-        lastError = err instanceof Error ? err.message : String(err);
-      }
-    }
-
-    // Fallback MyMemory
-    if (!translated?.trim()) {
-      try {
-        const langPair = isArabic ? "ar|en" : "en|ar";
-        const res = await fetchWithProxy(
-          `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text.slice(0, 500))}&langpair=${langPair}&de=a@b.c`,
-          { signal: AbortSignal.timeout(5000) as any }
-        );
-        if (res.ok) {
-          const data = (await res.json()) as any;
-          const mymem = data?.responseData?.translatedText;
-          if (mymem && mymem.trim() && !mymem.includes("MYMEMORY WARNING")) translated = mymem;
-        }
-      } catch (err) {
-        lastError = err instanceof Error ? err.message : String(err);
-      }
-    }
+    // ترجمة موحدة عبر DeepL ثم Bing
+    const translated = await translateText(text, targetLang);
 
     if (!translated?.trim()) {
-      await message.reply(`فشلت الترجمة${lastError ? ` — ${lastError.slice(0, 80)}` : ""}، حاول مرة أخرى`);
+      await message.reply("فشلت الترجمة، حاول مرة أخرى");
       return true;
     }
 

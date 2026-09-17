@@ -30,6 +30,8 @@ export const DEFAULT_COMMANDS: CommandMeta[] = [
   { name: "translate", category: "عام", descriptionAr: "ترجمة نص إلى لغة أخرى" },
 
   { name: "gif", category: "أدوات", descriptionAr: "تحويل فيديو أو صورة إلى GIF (يعمل في الخاص)" },
+  { name: "dw", category: "أدوات", descriptionAr: "رابط صفحة تحميل الفيديو (يعمل في الخاص)" },
+  { name: "game", category: "أدوات", descriptionAr: "عرض مركز الألعاب" },
 
   { name: "ban", category: "إشراف", descriptionAr: "حظر عضو" },
   { name: "unban", category: "إشراف", descriptionAr: "فك حظر عضو" },
