@@ -36,6 +36,48 @@ function fail(status: number, message: string): ApiGuildResult {
   return { ok: false, response: NextResponse.json({ error: message }, { status }) };
 }
 
+/**
+ * فحص القائمة البيضاء للوحة التحكم (نفس منطق حماية الصفحات في guildAccess.ts).
+ * يُرجع null عند النجاح، أو رد JSON بالخطأ المناسب.
+ */
+async function checkWhitelist(userId: string): Promise<NextResponse | null> {
+  if (userId === OWNER_ID) return null;
+  try {
+    await ensureDb();
+    const accessDoc = await DashboardAccess.findOne({ id: "global" });
+    const allowed = accessDoc?.allowedUserIds ?? [OWNER_ID];
+    const effective = allowed.includes(OWNER_ID) ? allowed : [OWNER_ID, ...allowed];
+    if (!effective.includes(userId)) {
+      return NextResponse.json({ error: "غير مصرح لك باستخدام لوحة التحكم" }, { status: 403 });
+    }
+    return null;
+  } catch {
+    return NextResponse.json(
+      { error: "حدث خطأ داخلي أثناء التحقق من الصلاحية" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * حماية المسارات العامة (غير المرتبطة بسيرفر معيّن) مثل واجهة التحميل.
+ * تتحقق فقط من: جلسة سليمة + معرّف مستخدم صالح + القائمة البيضاء للوحة.
+ */
+export async function requireApiUser(): Promise<ApiGuildResult> {
+  const session = await getServerSession(authOptions);
+  if (!session?.accessToken) return fail(401, "غير مصرح — سجّل الدخول أولاً");
+  if ((session as any).error === "RefreshFailed") {
+    return fail(401, "انتهت صلاحية الاتصال بديسكورد — سجّل الدخول مجدداً");
+  }
+  const userId = (session.user as any)?.id;
+  if (!isSnowflakeId(userId)) return fail(401, "جلسة غير صالحة");
+
+  const whitelistError = await checkWhitelist(userId);
+  if (whitelistError) return { ok: false, response: whitelistError };
+
+  return { ok: true, userId };
+}
+
 export async function requireApiGuild(guildId: string): Promise<ApiGuildResult> {
   // 1) المصادقة
   const session = await getServerSession(authOptions);
@@ -47,17 +89,8 @@ export async function requireApiGuild(guildId: string): Promise<ApiGuildResult> 
   if (!isSnowflakeId(userId)) return fail(401, "جلسة غير صالحة");
 
   // 1.5) القائمة البيضاء للداشبورد — نفس حماية الصفحات
-  if (userId !== OWNER_ID) {
-    try {
-      await ensureDb();
-      const accessDoc = await DashboardAccess.findOne({ id: "global" });
-      const allowed = accessDoc?.allowedUserIds ?? [OWNER_ID];
-      const effective = allowed.includes(OWNER_ID) ? allowed : [OWNER_ID, ...allowed];
-      if (!effective.includes(userId)) return fail(403, "غير مصرح لك باستخدام لوحة التحكم");
-    } catch {
-      return fail(500, "حدث خطأ داخلي أثناء التحقق من الصلاحية");
-    }
-  }
+  const whitelistError = await checkWhitelist(userId);
+  if (whitelistError) return { ok: false, response: whitelistError };
 
   // 2) صحة معرّف السيرفر
   if (!isSnowflakeId(guildId)) return fail(400, "معرّف السيرفر غير صالح");
