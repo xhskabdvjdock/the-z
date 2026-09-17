@@ -7,7 +7,7 @@ import Toggle from "@/components/form/Toggle";
 import MultiSelect from "@/components/form/MultiSelect";
 import CustomMessageEditor from "@/components/form/CustomMessageEditor";
 import SaveButton from "@/components/form/SaveButton";
-import { saveCommandOverrides, saveModerationSettings } from "./actions";
+import { saveCommandOverrides, saveGeneralSettings, saveModerationSettings } from "./actions";
 
 export interface CommandRow extends ICommandOverride {
   category: CommandMeta["category"];
@@ -45,6 +45,11 @@ export default function CommandsForm({
   const [moderationSettings, setModerationSettings] = useState({
     autoDeleteConfirmation: initialConfig.moderation?.autoDeleteConfirmation ?? 3
   });
+  const [generalSettings, setGeneralSettings] = useState({
+    prefix: initialConfig.prefix || "!",
+    embedColor: initialConfig.embedColor ?? ""
+  });
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
   const updateCommand = (name: string, patch: Partial<CommandRow>) => {
     setState((prev) => prev.map((cmd) => (cmd.name === name ? { ...cmd, ...patch } : cmd)));
@@ -64,12 +69,66 @@ export default function CommandsForm({
     const overrides: ICommandOverride[] = state.map(
       ({ category, descriptionAr, type, ...rest }) => rest
     );
+    setGeneralError(null);
+    try {
+      await saveGeneralSettings(guildId, generalSettings);
+    } catch (err) {
+      setGeneralError(err instanceof Error ? err.message : "فشل حفظ الإعدادات العامة");
+      return;
+    }
     await saveCommandOverrides(guildId, overrides);
     await saveModerationSettings(guildId, moderationSettings);
   };
 
   return (
     <div className="flex flex-col gap-6 pb-4">
+      <section className="card flex flex-col gap-4">
+        <h2 className="text-lg font-bold">🔧 الإعدادات العامة</h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">بادئة الأوامر النصية</label>
+            <input
+              className="input font-mono text-center"
+              maxLength={5}
+              value={generalSettings.prefix}
+              onChange={(e) => setGeneralSettings({ ...generalSettings, prefix: e.target.value })}
+            />
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              مثال: <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">!</code> أو{" "}
+              <code className="rounded bg-slate-100 px-1 dark:bg-slate-800">,</code> — من 1 إلى 5 أحرف بدون مسافات
+            </p>
+          </div>
+          <div>
+            <label className="label">لون الإمبد الافتراضي</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                className="h-10 w-16 rounded-lg border border-slate-300 dark:border-slate-700"
+                value={generalSettings.embedColor || "#5865f2"}
+                onChange={(e) => setGeneralSettings({ ...generalSettings, embedColor: e.target.value })}
+              />
+              <input
+                className="input flex-1 font-mono"
+                placeholder="#5865f2"
+                value={generalSettings.embedColor}
+                onChange={(e) => setGeneralSettings({ ...generalSettings, embedColor: e.target.value })}
+              />
+              <button
+                type="button"
+                className="btn-secondary whitespace-nowrap !px-3 !py-1.5 text-xs"
+                onClick={() => setGeneralSettings({ ...generalSettings, embedColor: "" })}
+              >
+                افتراضي
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              يُستخدم في الرسائل التي لا تحدد لونًا خاصًا بها
+            </p>
+          </div>
+        </div>
+        {generalError && <p className="text-sm text-[#EF4444]">{generalError}</p>}
+      </section>
+
       <section className="card flex flex-col gap-4">
         <h2 className="text-lg font-bold">⚙️ إعدادات الإشراف</h2>
         <div>
@@ -159,6 +218,31 @@ export default function CommandsForm({
                               </code>
                             </p>
                           </div>
+                        </div>
+
+                        <div>
+                          <label className="label">مدة البرودة (بالثواني)</label>
+                          <input
+                            type="number"
+                            min={0}
+                            max={3600}
+                            className="input w-40"
+                            placeholder="افتراضي الأمر"
+                            value={cmd.cooldownSeconds ?? ""}
+                            onChange={(e) => {
+                              const raw = e.target.value.trim();
+                              const parsed = raw === "" ? undefined : Number(raw);
+                              updateCommand(cmd.name, {
+                                cooldownSeconds:
+                                  parsed === undefined || Number.isNaN(parsed)
+                                    ? undefined
+                                    : Math.min(Math.max(parsed, 0), 3600)
+                              });
+                            }}
+                          />
+                          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            اتركه فارغًا لاستخدام مدة البرودة الافتراضية للأمر
+                          </p>
                         </div>
                       </>
                     )}

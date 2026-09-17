@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { addAccessId, removeAccessId } from "./accessActions";
 
-const OWNER_ID = "839934741918777415";
-
 export default function AccessManager({
   initialIds,
   ownerId

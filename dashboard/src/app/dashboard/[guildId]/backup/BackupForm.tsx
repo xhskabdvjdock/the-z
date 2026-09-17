@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { createBackup } from "./actions";
 import { restoreBackup } from "./restoreActions";
-import { BackupOptions, RestoreOptions } from "@thez/shared";
+import { BackupOptions, RestoreOptions } from "@thez/shared/client";
 
 interface BackupFormProps {
   guildId: string;

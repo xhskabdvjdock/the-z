@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { IAutoResponse } from "@thez/shared/client";
-import { DiscordChannel } from "@/lib/discord";
+import { DiscordChannel, DiscordRole } from "@/lib/discord";
 import Toggle from "@/components/form/Toggle";
 import MultiSelect from "@/components/form/MultiSelect";
 import CustomMessageEditor from "@/components/form/CustomMessageEditor";
@@ -24,6 +24,7 @@ function createEmptyAutoResponse(): IAutoResponse {
     enabled: true,
     deleteTrigger: false,
     channelIds: [],
+    ignoreBots: true,
     responses: [{ enabled: true, content: "" }]
   };
 }
@@ -31,17 +32,21 @@ function createEmptyAutoResponse(): IAutoResponse {
 export default function AutoResponseForm({
   guildId,
   initial,
-  channels
+  channels,
+  roles
 }: {
   guildId: string;
   initial: IAutoResponse[];
   channels: DiscordChannel[];
+  roles: DiscordRole[];
 }) {
   const [items, setItems] = useState<IAutoResponse[]>(initial);
 
   const channelOptions = channels
     .filter((c) => c.type === 0 || c.type === 5)
     .map((c) => ({ id: c.id, label: `# ${c.name}` }));
+
+  const roleOptions = roles.map((r) => ({ id: r.id, label: r.name }));
 
   const updateItem = (id: string, patch: Partial<IAutoResponse>) => {
     setItems(items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
@@ -141,12 +146,52 @@ export default function AutoResponseForm({
             label="حذف رسالة العضو بعد الرد"
           />
 
-          <MultiSelect
-            label="الرومات المسموحة (فارغ = كل الرومات)"
-            options={channelOptions}
-            values={item.channelIds}
-            onChange={(v) => updateItem(item.id, { channelIds: v })}
-          />
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <MultiSelect
+              label="الرومات المسموحة (فارغ = كل الرومات)"
+              options={channelOptions}
+              values={item.channelIds}
+              onChange={(v) => updateItem(item.id, { channelIds: v })}
+            />
+            <MultiSelect
+              label="الرولات المطلوبة (فارغ = للجميع)"
+              options={roleOptions}
+              values={item.requiredRoleIds ?? []}
+              onChange={(v) => updateItem(item.id, { requiredRoleIds: v })}
+              emptyText="لا توجد رولات"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div>
+              <label className="label">مدة البرودة (بالثواني)</label>
+              <input
+                type="number"
+                min={0}
+                max={3600}
+                className="input"
+                placeholder="بدون برودة"
+                value={item.cooldownSeconds ?? ""}
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  const parsed = raw === "" ? undefined : Number(raw);
+                  updateItem(item.id, {
+                    cooldownSeconds:
+                      parsed === undefined || Number.isNaN(parsed)
+                        ? undefined
+                        : Math.min(Math.max(parsed, 0), 3600)
+                  });
+                }}
+              />
+            </div>
+            <div className="flex items-end pb-2">
+              <Toggle
+                checked={item.ignoreBots !== false}
+                onChange={(v) => updateItem(item.id, { ignoreBots: v })}
+                label="تجاهل رسائل البوتات"
+              />
+            </div>
+          </div>
 
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
