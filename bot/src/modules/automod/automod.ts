@@ -26,6 +26,20 @@ async function recordAutoPunishment(
 const INVITE_REGEX = /(discord\.gg\/|discord(?:app)?\.com\/invite\/)[a-z0-9-]+/i;
 const LINK_REGEX = /https?:\/\/\S+/i;
 
+/**
+ * هل العضو مستثنى من فحص الروابط تحديدًا؟
+ * تُقرأ قائمة `linkExemptRoleIds` من اللوحة، وهي تعفي من antiLink/antiInvite فقط —
+ * أما `whitelistRoleIds` فتعفي من كل أنظمة الرقابة (تُفحص قبل هذه الدالة).
+ */
+export function isLinkExempt(
+  memberRoleIds: readonly string[],
+  automod: Pick<IGuildConfig["automod"], "linkExemptRoleIds">
+): boolean {
+  const exemptRoleIds = automod.linkExemptRoleIds ?? [];
+  if (!exemptRoleIds.length || !memberRoleIds.length) return false;
+  return exemptRoleIds.some((roleId) => memberRoleIds.includes(roleId));
+}
+
 /** يتتبّع طوابع زمن رسائل كل عضو في كل سيرفر لغرض كشف السبام (مفتاح: guildId:userId) */
 const spamTracker = new Map<string, number[]>();
 
@@ -100,11 +114,16 @@ export async function handleAutoMod(
   const content = message.content ?? "";
   let violation: ViolationType | null = null;
 
-  if (automod.antiInvite && INVITE_REGEX.test(content)) {
+  // استثناء رقابة الروابط: مَن يحمل إحدى هذه الرتب لا يُعاقَب على الروابط،
+  // لكنه يبقى خاضعًا لباقي الفحوصات (سبام/كلمات/كابس/تكرار/منشن).
+  const memberRoleIds = member.roles.cache.map((role) => role.id);
+  const linkExempt = isLinkExempt(memberRoleIds, automod);
+
+  if (automod.antiInvite && !linkExempt && INVITE_REGEX.test(content)) {
     violation = "antiInvite";
   }
 
-  if (!violation && automod.antiLink && LINK_REGEX.test(content)) {
+  if (!violation && automod.antiLink && !linkExempt && LINK_REGEX.test(content)) {
     violation = "antiLink";
   }
 

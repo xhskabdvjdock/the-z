@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from "react";
 
-export default function DownloaderClient({ initialUrl = "" }: { initialUrl?: string }) {
+export default function DownloaderClient({
+  initialUrl = "",
+  initialSig = ""
+}: {
+  initialUrl?: string;
+  initialSig?: string;
+}) {
   const [url, setUrl] = useState(initialUrl);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -27,10 +33,12 @@ export default function DownloaderClient({ initialUrl = "" }: { initialUrl?: str
     setStatus("validating");
     try {
       setStatus("downloading");
+      // التوقيع يخص الرابط الأصلي فقط — لا يُرسل بعد تعديل الرابط من المستخدم
+      const signature = initialSig && targetUrl === initialUrl.trim() ? initialSig : undefined;
       const res = await fetch("/api/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: targetUrl })
+        body: JSON.stringify({ url: targetUrl, sig: signature })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "فشل التحميل");

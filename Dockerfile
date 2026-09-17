@@ -5,8 +5,11 @@ RUN apk add --no-cache ffmpeg python3 py3-pip && pip3 install --no-cache-dir yt-
 
 WORKDIR /app
 
-# Copy root package.json for workspaces
-COPY package.json ./
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Copy root package.json + lockfile for workspaces
+# (اللوك فايل يجعل تثبيت الحزم حتميًا وقابلًا لإعادة الإنتاج)
+COPY package.json package-lock.json ./
 
 # Copy orchestrator entrypoint
 COPY start.js ./
@@ -21,13 +24,16 @@ COPY shared/src ./shared/src
 # Copy bot
 COPY bot/package.json bot/tsconfig.json ./bot/
 COPY bot/src ./bot/src
+COPY bot/fonts ./bot/fonts/
 
 # Copy dashboard
 COPY dashboard/package.json dashboard/tsconfig.json dashboard/next.config.js dashboard/tailwind.config.ts dashboard/postcss.config.js ./dashboard/
 COPY dashboard/src ./dashboard/src
+COPY dashboard/public ./dashboard/public
 
 # Install all dependencies using workspaces
-RUN npm install
+# npm ci أولًا (تثبيت مطابق للوك) مع رجوع آمن إلى npm install إن كان الوك غير متزامن
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
 # Build shared
 RUN npm run build --workspace=@thez/shared

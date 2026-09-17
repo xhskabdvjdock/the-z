@@ -32,13 +32,36 @@ function startDashboard() {
   dashboardSpawned = true;
   console.log("[SYSTEM] 🚀 البوت اشتغل! جاري تشغيل الداشبورد...");
 
-  // نسحب خادم الصحة أولًا لأن الداشبورد هو من يجب أن يملك المنفذ الآن
-  healthServer.close();
-  dashboardProc = spawn("npm", ["run", "start", "--workspace=dashboard"], {
-    cwd: "/app",
-    stdio: ["inherit", "pipe", "pipe"],
-    env: { ...process.env, PORT: String(PORT), NODE_OPTIONS: "--max-old-space-size=384" }
+  // نغلق خادم الصحة أولًا وننتظر إغلاق المنفذ فعليًا قبل تسليمه للداشبورد (تفادي EADDRINUSE)
+  const spawnDashboard = () => {
+    // NEXTAUTH_URL: القيمة المضبوطة أولًا، ثم رابط الخدمة العام من Render
+    const nextAuthUrl =
+      process.env.NEXTAUTH_URL || process.env.RENDER_EXTERNAL_URL || process.env.DASHBOARD_URL || "";
+    dashboardProc = spawn("npm", ["run", "start", "--workspace=dashboard"], {
+      cwd: "/app",
+      stdio: ["inherit", "pipe", "pipe"],
+      env: {
+        ...process.env,
+        PORT: String(PORT),
+        ...(nextAuthUrl ? { NEXTAUTH_URL: nextAuthUrl } : {}),
+        NODE_OPTIONS: "--max-old-space-size=384"
+      }
+    });
+    attachDashboardHandlers();
+  };
+
+  healthServer.close(() => {
+    console.log("[SYSTEM] 🔌 تم تحرير المنفذ — تشغيل الداشبورد الآن");
+    spawnDashboard();
   });
+  // مهلة أمان: لو لم يُغلق الخادم لأي سبب، نكمل بعد 3 ثوانٍ
+  setTimeout(() => {
+    if (!dashboardProc) spawnDashboard();
+  }, 3000).unref();
+}
+
+function attachDashboardHandlers() {
+  if (!dashboardProc) return;
 
   dashboardProc.stdout.on("data", (d) => print("DASH", d));
   dashboardProc.stderr.on("data", (d) => print("DASH", d));

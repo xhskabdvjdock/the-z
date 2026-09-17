@@ -1,7 +1,10 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { GuildConfig, GifBlock } from "@thez/shared";
 import { ensureDb } from "@/lib/db";
+import { requireGuildAdmin } from "@/lib/guildAccess";
+import { logAction, logError, summarizeConfig } from "@/lib/logger";
 
 export interface GifBlockInput {
   enabled: boolean;
@@ -19,6 +22,9 @@ export interface GifBlockInput {
 }
 
 export async function saveGifBlockConfig(guildId: string, input: GifBlockInput) {
+  // فحص الصلاحيات داخل الـ Server Action نفسه — لا يكفي حارس الصفحة، لأن الإجراء
+  // قابل للاستدعاء كطلب مستقل من أي عميل يعرف معرّف السيرفر.
+  const session = await requireGuildAdmin(guildId);
   await ensureDb();
 
   // Update guild config
@@ -74,4 +80,15 @@ export async function saveGifBlockConfig(guildId: string, input: GifBlockInput) 
   for (const id of existingIds) {
     await GifBlock.deleteOne({ _id: id });
   }
+
+  logAction({
+    label: "gifblock/save",
+    guildId,
+    userId: (session.user as any).id,
+    userName: session.user?.name ?? undefined,
+    action: "حفظ إعدادات حظر GIFs",
+    details: summarizeConfig(input as unknown as Record<string, unknown>)
+  });
+
+  revalidatePath(`/dashboard/${guildId}/gifblock`);
 }

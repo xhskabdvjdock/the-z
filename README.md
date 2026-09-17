@@ -8,7 +8,7 @@
 
 ```
 the_z/
-├── shared/     # حزمة مشتركة: نماذج قاعدة البيانات (Mongoose) + أدوات مشتركة بين البوت واللوحة
+├── shared/     # حزمة مشتركة: نماذج قاعدة البيانات (PostgreSQL + JSONB) + أدوات مشتركة بين البوت واللوحة
 ├── bot/        # بوت الديسكورد (discord.js v14)
 └── dashboard/  # لوحة التحكم (Next.js 14 App Router)
 ```
@@ -32,17 +32,20 @@ the_z/
 | ⛓️ نظام السجن | سجن مؤقت (إزالة الرتب واستعادتها تلقائياً عند انتهاء المدة)، أوامر `,jail`/`,unjail` |
 | 🔢 عداد الأعضاء | رومات/قنوات عداد تتحدث تلقائياً بعدد الأعضاء/البوتات |
 | ⏰ الرسائل المجدولة | رسائل متكررة (كل N دقيقة/يومياً) أو لمرة واحدة |
+| ⭐ الستار بورد | تثبيت الرسائل التي تصل حدًا من التفاعلات في روم مخصص (عتبة/إيموجي/تجاهل قنوات ورتب) |
+| 🩺 صحة السيرفر | صفحة تشخيص تعرض اتصال البوت/القاعدة/Redis والمهام المجدولة ومشاكل الإعدادات |
 | 📊 سجل الإشراف | تدقيق كامل لأوامر الإشراف (بان/كيرك/ميوث/تحذير/قفل...) في اللوحة |
 | 💬 الأوامر العامة | Ping، معلومات السيرفر/العضو، صورة وبانر المستخدم، ترجمة، تصويت، اقتراحات، AFK |
 | 🛠️ أوامر الإشراف | Ban، Kick، Mute، Unmute، Warn، Warnings، Clear، Lock/Unlock، Slowmode |
-| 🌐 لوحة تحكم كاملة | OAuth2، اختيار سيرفر، تعديل كل الرسائل والمتغيرات، إدارة الأوامر والرتب، Dark Mode |
+| 🌐 لوحة تحكم كاملة | OAuth2، اختيار سيرفر، تعديل كل الرسائل والمتغيرات (بما فيها البادئة ولون الإمبد ومدة برودة كل أمر)، إدارة الأوامر والرتب، Dark Mode |
 
 ## ⚙️ المتطلبات
 
 - Node.js 20 أو أحدث
-- قاعدة بيانات MongoDB (محلية أو Atlas أو Render MongoDB)
+- قاعدة بيانات **PostgreSQL** متوافقة (PostgreSQL محلي، Render PostgreSQL، أو YugabyteDB Managed)
 - تطبيق Discord (Bot + OAuth2) من [Discord Developer Portal](https://discord.com/developers/applications)
 - (اختياري) Redis — عند غيابه يعمل البوت على ذاكرة العملية للبيانات المؤقتة فقط
+- (اختياري) مفاتيح خدمات خارجية: `TMDB_API_KEY` و`OMDB_API_KEY` لميزة الأفلام، `DEEPL_API_KEY` للترجمة
 
 ## 🔑 إعداد تطبيق Discord
 
@@ -75,8 +78,14 @@ cp dashboard/.env.local.example dashboard/.env.local
 DISCORD_TOKEN=توكن البوت
 DISCORD_CLIENT_ID=آيدي التطبيق
 DISCORD_CLIENT_SECRET=سر التطبيق
-DATABASE_URL=mongodb://127.0.0.1:27017/thez_bot
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
+DB_SSL_CA_PATH=../certs/root.crt        # اختياري عند sslmode=verify-full
 DEV_GUILD_ID=آيدي سيرفر التجربة (اختياري، لتسجيل فوري للأوامر أثناء التطوير)
+DASHBOARD_URL=http://localhost:3000     # يُستخدم في روابط صفحة التحميل ,dw
+TMDB_API_KEY=...                        # اختياري — ميزة الأفلام
+OMDB_API_KEY=...                        # اختياري — تقييم IMDb
+DEEPL_API_KEY=...                       # اختياري — ترجمة DeepL (بديل Bing تلقائي)
+DOWNLOADER_SECRET=قيمة عشوائية طويلة    # اختياري — توقيع روابط التحميل
 ```
 
 **`dashboard/.env.local`**
@@ -86,7 +95,9 @@ DISCORD_CLIENT_SECRET=نفس سر التطبيق
 DISCORD_BOT_TOKEN=نفس توكن البوت
 NEXTAUTH_SECRET=قيمة عشوائية طويلة (يمكن توليدها بـ: openssl rand -base64 32)
 NEXTAUTH_URL=http://localhost:3000
-DATABASE_URL=mongodb://127.0.0.1:27017/thez_bot
+DATABASE_URL=postgresql://user:password@host:5432/dbname?sslmode=require
+OWNER_ID=آيدي حسابك على ديسكورد        # يمنحك وصولاً كاملاً للوحة دائمًا
+DOWNLOADER_SECRET=نفس القيمة في البوت   # اختياري (وإلا يُستخدم NEXTAUTH_SECRET)
 ```
 
 ## 🏗️ البناء والتشغيل (تطوير)
@@ -111,7 +122,11 @@ npm run dev:dashboard
 ```bash
 npm run build:bot        # بناء البوت للإنتاج (dist/)
 npm run build:dashboard  # بناء لوحة التحكم للإنتاج
+npm run build:all        # بناء الحزم الثلاث
 npm run clear:commands   # حذف كل أوامر Slash العالمية من ديسكورد
+npm run test             # بناء + تشغيل كل اختبارات tests/
+npm run typecheck:dashboard  # فحص أنواع لوحة التحكم
+npm run verify           # بناء الحزم + فحص الأنواع + كل الاختبارات (قبل الدفع)
 npm run start            # تشغيل البيئة الكاملة (health → deploy → bot → dashboard)
 ```
 
@@ -122,9 +137,11 @@ npm run start            # تشغيل البيئة الكاملة (health → de
 1. أنشئ Web Service من المستودع (Environment: **Docker**).
 2. ضبط المتغيرات في Render:
    - `DISCORD_TOKEN`، `DISCORD_CLIENT_ID`، `DISCORD_CLIENT_SECRET`، `DISCORD_BOT_TOKEN`
-   - `DATABASE_URL` (يفضَّل Render MongoDB مع شهادة SSL)
-   - `NEXTAUTH_URL=https://<اسم-الخدمة>.onrender.com`
+   - `DATABASE_URL` (يفضَّل Render PostgreSQL مع شهادة SSL)
+   - `NEXTAUTH_URL=https://<اسم-الخدمة>.onrender.com` — إن تركته فارغًا يستخدم `start.js` قيمة `RENDER_EXTERNAL_URL` تلقائيًا
    - `NEXTAUTH_SECRET` (يُولَّد تلقائياً)
+   - `DOWNLOADER_SECRET` (يُولَّد تلقائياً من `render.yaml`) — لتوقيع روابط صفحة التحميل
+   - `OWNER_ID` (اختياري) — معرّف مالك اللوحة
    - `REDIS_URL` (اختياري)
 3. أضف قرصاً مضمّناً (Disk) بمقاس 1GB مثبّتاً على `/app/certs` لشهادة قاعدة البيانات.
 4. يشغّل `start.js` التسلسل تلقائياً: فحص اتصال Discord ← نشر الأوامر ← تشغيل البوت ← تشغيل لوحة التحكم،
@@ -135,10 +152,13 @@ npm run start            # تشغيل البيئة الكاملة (health → de
 
 ## 🗄️ قاعدة البيانات
 
-كل إعدادات السيرفر مخزّنة في مستند واحد لكل سيرفر (`GuildConfig`) في MongoDB، ويُنشأ تلقائياً
-بالقيم الافتراضية عند أول استخدام. لوحة التحكم والبوت يقرآن/يكتبان على نفس القاعدة مباشرة عبر
-حزمة `@thez/shared`، لذا أي تعديل من اللوحة ينعكس فوراً على البوت (مع كاش بسيط داخل البوت
-لتقليل الضغط على القاعدة).
+كل إعدادات السيرفر مخزّنة في مستند JSONB واحد لكل سيرفر (`GuildConfig`) داخل **PostgreSQL**،
+ويُنشأ تلقائياً بالقيم الافتراضية عند أول استخدام. طبقة `Collection` في `@thez/shared` تحاكي
+واجهة Mongoose (`findOne` / `find` / `findOneAndUpdate` / `updateOne` / `updateMany` / `countDocuments`)
+فوق جدول واحد بعمود `JSONB` + فهرس GIN، دون أي اعتماد على Mongoose.
+
+لوحة التحكم والبوت يقرآن/يكتبان على نفس القاعدة مباشرة عبر حزمة `@thez/shared`، لذا أي تعديل من
+اللوحة ينعكس فوراً على البوت (مع كاش 30 ثانية داخل البوت لتقليل الضغط على القاعدة).
 
 ## ⚠️ ملاحظات ومحدودات معروفة
 
@@ -152,6 +172,12 @@ npm run start            # تشغيل البيئة الكاملة (health → de
   الشائع.
 - بعض القيم الحساسة (مثل قوائم آيديات المستخدمين المستثناة في مكافحة الغزو) تُدخل كنص عبر
   اللوحة (سطر لكل آيدي) بدل قائمة بحث تفاعلية، لتفادي جلب قوائم أعضاء ضخمة من Discord.
+- **واجهة التحميل (`,dw` / `/downloader`)**: الروابط التي يرسلها البوت **موقّعة بـ HMAC** وصالحة
+  لمدة ساعة ومرتبطة بالرابط نفسه، فلا يمكن استخدامها لتحميل أي رابط آخر. تسجيل الدخول للوحة
+  يعمل أيضًا كصلاحية بديلة. عند غياب `DOWNLOADER_SECRET` و`NEXTAUTH_SECRET` و`DISCORD_CLIENT_SECRET`
+  تصبح الواجهة مقصورة على جلسات اللوحة المصرّح لها (فشل آمن). التحميلات محدودة بعدد متزامن
+  (`DOWNLOADER_MAX_CONCURRENCY`، افتراضيًا 2) وبمعدّل 5 طلبات/دقيقة لكل IP، والملفات المؤقتة
+  تُنظَّف بعد 15 دقيقة مع كنس دوري للمتبقي.
 
 ## 🚀 اقتراحات للتوسّع لاحقاً
 

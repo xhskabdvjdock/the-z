@@ -194,7 +194,6 @@ export interface IGuildConfig {
   _id?: string;
   guildId: string;
   prefix: string;
-  language: "ar" | "en";
   embedColor?: string;
 
   tickets: {
@@ -322,6 +321,12 @@ export interface IGuildConfig {
     badWords: string[];
     whitelistRoleIds: string[];
     whitelistChannelIds: string[];
+    /**
+     * رتب مستثناة من فحص الروابط فقط (antiLink / antiInvite) — تبقى خاضعة لبقية
+     * أنظمة الرقابة (سبام، كلمات ممنوعة، كابس...). مثال: رتبة الإدارة أو رتبة
+     * تُسمح لها بمشاركة روابط السيرفر دون تعطيل الحماية عنها بالكامل.
+     */
+    linkExemptRoleIds: string[];
     punishment: "delete" | "warn" | "mute" | "kick" | "ban" | "timeout";
     muteRoleId?: string;
     punishments: {
@@ -528,7 +533,6 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
   return {
     guildId,
     prefix: "!",
-    language: "ar",
 
     tickets: {
       enabled: false,
@@ -612,6 +616,7 @@ export function createDefaultGuildConfig(guildId: string): IGuildConfig {
       badWords: [],
       whitelistRoleIds: [],
       whitelistChannelIds: [],
+      linkExemptRoleIds: [],
       punishment: "delete",
       punishments: {},
       timeoutDurations: {}

@@ -9,6 +9,70 @@ const execFileAsync = promisify(execFile);
 const TEMP_DIR = process.env.DOWNLOADER_TEMP_DIR || "/tmp/the-z-downloads";
 const MAX_FILE_SIZE_MB = parseInt(process.env.DOWNLOADER_MAX_FILE_SIZE_MB ?? "100", 10);
 const TIMEOUT_SECONDS = parseInt(process.env.DOWNLOADER_TIMEOUT_SECONDS ?? "60", 10);
+/** حد أقصى للتحميلات المتزامنة — يحمي المعالج/الشبكة من الاستنزاف */
+const MAX_CONCURRENCY = Math.max(1, parseInt(process.env.DOWNLOADER_MAX_CONCURRENCY ?? "2", 10) || 2);
+/** أقصى انتظار في الطابور قبل الرفض */
+const QUEUE_TIMEOUT_MS = 60 * 1000;
+/** عمر الملفات المؤقتة قبل التنظيف (دقيقتان أكثر من مؤقت الحذف المعتاد) */
+const STALE_AGE_MS = 17 * 60 * 1000;
+const SWEEP_INTERVAL_MS = 10 * 60 * 1000;
+
+let activeDownloads = 0;
+const slotWaiters: Array<() => void> = [];
+let lastSweepAt = 0;
+
+/** يحجز خانة تحميل أو ينتظر في الطابور حتى تتوفر (أو يُرفض بعد مهلة) */
+async function acquireSlot(): Promise<void> {
+  if (activeDownloads < MAX_CONCURRENCY) {
+    activeDownloads++;
+    return;
+  }
+  await new Promise<void>((resolve, reject) => {
+    function grant() {
+      clearTimeout(timer);
+      activeDownloads++;
+      resolve();
+    }
+    const timer = setTimeout(() => {
+      const index = slotWaiters.indexOf(grant);
+      if (index >= 0) slotWaiters.splice(index, 1);
+      reject(new Error("The downloader service is busy right now. Please try again shortly."));
+    }, QUEUE_TIMEOUT_MS);
+    slotWaiters.push(grant);
+  });
+}
+
+function releaseSlot(): void {
+  activeDownloads = Math.max(0, activeDownloads - 1);
+  const next = slotWaiters.shift();
+  if (next) next();
+}
+
+/**
+ * تنظيف دوري لمجلدات التحميل القديمة — التنظيف المعتاد يتم بـ setTimeout بعد 15 دقيقة،
+ * لكنه يُفقد عند إعادة تشغيل العملية، لذا نكنس المتبقي دوريًا لتفادي امتلاء القرص.
+ */
+async function sweepStaleJobs(): Promise<void> {
+  const now = Date.now();
+  if (now - lastSweepAt < SWEEP_INTERVAL_MS) return;
+  lastSweepAt = now;
+  try {
+    const entries = await fs.promises.readdir(TEMP_DIR, { withFileTypes: true });
+    await Promise.all(
+      entries
+        .filter((entry) => entry.isDirectory())
+        .map(async (entry) => {
+          const dirPath = path.join(TEMP_DIR, entry.name);
+          try {
+            const stats = await fs.promises.stat(dirPath);
+            if (now - stats.mtimeMs > STALE_AGE_MS) {
+              await fs.promises.rm(dirPath, { recursive: true, force: true });
+            }
+          } catch {}
+        })
+    );
+  } catch {}
+}
 
 export interface DownloadResult {
   jobId: string;
@@ -86,7 +150,20 @@ async function tryCobalt(url: string): Promise<string | null> {
   return null;
 }
 
+/**
+ * نقطة الدخول الوحيدة للتحميل — تفرض حد التزامن وتنظّف الملفات القديمة أولًا.
+ */
 export async function downloadWithYtDlp(url: string, platform: string): Promise<DownloadResult> {
+  await acquireSlot();
+  try {
+    await sweepStaleJobs();
+    return await runDownload(url, platform);
+  } finally {
+    releaseSlot();
+  }
+}
+
+async function runDownload(url: string, platform: string): Promise<DownloadResult> {
   const isInstagram = platform === "instagram";
   if (isInstagram) {
     const cobaltUrl = await tryCobalt(url);
@@ -212,6 +289,7 @@ export async function downloadWithYtDlp(url: string, platform: string): Promise<
     if (lower.includes("video unavailable") ) throw new Error("The video is unavailable or private.");
     if (lower.includes("no video")) throw new Error("No downloadable video was found in this post. The link may be invalid or the post is a photo album.");
     if (lower.includes("file too large")) throw new Error("The video is too large to process.");
+    if (lower.includes("enoent")) throw new Error("The downloader service is currently unavailable. Please try again.");
     if (lower.includes("timeout") || lower.includes("timed out") || lower.includes("etimedout")) throw new Error("The downloader service is currently unavailable. Please try again.");
     if (lower.includes("unsupported url")) throw new Error("Unsupported Instagram URL. Use a direct reel/post link like https://www.instagram.com/reel/XXXX/");
     throw new Error("The video could not be downloaded. " + msg.slice(0, 120));

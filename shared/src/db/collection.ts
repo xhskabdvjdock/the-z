@@ -255,8 +255,8 @@ class FindQuery<T> implements PromiseLike<T> {
 /**
  * "مجموعة" بأسلوب شبيه بنماذج Mongoose، لكنها مبنية فوق جدول PostgreSQL/YSQL واحد
  * بعمود JSONB يخزّن المستند بالكامل. تدعم فقط العمليات المستخدمة فعلياً في هذا المشروع
- * (findOne/find/create/findOneAndUpdate/countDocuments/deleteOne) بما يكفي للتوافق التام
- * مع الكود الحالي دون الحاجة لتعديله.
+ * (findOne/find/create/findOneAndUpdate/countDocuments/updateOne/updateMany/deleteOne)
+ * بما يكفي للتوافق التام مع الكود الحالي دون الحاجة لتعديله.
  */
 export class Collection<T extends Record<string, any>> {
   private ensured = false;
@@ -387,6 +387,25 @@ export class Collection<T extends Record<string, any>> {
       `UPDATE ${this.tableName} SET data = $1::jsonb, key_id = $2, updated_at = now() WHERE id = $3`,
       [JSON.stringify(updatedData), updatedData[this.indexField] ?? null, match.id]
     );
+  }
+
+  /** يحدّث كل المستندات المطابقة ويعيد عددها (بدل حلقة updateOne من جهة الاستدعاء) */
+  async updateMany(filter: Filter, update: Record<string, any>): Promise<number> {
+    await this.ensureTable();
+    const pool = getPool();
+    const { where, params } = buildSqlWhere(filter, this.indexField);
+    const sql = where ? `SELECT id, data FROM ${this.tableName} WHERE ${where}` : `SELECT id, data FROM ${this.tableName}`;
+    const rows = (await pool.query(sql, params as any[])).rows;
+
+    const matches = rows.filter((r: any) => matchesFilter(r.data, filter));
+    for (const match of matches) {
+      const updatedData = applyUpdate({ ...match.data }, update, filter);
+      await pool.query(
+        `UPDATE ${this.tableName} SET data = $1::jsonb, key_id = $2, updated_at = now() WHERE id = $3`,
+        [JSON.stringify(updatedData), updatedData[this.indexField] ?? null, match.id]
+      );
+    }
+    return matches.length;
   }
 
   async insertOne(input: Partial<T>): Promise<void> {

@@ -24,6 +24,8 @@ import {
   History,
   Hash,
   Smile,
+  Star,
+  Activity,
   CalendarClock,
   LayoutTemplate,
   BookOpen,
@@ -65,6 +67,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/schedules", label: "الرسائل المجدولة", icon: CalendarClock },
       { href: "/islamic", label: "الأذكار والمحتوى الإسلامي", icon: BookOpen },
       { href: "/suggestions", label: "الاقتراحات", icon: Lightbulb },
+      { href: "/starboard", label: "الستار بورد", icon: Star },
       { href: "/movies", label: "الأفلام", icon: Film },
       { href: "/downloader", label: "تحميل الفيديو", icon: Download },
       { href: "/leveling", label: "المستويات والخبرة", icon: Zap }
@@ -100,6 +103,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/templates", label: "قوالب السيرفر", icon: LayoutTemplate },
       { href: "/commands", label: "إدارة الأوامر", icon: Settings },
       { href: "/advanced", label: "متقدم", icon: Settings },
+      { href: "/health", label: "صحة السيرفر", icon: Activity },
       { href: "/access", label: "إدارة الوصول", icon: KeyRound }
     ]
   }

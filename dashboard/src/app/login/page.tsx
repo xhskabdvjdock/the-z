@@ -18,7 +18,7 @@ export default async function LoginPage() {
       <div className="flex flex-col items-center gap-5 text-center">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://raw.githubusercontent.com/xhskabdvjdock/the-z/main/dashboard/public/bot-logo.jpg"
+          src="/bot-logo.jpg"
           alt="شعار البوت"
           className="h-16 w-16 rounded-full object-cover shadow-lg ring-2 ring-[#5865F2]/40"
         />

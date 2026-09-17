@@ -23,6 +23,7 @@ interface TMDBResult {
 }
 
 async function searchTMDB(query: string): Promise<TMDBResult[]> {
+  if (!config.tmdbApiKey) return [];
   try {
     const res = await fetch(
       `${TMDB_BASE}/search/multi?api_key=${config.tmdbApiKey}&query=${encodeURIComponent(query)}&language=ar&include_adult=false`,
@@ -103,6 +104,13 @@ function buildMovieEmbed(result: TMDBResult, details: any, imdbRating: string | 
 
 export async function handleMovieSearch(channel: any, query: string, authorId: string) {
   if (!query || query.length < 2) return;
+
+  if (!config.tmdbApiKey) {
+    await channel
+      .send({ content: "⚠️ ميزة الأفلام غير مهيّأة: أضف `TMDB_API_KEY` في متغيرات البيئة." })
+      .catch(() => null);
+    return;
+  }
 
   const results = await searchTMDB(query);
   if (results.length === 0) {
