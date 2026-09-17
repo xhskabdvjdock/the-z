@@ -38,6 +38,7 @@ export default async function AutomodPage({ params }: { params: { guildId: strin
     badWords: config?.automod?.badWords ?? [],
     whitelistRoleIds: config?.automod?.whitelistRoleIds ?? [],
     whitelistChannelIds: config?.automod?.whitelistChannelIds ?? [],
+    linkExemptRoleIds: config?.automod?.linkExemptRoleIds ?? [],
     punishment: config?.automod?.punishment ?? "delete",
     muteRoleId: config?.automod?.muteRoleId ?? "",
     punishments: config?.automod?.punishments ?? {},

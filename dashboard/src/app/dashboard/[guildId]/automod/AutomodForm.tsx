@@ -45,6 +45,7 @@ export default function AutomodForm({
     .filter((c) => c.type === 0 || c.type === 5)
     .map((c) => ({ id: c.id, label: `# ${c.name}` }));
   const roleOptions = roles.map((r) => ({ id: r.id, label: `@${r.name}` }));
+  const linkExemptRoleIds = state.linkExemptRoleIds ?? [];
 
   const handleSave = () => {
     const badWords = badWordsText
@@ -77,6 +78,29 @@ export default function AutomodForm({
             onChange={(v) => setState({ ...state, antiLink: v })}
             label="منع الروابط"
           />
+        </div>
+
+        <div className="rounded-lg border border-slate-200 p-3 dark:border-slate-800">
+          <MultiSelect
+            label="رتب مستثناة من رقابة الروابط"
+            options={roleOptions}
+            values={linkExemptRoleIds}
+            onChange={(v) => setState({ ...state, linkExemptRoleIds: v })}
+            emptyText="لا توجد رتب"
+          />
+          <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+            من يحمل إحدى هذه الرتب يُسمح له بنشر الروابط (بما فيها روابط الدعوات) — وتبقى عليه
+            بقية أنظمة الرقابة (السبام، الكلمات الممنوعة، الأحرف الكبيرة...).
+            <br />
+            لإعفاء رتبة من <strong>كل</strong> أنظمة الرقابة، استخدم «رتب مستثناة» في قسم الاستثناءات أدناه.
+          </p>
+          {linkExemptRoleIds.length > 0 && (
+            <p className="mt-2 text-xs text-[#10B981]">
+              مستثنى الآن: {linkExemptRoleIds.filter((id) => roleOptions.some((r) => r.id === id)).length} رتبة
+              {linkExemptRoleIds.some((id) => !roleOptions.some((r) => r.id === id)) &&
+                " (بعض الرتب المختارة لم تعد موجودة في السيرفر)"}
+            </p>
+          )}
         </div>
       </section>
 
@@ -211,7 +235,7 @@ export default function AutomodForm({
         <h2 className="text-lg font-bold">✅ الاستثناءات</h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <MultiSelect
-            label="رتب مستثناة"
+            label="رتب مستثناة من كل أنظمة الرقابة"
             options={roleOptions}
             values={state.whitelistRoleIds}
             onChange={(v) => setState({ ...state, whitelistRoleIds: v })}
