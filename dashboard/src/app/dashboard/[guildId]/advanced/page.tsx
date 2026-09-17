@@ -2,6 +2,7 @@ import { requireGuildAdmin } from "@/lib/guildAccess";
 import { ensureDb } from "@/lib/db";
 import { GuildConfig, Ticket, Suggestion, Warning, ActionLog } from "@thez/shared";
 import { getGuildInfo } from "@/lib/discord";
+import PageHeader from "@/components/PageHeader";
 
 export default async function AdvancedPage({ params }: { params: { guildId: string } }) {
   await requireGuildAdmin(params.guildId);
@@ -31,8 +32,7 @@ export default async function AdvancedPage({ params }: { params: { guildId: stri
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-bold">لوحة تحكم متقدمة</h1>
-      <p className="mb-6 text-sm text-slate-500">تشخيص سريع لحالة السيرفر</p>
+      <PageHeader title="لوحة تحكم متقدمة" description="تشخيص سريع لحالة السيرفر" />
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[

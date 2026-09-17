@@ -2,6 +2,7 @@ import { ensureDb } from "@/lib/db";
 import { GuildConfig } from "@thez/shared";
 import { getGuildChannels } from "@/lib/discord";
 import MoviesForm from "./MoviesForm";
+import PageHeader from "@/components/PageHeader";
 
 export default async function MoviesPage({ params }: { params: { guildId: string } }) {
   await ensureDb();
@@ -14,8 +15,10 @@ export default async function MoviesPage({ params }: { params: { guildId: string
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-bold">الأفلام والمسلسلات</h1>
-      <p className="mb-6 text-sm text-slate-500">حدد قناة البحث — يعتمد على TMDB و OMDb لعرض البوستر والتقييم والملخص.</p>
+      <PageHeader
+        title="الأفلام والمسلسلات"
+        description="حدد قناة البحث — يعتمد على TMDB و OMDb لعرض البوستر والتقييم والملخص."
+      />
       <MoviesForm guildId={params.guildId} initial={{ enabled: Boolean(movies.enabled), channelId: movies.channelId ?? "" }} channels={channels} />
     </div>
   );

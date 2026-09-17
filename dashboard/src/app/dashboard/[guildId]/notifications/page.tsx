@@ -2,6 +2,7 @@ import { ensureDb } from "@/lib/db";
 import { Notification } from "@thez/shared";
 import { requireGuildAdmin } from "@/lib/guildAccess";
 import { markAllNotificationsRead } from "./actions";
+import PageHeader from "@/components/PageHeader";
 
 export default async function NotificationsPage({ params }: { params: { guildId: string } }) {
   await requireGuildAdmin(params.guildId);
@@ -10,19 +11,19 @@ export default async function NotificationsPage({ params }: { params: { guildId:
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="mb-1 text-xl font-bold">الإشعارات</h1>
-          <p className="text-sm text-slate-500">آخر الأحداث المهمة</p>
-        </div>
-        {notifications.length > 0 && (
-          <form action={async () => { "use server"; await markAllNotificationsRead(params.guildId); }}>
-            <button type="submit" className="btn-secondary !px-3 !py-1.5 text-sm">
-              تعليم الكل كمقروء
-            </button>
-          </form>
-        )}
-      </div>
+      <PageHeader
+        title="الإشعارات"
+        description="آخر الأحداث المهمة"
+        action={
+          notifications.length > 0 ? (
+            <form action={async () => { "use server"; await markAllNotificationsRead(params.guildId); }}>
+              <button type="submit" className="btn-secondary !px-3 !py-1.5 text-sm">
+                تعليم الكل كمقروء
+              </button>
+            </form>
+          ) : undefined
+        }
+      />
       <div className="card flex flex-col gap-3">
         {notifications.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-400">لا توجد إشعارات</p>
