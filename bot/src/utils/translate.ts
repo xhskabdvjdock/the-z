@@ -21,27 +21,29 @@ export async function translateText(text: string, targetLang: string): Promise<s
   const isArabic = /[\u0600-\u06FF]/.test(text);
   const input = text.slice(0, 1000);
 
-  // DeepL أولاً
-  try {
-    const isFreeKey = config.deeplApiKey.endsWith(":fx");
-    const deeplHost = isFreeKey ? "https://api-free.deepl.com" : "https://api.deepl.com";
-    const res = await fetchWithProxy(`${deeplHost}/v2/translate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `DeepL-Auth-Key ${config.deeplApiKey}` },
-      body: JSON.stringify({
-        text: [input],
-        source_lang: isArabic ? "AR" : "EN",
-        target_lang: targetLang.toUpperCase()
-      }),
-      signal: AbortSignal.timeout(8000) as any
-    });
-    if (res.ok) {
-      const data = (await res.json()) as any;
-      const trans = data?.translations?.[0]?.text;
-      if (trans?.trim()) return trans;
+  // DeepL أولاً (يُتخطّى تلقائيًا إذا لم يُضبط DEEPL_API_KEY)
+  if (config.deeplApiKey) {
+    try {
+      const isFreeKey = config.deeplApiKey.endsWith(":fx");
+      const deeplHost = isFreeKey ? "https://api-free.deepl.com" : "https://api.deepl.com";
+      const res = await fetchWithProxy(`${deeplHost}/v2/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `DeepL-Auth-Key ${config.deeplApiKey}` },
+        body: JSON.stringify({
+          text: [input],
+          source_lang: isArabic ? "AR" : "EN",
+          target_lang: targetLang.toUpperCase()
+        }),
+        signal: AbortSignal.timeout(8000) as any
+      });
+      if (res.ok) {
+        const data = (await res.json()) as any;
+        const trans = data?.translations?.[0]?.text;
+        if (trans?.trim()) return trans;
+      }
+    } catch (err) {
+      logError("translate/deepl", err);
     }
-  } catch (err) {
-    logError("translate/deepl", err);
   }
 
   // Bing كاحتياطي

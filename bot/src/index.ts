@@ -74,7 +74,8 @@ async function bootstrap() {
     return;
   }
 
-  logInfo("startup", `   - Token المستخدم: ${config.token.substring(0, 10)}... (طول: ${config.token.length})`);
+  // لا تُطبع أي قيمة من التوكن في اللوجات — فقط وجوده وطوله
+  logInfo("startup", `   - Token مُهيّأ: ${config.token ? "نعم" : "لا"} (طول: ${config.token.length})`);
 
   // تشخيص الاتصال بـ Discord API قبل محاولة تسجيل الدخول
   logInfo("startup", "🔍 تشخيص الاتصال بـ Discord API...");
