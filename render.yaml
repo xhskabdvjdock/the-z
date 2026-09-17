@@ -17,8 +17,16 @@ services:
         sync: false
       - key: NEXTAUTH_SECRET
         generateValue: true
+      # سر توقيع روابط التحميل التي يرسلها الأمر ,dw (نفس القيمة للبوت واللوحة تلقائيًا)
+      - key: DOWNLOADER_SECRET
+        generateValue: true
+      # اتركه فارغًا هنا وحدّده في Render بمتغير NEXTAUTH_URL = رابط الخدمة العام.
+      # إن لم يُضبط، يستخدم start.js قيمة RENDER_EXTERNAL_URL تلقائيًا.
       - key: NEXTAUTH_URL
-        value: https://the-z-8c94.onrender.com
+        sync: false
+      # اختياري: معرّف مالك لوحة التحكم (بدونه يُستخدم المعرّف الافتراضي في الكود)
+      - key: OWNER_ID
+        sync: false
       - key: DATABASE_URL
         sync: false
       - key: REDIS_URL

@@ -16,7 +16,12 @@
     "deploy:commands": "npm run deploy -w bot",
     "clear:commands": "npm run clear -w bot",
     "dev:dashboard": "npm run dev -w dashboard",
-    "build:dashboard": "npm run build -w dashboard"
+    "build:dashboard": "npm run build -w dashboard",
+    "build:all": "npm run build:shared && npm run build:bot && npm run build:dashboard",
+    "test": "npm run build:shared && npm run build:bot && node --test tests/*.test.cjs",
+    "test:only": "node --test tests/*.test.cjs",
+    "typecheck:dashboard": "cd dashboard && npx tsc --noEmit",
+    "verify": "npm run build:shared && npm run build:bot && npm run typecheck:dashboard && node --test tests/*.test.cjs"
   },
   "license": "MIT"
 }

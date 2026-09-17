@@ -1,17 +1,13 @@
-name: Deploy Discord Commands
+name: CI
 
 on:
   push:
     branches:
       - main
-    paths:
-      - 'bot/src/commands/**'
-      - 'bot/src/deploy-commands.ts'
-      - 'shared/src/**'
-  workflow_dispatch:
+  pull_request:
 
 jobs:
-  deploy:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -33,9 +29,11 @@ jobs:
       - name: Build bot
         run: npm run build:bot
 
-      - name: Deploy Discord commands
-        env:
-          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
-          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
-          DEV_GUILD_ID: ${{ secrets.DEV_GUILD_ID }}
-        run: npm run deploy:commands
+      - name: Run tests
+        run: node --test tests/*.test.cjs
+
+      - name: Type-check dashboard
+        run: npm run typecheck:dashboard
+
+      - name: Build dashboard
+        run: npm run build:dashboard
