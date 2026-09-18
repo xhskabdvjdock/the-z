@@ -4,6 +4,7 @@
 // ============================================================
 const { spawn } = require("child_process");
 const http = require("http");
+const { resolveNextAuthUrl } = require("./scripts/env-url");
 
 const PORT = process.env.PORT || 3000;
 
@@ -34,9 +35,8 @@ function startDashboard() {
 
   // نغلق خادم الصحة أولًا وننتظر إغلاق المنفذ فعليًا قبل تسليمه للداشبورد (تفادي EADDRINUSE)
   const spawnDashboard = () => {
-    // NEXTAUTH_URL: القيمة المضبوطة أولًا، ثم رابط الخدمة العام من Render
-    const nextAuthUrl =
-      process.env.NEXTAUTH_URL || process.env.RENDER_EXTERNAL_URL || process.env.DASHBOARD_URL || "";
+    // يُتحقق من صحة NEXTAUTH_URL ويُستبدل برابط الخدمة عند كونه قيمة قديمة/تجريبية
+    const nextAuthUrl = resolveNextAuthUrl(process.env);
     dashboardProc = spawn("npm", ["run", "start", "--workspace=dashboard"], {
       cwd: "/app",
       stdio: ["inherit", "pipe", "pipe"],
