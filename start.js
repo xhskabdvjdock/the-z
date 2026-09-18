@@ -4,7 +4,13 @@
 // ============================================================
 const { spawn } = require("child_process");
 const http = require("http");
-const { resolveNextAuthUrl } = require("./scripts/env-url");
+let resolveNextAuthUrl;
+try {
+  ({ resolveNextAuthUrl } = require("./scripts/env-url"));
+} catch {
+  resolveNextAuthUrl = (env = process.env) =>
+    (env.NEXTAUTH_URL || env.RENDER_EXTERNAL_URL || env.DASHBOARD_URL || "").trim().replace(/\/+$/, "");
+}
 
 const PORT = process.env.PORT || 3000;
 

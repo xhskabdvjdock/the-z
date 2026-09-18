@@ -11,8 +11,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # (اللوك فايل يجعل تثبيت الحزم حتميًا وقابلًا لإعادة الإنتاج)
 COPY package.json package-lock.json ./
 
-# Copy orchestrator entrypoint
+# Copy orchestrator entrypoint + shared env helpers
 COPY start.js ./
+COPY scripts ./scripts/
 
 # Copy fonts
 COPY fonts ./fonts/
