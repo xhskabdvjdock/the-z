@@ -44,6 +44,7 @@ export function validateUrl(url: string): { valid: boolean; error?: string; plat
     host === "0.0.0.0" ||
     host === "::1" ||
     host === "::" ||
+    host.startsWith("[::ffff:") ||
     host.startsWith("169.254.") ||
     host.startsWith("100.64.") ||
     host.startsWith("[fd") ||
